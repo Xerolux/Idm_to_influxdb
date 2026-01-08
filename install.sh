@@ -70,19 +70,30 @@ install_basic_dependencies() {
 
     case $OS in
         ubuntu|debian)
-            # Update package lists (ignore errors from broken repos)
-            apt-get update 2>/dev/null || true
+            # Check if required commands are available, skip if they exist
+            local missing_packages=()
 
-            # Check if required packages are available
-            for pkg in curl wget git ca-certificates gnupg; do
-                if ! command -v $pkg &> /dev/null && ! dpkg -l | grep -q "^ii  $pkg "; then
-                    apt-get install -y $pkg 2>/dev/null || true
+            for cmd in curl wget git; do
+                if ! command -v $cmd &> /dev/null; then
+                    missing_packages+=($cmd)
                 fi
             done
+
+            if [ ${#missing_packages[@]} -eq 0 ]; then
+                print_info "All required packages already installed"
+            else
+                print_info "Installing missing packages: ${missing_packages[*]}"
+                # Try to update, but don't fail if repos are broken
+                apt-get update 2>&1 | head -n 1 || true
+
+                # Install missing packages one by one
+                for pkg in "${missing_packages[@]}"; do
+                    apt-get install -y $pkg 2>&1 | tail -n 5 || print_warning "Could not install $pkg (might already be present)"
+                done
+            fi
             ;;
         centos|rhel|fedora)
-            yum update -y
-            yum install -y curl wget git ca-certificates
+            yum install -y curl wget git ca-certificates 2>/dev/null || true
             ;;
         *)
             print_error "Unsupported OS for automatic installation"
