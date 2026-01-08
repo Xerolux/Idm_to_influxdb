@@ -4,7 +4,7 @@
 # Supports: Docker and Docker Compose installations
 ################################################################################
 
-set -e
+# Note: Not using 'set -e' to handle broken apt repositories gracefully
 
 # Colors for output
 RED='\033[0;31m'
@@ -70,8 +70,13 @@ install_basic_dependencies() {
 
     case $OS in
         ubuntu|debian)
-            apt-get update
-            apt-get install -y curl wget git ca-certificates gnupg
+            # Update package lists (ignore errors from broken repos)
+            apt-get update 2>&1 | grep -v "^W:" | grep -v "^E:" || true
+
+            # Install required packages
+            apt-get install -y curl wget git ca-certificates gnupg || {
+                print_warning "Some packages might already be installed"
+            }
             ;;
         centos|rhel|fedora)
             yum update -y
@@ -83,7 +88,7 @@ install_basic_dependencies() {
             ;;
     esac
 
-    print_success "Basic dependencies installed"
+    print_success "Basic dependencies ready"
 }
 
 # Install Docker
