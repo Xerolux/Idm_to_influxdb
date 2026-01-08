@@ -5,7 +5,9 @@ import json
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = "idm_logger.db"
+# Use DATA_DIR environment variable or current directory for persistence
+DATA_DIR = os.environ.get("DATA_DIR", ".")
+DB_PATH = os.path.join(DATA_DIR, "idm_logger.db")
 
 class Database:
     def __init__(self, db_path=DB_PATH):

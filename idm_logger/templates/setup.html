@@ -17,46 +17,67 @@
                     <div class="card-body">
                         <p>Welcome to IDM Logger! Please configure your initial settings.</p>
 
+                        <div class="alert alert-info" role="alert">
+                            <strong>Docker Users:</strong> InfluxDB settings are pre-filled with Docker defaults.
+                            Only the IDM Heat Pump IP needs to be configured.
+                        </div>
+
                         <form method="POST">
                             <h5 class="mt-4 text-primary">IDM Heat Pump</h5>
                             <div class="mb-3">
                                 <label for="idm_host" class="form-label">Host / IP</label>
-                                <input type="text" class="form-control" id="idm_host" name="idm_host" placeholder="192.168.1.100" required>
+                                <input type="text" class="form-control" id="idm_host" name="idm_host"
+                                       placeholder="192.168.1.100" required
+                                       value="{{ config.idm.host if config.idm.host else '' }}">
+                                <div class="form-text">Enter the IP address or hostname of your IDM heat pump.</div>
                             </div>
                             <div class="mb-3">
                                 <label for="idm_port" class="form-label">Modbus Port</label>
-                                <input type="number" class="form-control" id="idm_port" name="idm_port" value="502" required>
+                                <input type="number" class="form-control" id="idm_port" name="idm_port"
+                                       value="{{ config.idm.port if config.idm.port else 502 }}" required>
                             </div>
 
                             <h5 class="mt-4 text-primary">InfluxDB (v2)</h5>
                             <div class="mb-3">
                                 <label for="influx_url" class="form-label">URL</label>
-                                <input type="text" class="form-control" id="influx_url" name="influx_url" placeholder="http://localhost:8086" required>
+                                <input type="text" class="form-control" id="influx_url" name="influx_url"
+                                       value="{{ config.influx.url if config.influx.url else 'http://idm-influxdb:8086' }}" required>
+                                <div class="form-text">Docker default: <code>http://idm-influxdb:8086</code></div>
                             </div>
                             <div class="mb-3">
                                 <label for="influx_org" class="form-label">Organization</label>
-                                <input type="text" class="form-control" id="influx_org" name="influx_org" required>
+                                <input type="text" class="form-control" id="influx_org" name="influx_org"
+                                       value="{{ config.influx.org if config.influx.org else 'my-org' }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="influx_bucket" class="form-label">Bucket</label>
-                                <input type="text" class="form-control" id="influx_bucket" name="influx_bucket" required>
+                                <input type="text" class="form-control" id="influx_bucket" name="influx_bucket"
+                                       value="{{ config.influx.bucket if config.influx.bucket else 'idm' }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="influx_token" class="form-label">Token</label>
-                                <input type="password" class="form-control" id="influx_token" name="influx_token" required>
+                                <input type="password" class="form-control" id="influx_token" name="influx_token"
+                                       value="my-super-secret-token-change-me" required>
+                                <div class="form-text">Docker default token is pre-filled. Change in production!</div>
                             </div>
 
                             <h5 class="mt-4 text-primary">Admin Access</h5>
                             <div class="mb-3">
                                 <label for="password" class="form-label">Admin Password</label>
                                 <input type="password" class="form-control" id="password" name="password" minlength="6" required>
-                                <div class="form-text">Minimum 6 characters.</div>
+                                <div class="form-text">Minimum 6 characters. This is used to log into the web interface.</div>
                             </div>
 
                             <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-success btn-lg">Finish Setup</button>
                             </div>
                         </form>
+                    </div>
+                    <div class="card-footer text-muted">
+                        <small>
+                            <strong>Grafana:</strong> <a href="http://localhost:3000" target="_blank">http://localhost:3000</a> (admin/admin)<br>
+                            <strong>InfluxDB:</strong> <a href="http://localhost:8086" target="_blank">http://localhost:8086</a> (admin/adminpassword123)
+                        </small>
                     </div>
                 </div>
             </div>
