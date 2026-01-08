@@ -92,16 +92,12 @@ install_basic_dependencies() {
 
     case $OS in
         ubuntu|debian)
-            apt-get install -y \
-                curl \
-                wget \
-                git \
-                software-properties-common \
-                apt-transport-https \
-                ca-certificates \
-                gnupg \
-                lsb-release \
-                net-tools
+            # Install dependencies (software-properties-common only on Ubuntu)
+            local packages="curl wget git apt-transport-https ca-certificates gnupg lsb-release net-tools"
+            if [[ "$OS" == "ubuntu" ]]; then
+                packages="$packages software-properties-common"
+            fi
+            apt-get install -y $packages
             ;;
         centos|rhel|fedora)
             yum install -y \
@@ -181,13 +177,24 @@ install_docker_compose() {
 
 # Install Python and dependencies for bare metal
 install_python_dependencies() {
-    print_header "Installing Python 3.11 and Dependencies"
+    print_header "Installing Python and Dependencies"
 
     case $OS in
         ubuntu|debian)
+            # Detect available Python version
+            if apt-cache show python3.11 &>/dev/null; then
+                PYTHON_VERSION="python3.11"
+            elif apt-cache show python3.13 &>/dev/null; then
+                PYTHON_VERSION="python3.13"
+                print_info "Using Python 3.13 (Debian Trixie default)"
+            else
+                PYTHON_VERSION="python3"
+                print_warning "Using default Python 3 version"
+            fi
+
             apt-get install -y \
-                python3.11 \
-                python3.11-venv \
+                $PYTHON_VERSION \
+                ${PYTHON_VERSION}-venv \
                 python3-pip \
                 build-essential \
                 libssl-dev \
@@ -195,6 +202,7 @@ install_python_dependencies() {
                 python3-dev
             ;;
         centos|rhel|fedora)
+            PYTHON_VERSION="python3.11"
             yum install -y \
                 python311 \
                 python311-devel \
@@ -210,9 +218,9 @@ install_python_dependencies() {
     esac
 
     # Update pip
-    python3.11 -m pip install --upgrade pip
+    $PYTHON_VERSION -m pip install --upgrade pip
 
-    print_success "Python and dependencies installed"
+    print_success "Python and dependencies installed (using $PYTHON_VERSION)"
 }
 
 # Install application (Bare Metal)
@@ -242,7 +250,7 @@ install_bare_metal() {
     fi
 
     # Create virtual environment
-    python3.11 -m venv venv
+    $PYTHON_VERSION -m venv venv
     source venv/bin/activate
 
     # Install requirements
