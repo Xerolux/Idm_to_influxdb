@@ -71,12 +71,14 @@ install_basic_dependencies() {
     case $OS in
         ubuntu|debian)
             # Update package lists (ignore errors from broken repos)
-            apt-get update 2>&1 | grep -v "^W:" | grep -v "^E:" || true
+            apt-get update 2>/dev/null || true
 
-            # Install required packages
-            apt-get install -y curl wget git ca-certificates gnupg || {
-                print_warning "Some packages might already be installed"
-            }
+            # Check if required packages are available
+            for pkg in curl wget git ca-certificates gnupg; do
+                if ! command -v $pkg &> /dev/null && ! dpkg -l | grep -q "^ii  $pkg "; then
+                    apt-get install -y $pkg 2>/dev/null || true
+                fi
+            done
             ;;
         centos|rhel|fedora)
             yum update -y
