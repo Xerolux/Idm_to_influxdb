@@ -6,7 +6,7 @@ import sys
 from .config import config
 from .modbus import ModbusClient
 from .influx import InfluxWriter
-from .web import run_web, update_current_data
+from .web import run_web, update_current_data, set_influx_writer
 from .scheduler import Scheduler
 from .log_handler import memory_handler
 
@@ -53,6 +53,7 @@ def main():
 
     # Influx Writer
     influx = InfluxWriter()
+    set_influx_writer(influx)
 
     interval = config.get("logging.interval", 60)
 

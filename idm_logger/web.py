@@ -16,6 +16,7 @@ current_data = {}
 data_lock = threading.Lock()
 modbus_client_instance = None
 scheduler_instance = None
+influx_writer_instance = None
 
 def update_current_data(data):
     with data_lock:
@@ -109,6 +110,31 @@ def logout():
 def get_data():
     with data_lock:
         return jsonify(current_data)
+
+
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint for Docker/Kubernetes."""
+    return jsonify({
+        "status": "healthy",
+        "setup_completed": config.is_setup()
+    }), 200
+
+
+@app.route('/api/status')
+def status_check():
+    """Detailed status endpoint with InfluxDB connection info."""
+    influx_status = None
+    if influx_writer_instance:
+        influx_status = influx_writer_instance.get_status()
+
+    return jsonify({
+        "status": "running",
+        "setup_completed": config.is_setup(),
+        "influx": influx_status,
+        "modbus_connected": modbus_client_instance is not None,
+        "scheduler_running": scheduler_instance is not None and config.get("web.write_enabled")
+    })
 
 @app.route('/logs')
 @login_required
@@ -287,6 +313,12 @@ def schedule_page():
     writable_sensors.sort(key=lambda s: s.name)
 
     return render_template('schedule.html', jobs=jobs, sensors=writable_sensors)
+
+def set_influx_writer(writer):
+    """Set the InfluxDB writer instance for status reporting."""
+    global influx_writer_instance
+    influx_writer_instance = writer
+
 
 def run_web(modbus_client, scheduler):
     global modbus_client_instance, scheduler_instance

@@ -1,22 +1,40 @@
+# IDM Heat Pump Logger - Configuration Example
+# This file is for reference only. The actual configuration is stored in SQLite.
+# For Docker deployments, use environment variables (see docker-compose.yml).
+
 idm:
-  host: "idm-heatpump"
+  # IP address or hostname of your IDM heat pump
+  host: "192.168.1.100"
+  # Modbus TCP port (usually 502)
   port: 502
+  # Heating circuits to monitor (A, B, C, D, E, F, G)
   circuits: ["A"]
+
 influx:
+  # InfluxDB version (1 or 2)
   version: 2
-  url: "http://influxdb:8086"
+  # InfluxDB v2 settings (Docker defaults)
+  url: "http://idm-influxdb:8086"
   org: "my-org"
   bucket: "idm"
-  token: "my-token"
+  token: "my-super-secret-token-change-me"
+  # InfluxDB v1 settings (if version: 1)
   username: ""
   password: ""
   database: "idm"
+
 web:
+  # Enable web interface
   enabled: true
+  # Listen address (0.0.0.0 = all interfaces)
   host: "0.0.0.0"
+  # Web server port
   port: 5000
-  admin_password: "admin"
+  # Enable write capabilities (control, scheduling)
   write_enabled: false
+
 logging:
+  # Sensor polling interval in seconds
   interval: 60
+  # Log level (DEBUG, INFO, WARNING, ERROR)
   level: "INFO"
