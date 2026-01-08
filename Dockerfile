@@ -14,8 +14,8 @@ COPY idm_logger/ idm_logger/
 RUN mkdir -p /app/data
 VOLUME /app/data
 
-# Set working directory to data for persistence
-WORKDIR /app/data
+# Set DATA_DIR environment variable for persistence
+ENV DATA_DIR=/app/data
 
 EXPOSE 5000
 
