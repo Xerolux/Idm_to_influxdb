@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from "../stores/auth";
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
+import AppFooter from './AppFooter.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -47,7 +48,7 @@ const logout = async () => {
 </script>
 
 <template>
-    <div class="card">
+    <div class="flex flex-col min-h-screen">
         <Menubar :model="items" class="rounded-none border-0 border-b border-gray-700 bg-gray-800">
              <template #start>
                <span class="text-xl font-bold px-4">IDM Logger</span>
@@ -64,8 +65,9 @@ const logout = async () => {
                 </div>
             </template>
         </Menubar>
-        <main class="p-4">
+        <main class="p-4 flex-grow">
              <router-view></router-view>
         </main>
+        <AppFooter />
     </div>
 </template>

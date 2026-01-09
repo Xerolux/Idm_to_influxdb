@@ -6,6 +6,7 @@ import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
+import AppFooter from '../components/AppFooter.vue';
 
 const password = ref('');
 const error = ref('');
@@ -27,9 +28,9 @@ const handleLogin = async () => {
 </script>
 
 <template>
-    <div class="flex items-center justify-center min-h-screen bg-gray-900">
-        <Card class="w-full max-w-md bg-gray-800 border-gray-700 text-white">
-            <template #title>Login</template>
+    <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+        <Card class="w-full max-w-md bg-gray-800 border-gray-700 text-white mb-auto mt-auto">
+            <template #title>idm-metrics-collector</template>
             <template #content>
                 <div class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
@@ -41,6 +42,7 @@ const handleLogin = async () => {
                 </div>
             </template>
         </Card>
+        <AppFooter />
     </div>
 </template>
 
