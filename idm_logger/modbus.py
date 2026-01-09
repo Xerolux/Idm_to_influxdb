@@ -2,7 +2,15 @@ import logging
 from pymodbus.client import ModbusTcpClient
 
 from .config import config
-from .sensor_addresses import SENSOR_ADDRESSES, BINARY_SENSOR_ADDRESSES, heating_circuit_sensors, HeatingCircuit, SensorFeatures
+from .sensor_addresses import (
+    SENSOR_ADDRESSES,
+    BINARY_SENSOR_ADDRESSES,
+    COMMON_SENSORS,
+    heating_circuit_sensors,
+    zone_sensors,
+    HeatingCircuit,
+    SensorFeatures
+)
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +19,9 @@ class ModbusClient:
         self.host = host
         self.port = port
         self.client = ModbusTcpClient(host, port=port)
-        self.sensors = SENSOR_ADDRESSES.copy()
+
+        # Initialize with common sensors
+        self.sensors = {s.name: s for s in COMMON_SENSORS}
         self.binary_sensors = BINARY_SENSOR_ADDRESSES.copy()
 
         # Add configured heating circuits
@@ -24,6 +34,16 @@ class ModbusClient:
                     self.sensors[s.name] = s
             except KeyError:
                 logger.warning(f"Invalid heating circuit configured: {c_name}")
+
+        # Add configured zones
+        zones = config.get("idm.zones", [])
+        for zone_id in zones:
+            try:
+                z_sensors = zone_sensors(int(zone_id))
+                for s in z_sensors:
+                    self.sensors[s.name] = s
+            except Exception as e:
+                logger.warning(f"Invalid zone configured: {zone_id} ({e})")
 
 
     def connect(self):

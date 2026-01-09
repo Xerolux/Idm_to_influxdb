@@ -67,6 +67,12 @@ def setup():
         config.data['idm']['host'] = data.get('idm_host')
         config.data['idm']['port'] = int(data.get('idm_port'))
 
+        # Save Circuits and Zones
+        if 'circuits' in data:
+            config.data['idm']['circuits'] = data['circuits']
+        if 'zones' in data:
+            config.data['idm']['zones'] = data['zones']
+
         # Save Influx
         config.data['influx']['url'] = data.get('influx_url')
         config.data['influx']['org'] = data.get('influx_org')
@@ -183,6 +189,12 @@ def config_page():
                         return jsonify({"error": "Port must be between 1 and 65535"}), 400
                 except ValueError:
                     return jsonify({"error": "Invalid port number"}), 400
+
+            # Circuits and Zones
+            if 'circuits' in data:
+                 config.data['idm']['circuits'] = data['circuits']
+            if 'zones' in data:
+                 config.data['idm']['zones'] = data['zones']
 
             # Write Enabled
             if 'write_enabled' in data:

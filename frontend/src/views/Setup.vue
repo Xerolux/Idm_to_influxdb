@@ -17,6 +17,31 @@
                                 <label>Modbus Port</label>
                                 <InputNumber v-model="form.idm_port" :useGrouping="false" />
                             </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="font-bold">Enabled Features</label>
+                                <div class="flex flex-col gap-2 p-2 border border-gray-700 rounded bg-gray-900/50">
+                                    <div class="flex items-center gap-2">
+                                        <Checkbox v-model="form.circuits" inputId="circuitA" value="A" disabled />
+                                        <label for="circuitA" class="opacity-50">Circuit A (Always On)</label>
+                                    </div>
+                                    <div class="flex flex-wrap gap-4">
+                                        <div v-for="c in ['B', 'C', 'D', 'E', 'F', 'G']" :key="c" class="flex items-center gap-2">
+                                            <Checkbox v-model="form.circuits" :inputId="'circuit'+c" :value="c" />
+                                            <label :for="'circuit'+c">Circuit {{ c }}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-2 p-2 border border-gray-700 rounded bg-gray-900/50">
+                                    <label class="text-sm text-gray-400">Zone Modules</label>
+                                    <div class="flex flex-wrap gap-4">
+                                        <div v-for="z in 10" :key="z" class="flex items-center gap-2">
+                                            <Checkbox v-model="form.zones" :inputId="'zone'+(z-1)" :value="(z-1)" />
+                                            <label :for="'zone'+(z-1)">Zone {{ z }}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                          <div class="flex flex-col gap-2">
@@ -69,6 +94,7 @@ import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Toast from 'primevue/toast';
+import Checkbox from 'primevue/checkbox';
 import { useToast } from 'primevue/usetoast';
 
 const router = useRouter();
@@ -78,6 +104,8 @@ const loading = ref(false);
 const form = ref({
     idm_host: '',
     idm_port: 502,
+    circuits: ['A'],
+    zones: [],
     influx_url: 'http://localhost:8086',
     influx_org: 'home',
     influx_bucket: 'idm',

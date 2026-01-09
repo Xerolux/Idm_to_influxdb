@@ -19,6 +19,31 @@
                             <label>Port</label>
                             <InputNumber v-model="config.idm.port" :useGrouping="false" />
                         </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold">Enabled Features</label>
+                            <div class="flex flex-col gap-2 p-2 border border-gray-700 rounded bg-gray-900/50">
+                                <div class="flex items-center gap-2">
+                                    <Checkbox v-model="config.idm.circuits" inputId="circuitA" value="A" disabled />
+                                    <label for="circuitA" class="opacity-50">Circuit A (Always On)</label>
+                                </div>
+                                <div class="flex flex-wrap gap-4">
+                                    <div v-for="c in ['B', 'C', 'D', 'E', 'F', 'G']" :key="c" class="flex items-center gap-2">
+                                        <Checkbox v-model="config.idm.circuits" :inputId="'circuit'+c" :value="c" />
+                                        <label :for="'circuit'+c">Circuit {{ c }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2 p-2 border border-gray-700 rounded bg-gray-900/50">
+                                <label class="text-sm text-gray-400">Zone Modules</label>
+                                <div class="flex flex-wrap gap-4">
+                                    <div v-for="z in 10" :key="z" class="flex items-center gap-2">
+                                        <Checkbox v-model="config.idm.zones" :inputId="'zone'+(z-1)" :value="(z-1)" />
+                                        <label :for="'zone'+(z-1)">Zone {{ z }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </template>
             </Card>
@@ -109,7 +134,7 @@ import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
 const config = ref({
-    idm: { host: '', port: 502 },
+    idm: { host: '', port: 502, circuits: ['A'], zones: [] },
     influx: { url: '', org: '', bucket: '' },
     web: { write_enabled: false },
     logging: { interval: 60, realtime_mode: false }
@@ -137,6 +162,8 @@ const saveConfig = async () => {
         const payload = {
             idm_host: config.value.idm.host,
             idm_port: config.value.idm.port,
+            circuits: config.value.idm.circuits,
+            zones: config.value.idm.zones,
             influx_url: config.value.influx.url,
             influx_org: config.value.influx.org,
             influx_bucket: config.value.influx.bucket,
