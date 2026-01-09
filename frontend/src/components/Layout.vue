@@ -8,41 +8,35 @@ import Button from 'primevue/button';
 const router = useRouter();
 const auth = useAuthStore();
 
+const navigate = (path) => {
+    router.push(path);
+};
+
 const items = ref([
     {
         label: 'Dashboard',
         icon: 'pi pi-home',
-        command: () => {
-            router.push('/');
-        }
+        to: '/'
     },
     {
         label: 'Control',
         icon: 'pi pi-sliders-h',
-        command: () => {
-            router.push('/control');
-        }
+        to: '/control'
     },
     {
         label: 'Schedule',
         icon: 'pi pi-calendar',
-        command: () => {
-            router.push('/schedule');
-        }
+        to: '/schedule'
     },
     {
         label: 'Logs',
         icon: 'pi pi-list',
-        command: () => {
-            router.push('/logs');
-        }
+        to: '/logs'
     },
     {
         label: 'Settings',
         icon: 'pi pi-cog',
-        command: () => {
-            router.push('/config');
-        }
+        to: '/config'
     }
 ]);
 
@@ -57,6 +51,12 @@ const logout = async () => {
         <Menubar :model="items" class="rounded-none border-0 border-b border-gray-700 bg-gray-800">
              <template #start>
                <span class="text-xl font-bold px-4">IDM Logger</span>
+            </template>
+            <template #item="{ item }">
+                <router-link v-if="item.to" :to="item.to" class="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded cursor-pointer">
+                    <i :class="item.icon"></i>
+                    <span>{{ item.label }}</span>
+                </router-link>
             </template>
             <template #end>
                 <div class="flex items-center gap-2">
