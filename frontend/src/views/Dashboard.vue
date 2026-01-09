@@ -70,30 +70,13 @@ onMounted(async () => {
     const savedLayout = localStorage.getItem('dashboard_layout');
     let layoutToLoad = [];
     const defaults = [
-        // Zeile 1: Grundlegende Temperaturen
+        // 6 Standard-Widgets - Heizkreis A und COP nur in Grafana als Diagramme!
         { x: 0, y: 0, w: 2, h: 2, id: 'w1', sensor: 'temp_outside', title: 'Außentemperatur', unit: '°C' },
         { x: 2, y: 0, w: 2, h: 2, id: 'w2', sensor: 'temp_heat_pump_flow', title: 'Vorlauf WP', unit: '°C' },
         { x: 4, y: 0, w: 2, h: 2, id: 'w3', sensor: 'temp_heat_pump_return', title: 'Rücklauf WP', unit: '°C' },
-
-        // Zeile 2: Speicher und Leistung
         { x: 0, y: 2, w: 2, h: 2, id: 'w4', sensor: 'temp_heat_storage', title: 'Pufferspeicher', unit: '°C' },
         { x: 2, y: 2, w: 2, h: 2, id: 'w5', sensor: 'temp_water_heater_top', title: 'Warmwasser', unit: '°C' },
         { x: 4, y: 2, w: 2, h: 2, id: 'w6', sensor: 'power_current_draw', title: 'Leistungsaufnahme', unit: 'kW' },
-
-        // Zeile 3: Heizkreis A - Temperaturen
-        { x: 0, y: 4, w: 2, h: 2, id: 'w7', sensor: 'temp_flow_current_circuit_a', title: 'HK A Vorlauf Ist', unit: '°C' },
-        { x: 2, y: 4, w: 2, h: 2, id: 'w8', sensor: 'temp_flow_target_circuit_a', title: 'HK A Vorlauf Soll', unit: '°C' },
-        { x: 4, y: 4, w: 2, h: 2, id: 'w9', sensor: 'temp_room_circuit_a', title: 'HK A Raumtemp', unit: '°C' },
-
-        // Zeile 4: Heizkreis A - Sollwerte
-        { x: 0, y: 6, w: 2, h: 2, id: 'w10', sensor: 'temp_room_target_heating_normal_circuit_a', title: 'HK A Raum Soll Normal', unit: '°C' },
-        { x: 2, y: 6, w: 2, h: 2, id: 'w11', sensor: 'temp_room_target_heating_eco_circuit_a', title: 'HK A Raum Soll Eco', unit: '°C' },
-        { x: 4, y: 6, w: 2, h: 2, id: 'w12', sensor: 'curve_circuit_a', title: 'HK A Heizkurve', unit: '' },
-
-        // Zeile 5: Heizkreis A - Status und weitere Werte
-        { x: 0, y: 8, w: 2, h: 2, id: 'w13', sensor: 'mode_circuit_a', title: 'HK A Betriebsart', unit: '' },
-        { x: 2, y: 8, w: 2, h: 2, id: 'w14', sensor: 'mode_active_circuit_a', title: 'HK A Aktiver Modus', unit: '' },
-        { x: 4, y: 8, w: 2, h: 2, id: 'w15', sensor: 'curve_offset_a', title: 'HK A Parallelverschiebung', unit: '°C' },
     ];
 
     if (savedLayout) {

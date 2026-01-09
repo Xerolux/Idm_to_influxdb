@@ -11,14 +11,13 @@
 - **Bestätigungsdialog**: Vor dem Schreiben auf EEPROM-sensitive Register erscheint ein Bestätigungsdialog
 - **Visuelle Kennzeichnung**: Im Control-Interface werden EEPROM-sensitive Register mit gelber Warnung und cyclic_change Register mit blauer Info-Box gekennzeichnet
 
-#### 2. Verbessertes Dashboard
-- **Heizkreis A vollständig**: Alle wichtigen Werte von Heizkreis A werden jetzt im Dashboard angezeigt:
-  - Vorlauftemperatur Ist/Soll
-  - Raumtemperatur Ist/Soll (Normal und Eco)
-  - Heizkurve und Parallelverschiebung
-  - Betriebsart und aktiver Modus
-- **Deutsches Layout**: Dashboard-Widgets haben jetzt deutsche Bezeichnungen
-- **COP-Entfernung**: COP (Coefficient of Performance) wird nicht mehr als Widget angezeigt, sondern nur als Diagramm in Grafana (siehe iDM-Doku Empfehlungen)
+#### 2. Dashboard-Optimierung
+- **Webseite Dashboard**: Behält die 6 ursprünglichen Widgets bei (übersichtlich)
+- **Deutsche Bezeichnungen**: Dashboard-Widgets haben deutsche Labels
+- **Grafana-Integration**:
+  - **Heizkreis A**: Alle Werte als Zeitreihen-Diagramme in Grafana (nicht als Widgets)
+  - **COP**: Nur als Diagramm in Grafana visualisieren (keine Widget-Darstellung)
+  - Begründung: Zeitreihen-Diagramme zeigen Trends besser als statische Widgets
 
 ### Technische Änderungen
 
@@ -37,9 +36,9 @@
   - Info-Hinweise für cyclic_change Register (blau)
   - Bestätigungsdialog vor EEPROM-Schreiboperationen
 - `frontend/src/views/Dashboard.vue`:
-  - Neue Standard-Widgets für Heizkreis A (15 Widgets statt 6)
+  - Behält 6 Standard-Widgets bei (wie vorher)
   - Deutsche Widget-Bezeichnungen
-  - Strukturiert in Zeilen: Grundtemperaturen, Speicher, Heizkreis A Temps, Sollwerte, Status
+  - Hinweis: Heizkreis A und COP sollten in Grafana als Diagramme visualisiert werden
 
 ### FLOAT-Dekodierung (bereits korrekt)
 Die FLOAT-Dekodierung folgt der iDM Navigator 2.0 Spezifikation:
@@ -81,5 +80,8 @@ Die gebauten Dateien werden nach `idm_logger/static/` kopiert.
 
 1. **EEPROM-Warnung ernst nehmen**: Register wie "System Status" (SYSMODE) haben begrenzte Schreibzyklen. Nicht häufig ändern!
 2. **Cyclic-Change beachten**: Einige Register sollten zyklisch geändert werden (z.B. alle 10 Minuten gemäß iDM-Dokumentation)
-3. **COP in Grafana**: Der COP-Wert sollte als Zeitreihen-Diagramm in Grafana visualisiert werden, nicht als statisches Widget
-4. **Heizkreis A**: Das Dashboard zeigt jetzt alle relevanten Heizkreis A Werte - kann individuell angepasst werden
+3. **Grafana-Visualisierung**:
+   - **COP-Wert**: Als Zeitreihen-Diagramm in Grafana anlegen (nicht als Widget im Web-Dashboard)
+   - **Heizkreis A**: Alle Heizkreis A Werte als Diagramme in Grafana visualisieren
+   - Vorteil: Zeitreihen zeigen Trends, Verläufe und historische Daten besser als statische Widgets
+4. **Web-Dashboard**: Bleibt übersichtlich mit 6 Basis-Widgets. Individuelle Anpassung möglich durch "Add Widget" Button
