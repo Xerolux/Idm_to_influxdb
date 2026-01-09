@@ -316,7 +316,9 @@ def control_page():
                     "features": sensor.supported_features.name if hasattr(sensor.supported_features, "name") else sensor.supported_features,
                     "min": getattr(sensor, "min_value", None),
                     "max": getattr(sensor, "max_value", None),
-                    "enum": [{"name": m.name, "value": m.value} for m in sensor.enum] if hasattr(sensor, "enum") and sensor.enum else None
+                    "enum": [{"name": m.name, "value": m.value} for m in sensor.enum] if hasattr(sensor, "enum") and sensor.enum else None,
+                    "eeprom_sensitive": getattr(sensor, "eeprom_sensitive", False),
+                    "cyclic_change_required": getattr(sensor, "cyclic_change_required", False),
                 }
                 writable_sensors.append(s_info)
 
@@ -398,7 +400,9 @@ def schedule_page():
                     s_info = {
                         "name": sensor.name,
                         "unit": getattr(sensor, "unit", ""),
-                        "enum": [{"name": m.name, "value": m.value} for m in sensor.enum] if hasattr(sensor, "enum") and sensor.enum else None
+                        "enum": [{"name": m.name, "value": m.value} for m in sensor.enum] if hasattr(sensor, "enum") and sensor.enum else None,
+                        "eeprom_sensitive": getattr(sensor, "eeprom_sensitive", False),
+                        "cyclic_change_required": getattr(sensor, "cyclic_change_required", False),
                     }
                     writable_sensors.append(s_info)
         except Exception as e:

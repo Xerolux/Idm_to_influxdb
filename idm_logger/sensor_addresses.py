@@ -145,6 +145,8 @@ class BaseSensorAddress(ABC, Generic[_T]):
     supported_features: SensorFeatures = SensorFeatures.NONE
     force_single: bool = False
     unit: str | None = None
+    eeprom_sensitive: bool = False
+    cyclic_change_required: bool = False
 
     @property
     def size(self) -> int:
@@ -499,6 +501,7 @@ SENSOR_ADDRESSES: dict[str, IdmSensorAddress] = {
             address=1005,
             name="status_system",
             supported_features=SensorFeatures.SET_SYSTEM_STATUS,
+            eeprom_sensitive=True,  # EEPROM-sensitiv: begrenzte Schreibzyklen!
         ),
         _EnumSensorAddress(
             enum=SmartGridStatus,

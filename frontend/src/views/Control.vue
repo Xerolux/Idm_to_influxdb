@@ -19,6 +19,18 @@
                     <div class="flex flex-col gap-3">
                         <div class="text-gray-400 text-sm">{{ sensor.description }}</div>
 
+                        <!-- EEPROM Warning -->
+                        <div v-if="sensor.eeprom_sensitive" class="bg-yellow-900 border border-yellow-600 text-yellow-200 p-2 rounded text-xs">
+                            <i class="pi pi-exclamation-triangle mr-1"></i>
+                            <strong>ACHTUNG:</strong> EEPROM-sensitiv! Begrenzte Schreibzyklen - nicht häufig schreiben!
+                        </div>
+
+                        <!-- Cyclic Change Warning -->
+                        <div v-if="sensor.cyclic_change_required" class="bg-blue-900 border border-blue-600 text-blue-200 p-2 rounded text-xs">
+                            <i class="pi pi-info-circle mr-1"></i>
+                            <strong>HINWEIS:</strong> Wert sollte zyklisch geändert werden (z.B. alle 10 Minuten)
+                        </div>
+
                         <div v-if="sensor.enum" class="flex flex-col gap-2">
                             <Dropdown v-model="formValues[sensor.name]" :options="sensor.enum" optionLabel="name" optionValue="value" placeholder="Select Value" class="w-full" />
                         </div>
@@ -77,6 +89,21 @@ onMounted(async () => {
 const writeSensor = async (sensor) => {
     const value = formValues.value[sensor.name];
     if (value === undefined || value === null) return;
+
+    // Extra confirmation for EEPROM-sensitive registers
+    if (sensor.eeprom_sensitive) {
+        const confirmed = confirm(
+            `⚠️ ACHTUNG: EEPROM-SENSITIVES REGISTER!\n\n` +
+            `Register: ${sensor.name}\n` +
+            `Neuer Wert: ${value}\n\n` +
+            `Dieses Register hat begrenzte Schreibzyklen (EEPROM).\n` +
+            `Häufiges Schreiben kann das Register beschädigen!\n\n` +
+            `Möchten Sie wirklich fortfahren?`
+        );
+        if (!confirmed) {
+            return;
+        }
+    }
 
     writing.value[sensor.name] = true;
     try {
