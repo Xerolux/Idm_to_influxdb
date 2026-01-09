@@ -1,6 +1,6 @@
 <template>
-    <div class="flex items-center justify-center min-h-screen bg-gray-900 p-4">
-        <Card class="w-full max-w-2xl bg-gray-800 border-gray-700 text-white">
+    <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+        <Card class="w-full max-w-2xl bg-gray-800 border-gray-700 text-white mb-auto mt-auto">
             <template #title>Initial Setup</template>
             <template #content>
                 <div class="flex flex-col gap-6">
@@ -81,6 +81,7 @@
             </template>
         </Card>
         <Toast />
+        <AppFooter />
     </div>
 </template>
 
@@ -96,6 +97,7 @@ import Message from 'primevue/message';
 import Toast from 'primevue/toast';
 import Checkbox from 'primevue/checkbox';
 import { useToast } from 'primevue/usetoast';
+import AppFooter from '../components/AppFooter.vue';
 
 const router = useRouter();
 const toast = useToast();
