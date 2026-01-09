@@ -464,7 +464,8 @@ def zone_sensors(zone_idx: int) -> list[IdmSensorAddress]:
 ZONE_OFFSETS = [2000 + 65 * i for i in range(10)]
 ROOM_OFFSETS = [2 + 7 * i for i in range(8)]
 
-SENSOR_LIST = [
+# Renamed SENSOR_LIST to COMMON_SENSORS to make it clear this is the base list
+COMMON_SENSORS = [
         _FloatSensorAddress(address=74, name="power_solar_surplus", unit=UnitOfPower.KILO_WATT, supported_features=SensorFeatures.SET_POWER),
         _FloatSensorAddress(address=76, name="power_resistive_heater", unit=UnitOfPower.KILO_WATT),
         _FloatSensorAddress(address=78, name="power_solar_production", unit=UnitOfPower.KILO_WATT, min_value=0, supported_features=SensorFeatures.SET_POWER),
@@ -584,14 +585,15 @@ SENSOR_LIST = [
         _FloatSensorAddress(address=4128, name="energy_heat_total_flow_sensor", unit=UnitOfEnergy.KILO_WATT_HOUR),
     ]
 
-for circuit in HeatingCircuit:
-    SENSOR_LIST.extend(heating_circuit_sensors(circuit))
+# Automatically add Circuit A by default for SENSOR_ADDRESSES, but allow customization in modbus.py
+# ModbusClient will rebuild its own sensor list, but we keep SENSOR_ADDRESSES populated with defaults
+# so other parts of the code (like tests) still have something to work with.
+SENSOR_LIST = list(COMMON_SENSORS)
+SENSOR_LIST.extend(heating_circuit_sensors(HeatingCircuit.A))
 
-for zone_id in range(10):
-    SENSOR_LIST.extend(zone_sensors(zone_id))
+# We do NOT add other circuits or zones here automatically anymore.
 
 SENSOR_ADDRESSES: dict[str, IdmSensorAddress] = {s.name: s for s in SENSOR_LIST}
-
 
 
 BINARY_SENSOR_ADDRESSES: dict[str, IdmBinarySensorAddress] = {

@@ -104,7 +104,8 @@ class Config:
             "idm": {
                 "host": "",
                 "port": 502,
-                "circuits": ["A"]
+                "circuits": ["A"],
+                "zones": []
             },
             "influx": {
                 "version": 2,
