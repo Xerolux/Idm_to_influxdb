@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+from waitress import serve
 from .config import config
 from .sensor_addresses import SensorFeatures
 from .log_handler import memory_handler
@@ -439,6 +440,7 @@ def run_web(modbus_client, scheduler):
         host = config.get("web.host", "0.0.0.0")
         port = config.get("web.port", 5000)
         try:
-            app.run(host=host, port=port, use_reloader=False)
+            logger.info(f"Starting web server on {host}:{port}")
+            serve(app, host=host, port=port)
         except Exception as e:
             logger.error(f"Failed to start web server: {e}")
