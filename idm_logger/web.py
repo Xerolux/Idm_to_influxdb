@@ -214,7 +214,8 @@ def health_check():
     """Health check endpoint for Docker/Kubernetes."""
     return jsonify({
         "status": "healthy",
-        "setup_completed": config.is_setup()
+        "setup_completed": config.is_setup(),
+        "client_ip": request.remote_addr
     }), 200
 
 
@@ -304,6 +305,44 @@ def config_page():
                  config.data['influx']['org'] = data['influx_org']
             if 'influx_bucket' in data:
                  config.data['influx']['bucket'] = data['influx_bucket']
+
+            # Network Security Settings
+            if 'network_security_enabled' in data:
+                config.data['network_security']['enabled'] = bool(data['network_security_enabled'])
+
+            if 'network_security_whitelist' in data:
+                # Validate IP addresses/networks
+                whitelist = data['network_security_whitelist']
+                if isinstance(whitelist, str):
+                    whitelist = [x.strip() for x in whitelist.split('\n') if x.strip()]
+
+                # Validate each entry
+                validated_whitelist = []
+                for entry in whitelist:
+                    try:
+                        ipaddress.ip_network(entry, strict=False)
+                        validated_whitelist.append(entry)
+                    except ValueError:
+                        return jsonify({"error": f"Invalid whitelist entry: {entry}"}), 400
+
+                config.data['network_security']['whitelist'] = validated_whitelist
+
+            if 'network_security_blacklist' in data:
+                # Validate IP addresses/networks
+                blacklist = data['network_security_blacklist']
+                if isinstance(blacklist, str):
+                    blacklist = [x.strip() for x in blacklist.split('\n') if x.strip()]
+
+                # Validate each entry
+                validated_blacklist = []
+                for entry in blacklist:
+                    try:
+                        ipaddress.ip_network(entry, strict=False)
+                        validated_blacklist.append(entry)
+                    except ValueError:
+                        return jsonify({"error": f"Invalid blacklist entry: {entry}"}), 400
+
+                config.data['network_security']['blacklist'] = validated_blacklist
 
             # Handle password change
             new_pass = data.get('new_password')

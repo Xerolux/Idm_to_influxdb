@@ -108,6 +108,71 @@
                     </div>
                 </template>
             </Card>
+
+            <Card class="bg-gray-800 text-white">
+                <template #title>
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-shield text-yellow-400"></i>
+                        <span>Network Access Control</span>
+                    </div>
+                </template>
+                <template #content>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-center gap-2">
+                            <Checkbox v-model="config.network_security.enabled" binary inputId="network_security_enabled" />
+                            <label for="network_security_enabled" class="font-bold">Enable IP-based Access Control</label>
+                        </div>
+
+                        <div v-if="config.network_security.enabled" class="flex flex-col gap-4 p-3 border border-yellow-600 rounded bg-yellow-900/10">
+                            <div class="flex items-start gap-2 text-yellow-400">
+                                <i class="pi pi-exclamation-triangle mt-1"></i>
+                                <small>Warning: Make sure your IP is whitelisted before enabling, or you will be locked out!</small>
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">
+                                    <i class="pi pi-check-circle text-green-400"></i> Whitelist (Allow these IPs)
+                                </label>
+                                <Textarea
+                                    v-model="whitelistText"
+                                    placeholder="192.168.1.0/24&#10;10.0.0.5&#10;172.16.0.0/16"
+                                    rows="4"
+                                    class="font-mono text-sm"
+                                />
+                                <small class="text-gray-400">
+                                    One IP address or network (CIDR) per line. If whitelist is empty, all IPs are allowed (unless blacklisted).
+                                    <br>Example: 192.168.1.0/24 allows 192.168.1.1 - 192.168.1.254
+                                </small>
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">
+                                    <i class="pi pi-ban text-red-400"></i> Blacklist (Block these IPs)
+                                </label>
+                                <Textarea
+                                    v-model="blacklistText"
+                                    placeholder="203.0.113.0/24&#10;198.51.100.5"
+                                    rows="4"
+                                    class="font-mono text-sm"
+                                />
+                                <small class="text-gray-400">
+                                    One IP address or network (CIDR) per line. Blacklist is checked first (blocks before whitelist).
+                                </small>
+                            </div>
+
+                            <div class="p-3 bg-blue-900/30 border border-blue-600 rounded">
+                                <div class="flex items-start gap-2">
+                                    <i class="pi pi-info-circle text-blue-400 mt-1"></i>
+                                    <div class="text-sm text-blue-200">
+                                        <strong>Your current IP:</strong> {{ currentClientIP || 'Loading...' }}
+                                        <br><small class="text-blue-300">Make sure to add this to the whitelist!</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </Card>
         </div>
 
         <div class="flex gap-4 mt-4">
@@ -128,18 +193,24 @@ import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
+import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
+import { computed } from 'vue';
 
 const config = ref({
     idm: { host: '', port: 502, circuits: ['A'], zones: [] },
     influx: { url: '', org: '', bucket: '' },
     web: { write_enabled: false },
-    logging: { interval: 60, realtime_mode: false }
+    logging: { interval: 60, realtime_mode: false },
+    network_security: { enabled: false, whitelist: [], blacklist: [] }
 });
 const newPassword = ref('');
+const whitelistText = ref('');
+const blacklistText = ref('');
+const currentClientIP = ref('');
 const loading = ref(true);
 const saving = ref(false);
 const toast = useToast();
@@ -149,6 +220,20 @@ onMounted(async () => {
     try {
         const res = await axios.get('/api/config');
         config.value = res.data;
+
+        // Convert whitelist/blacklist arrays to text
+        if (config.value.network_security) {
+            whitelistText.value = (config.value.network_security.whitelist || []).join('\n');
+            blacklistText.value = (config.value.network_security.blacklist || []).join('\n');
+        }
+
+        // Get current client IP
+        try {
+            const ipRes = await axios.get('/api/health');
+            currentClientIP.value = ipRes.data.client_ip || 'Unknown';
+        } catch (e) {
+            console.error('Failed to get client IP', e);
+        }
     } catch (e) {
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load config', life: 3000 });
     } finally {
@@ -170,6 +255,9 @@ const saveConfig = async () => {
             write_enabled: config.value.web.write_enabled,
             logging_interval: config.value.logging.interval,
             realtime_mode: config.value.logging.realtime_mode,
+            network_security_enabled: config.value.network_security?.enabled || false,
+            network_security_whitelist: whitelistText.value,
+            network_security_blacklist: blacklistText.value,
             new_password: newPassword.value || undefined
         };
         const res = await axios.post('/api/config', payload);
