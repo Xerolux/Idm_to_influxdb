@@ -148,9 +148,24 @@ class ModbusClient:
             try:
                 rr = self.client.read_holding_registers(start_addr, count=count, device_id=1)
                 if rr.isError():
-                    logger.warning(f"Error reading block {start_addr}-{end_addr}: {rr}")
-                    # Fallback? Or just skip?
-                    # If a block fails, we could try individual reads, but usually it means connection issue.
+                    logger.warning(f"Bulk read failed for block {start_addr}-{end_addr}: {rr}. Falling back to individual reads.")
+                    # Fallback to individual sensor reads
+                    for sensor in block:
+                        try:
+                            sensor_rr = self.client.read_holding_registers(sensor.address, count=sensor.size, device_id=1)
+                            if sensor_rr.isError():
+                                logger.debug(f"Individual read failed for {sensor.name} @ {sensor.address}: {sensor_rr}")
+                                continue
+
+                            success, value = sensor.decode(sensor_rr.registers)
+                            if success:
+                                if hasattr(value, "value"):
+                                    data[sensor.name] = value.value
+                                    data[f"{sensor.name}_str"] = str(value)
+                                else:
+                                    data[sensor.name] = value
+                        except Exception as e:
+                            logger.debug(f"Exception reading individual sensor {sensor.name}: {e}")
                     continue
 
                 # Parse sensors in this block
@@ -173,6 +188,20 @@ class ModbusClient:
 
             except Exception as e:
                 logger.error(f"Exception reading block starting at {start_addr}: {e}")
+                # Also try fallback for exceptions
+                for sensor in block:
+                    try:
+                        sensor_rr = self.client.read_holding_registers(sensor.address, count=sensor.size, device_id=1)
+                        if not sensor_rr.isError():
+                            success, value = sensor.decode(sensor_rr.registers)
+                            if success:
+                                if hasattr(value, "value"):
+                                    data[sensor.name] = value.value
+                                    data[f"{sensor.name}_str"] = str(value)
+                                else:
+                                    data[sensor.name] = value
+                    except Exception:
+                        pass
 
         return data
 

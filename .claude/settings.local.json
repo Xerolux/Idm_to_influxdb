@@ -15,7 +15,12 @@
       "Bash(cmd //c \"npm run build\")",
       "Bash(cmd //c \"npm install && npm run build\")",
       "Bash(npm ci:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(timeout 5 docker logs:*)"
     ]
   }
 }
