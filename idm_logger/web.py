@@ -159,7 +159,7 @@ def setup():
 
 @app.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -505,6 +505,13 @@ def schedule_page():
     writable_sensors.sort(key=lambda s: s['name'])
 
     return jsonify({"jobs": jobs, "sensors": writable_sensors})
+
+# Catch-all route for Vue SPA client-side routing
+# This must be the last route to avoid catching API routes
+@app.route('/<path:path>')
+def catch_all(path):
+    # Serve index.html for all non-API routes to support Vue Router
+    return send_from_directory(app.static_folder, 'index.html')
 
 def set_influx_writer(writer):
     """Set the InfluxDB writer instance for status reporting."""
