@@ -16,6 +16,7 @@ VOLUME /app/data
 
 # Set DATA_DIR environment variable for persistence
 ENV DATA_DIR=/app/data
+ENV PYTHONUNBUFFERED=1
 
 EXPOSE 5000
 

@@ -27,18 +27,13 @@ def main():
     # Create formatters and handlers
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # Console handler with forced flush
+    # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
-    console_handler.stream.reconfigure(line_buffering=True)  # Force line buffering
 
     # Add handlers
     logger.addHandler(console_handler)
     logger.addHandler(memory_handler)
-
-    # Force flush after adding handlers
-    sys.stdout.flush()
-    sys.stderr.flush()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
