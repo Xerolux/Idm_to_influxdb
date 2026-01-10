@@ -342,6 +342,12 @@ def config_page():
             if 'mqtt_topic_prefix' in data:
                 config.data['mqtt']['topic_prefix'] = data['mqtt_topic_prefix']
 
+            if 'mqtt_ha_discovery_enabled' in data:
+                 config.data['mqtt']['ha_discovery_enabled'] = bool(data['mqtt_ha_discovery_enabled'])
+
+            if 'mqtt_ha_discovery_prefix' in data:
+                 config.data['mqtt']['ha_discovery_prefix'] = data['mqtt_ha_discovery_prefix']
+
             if 'mqtt_publish_interval' in data:
                 try:
                     interval = int(data['mqtt_publish_interval'])

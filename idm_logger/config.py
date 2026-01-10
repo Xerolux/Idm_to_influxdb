@@ -108,6 +108,10 @@ class Config:
             self.data["mqtt"]["use_tls"] = os.environ["MQTT_USE_TLS"].lower() in ("true", "1", "yes")
         if os.environ.get("MQTT_TOPIC_PREFIX"):
             self.data["mqtt"]["topic_prefix"] = os.environ["MQTT_TOPIC_PREFIX"]
+        if os.environ.get("MQTT_HA_DISCOVERY_ENABLED"):
+            self.data["mqtt"]["ha_discovery_enabled"] = os.environ["MQTT_HA_DISCOVERY_ENABLED"].lower() in ("true", "1", "yes")
+        if os.environ.get("MQTT_HA_DISCOVERY_PREFIX"):
+            self.data["mqtt"]["ha_discovery_prefix"] = os.environ["MQTT_HA_DISCOVERY_PREFIX"]
 
     def _merge_dicts(self, default, override):
         """Recursively merge override dictionary into default."""
@@ -162,7 +166,9 @@ class Config:
                 "use_tls": False,
                 "topic_prefix": "idm/heatpump",
                 "publish_interval": 60,
-                "qos": 1
+                "qos": 1,
+                "ha_discovery_enabled": False,
+                "ha_discovery_prefix": "homeassistant"
             },
             "setup_completed": False
         }

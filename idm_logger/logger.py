@@ -88,6 +88,12 @@ def main():
     # MQTT Publisher
     try:
         if config.get("mqtt.enabled", False):
+            # Pass sensors and write callback to MQTT publisher
+            if modbus:
+                mqtt_publisher.set_sensors(modbus.sensors, modbus.binary_sensors)
+                if config.get("web.write_enabled"):
+                    mqtt_publisher.set_write_callback(modbus.write_sensor)
+
             mqtt_publisher.start()
             mqtt = mqtt_publisher
             logger.info("MQTT publisher initialized")

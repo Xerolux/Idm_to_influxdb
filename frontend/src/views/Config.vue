@@ -136,6 +136,22 @@
                                         <small class="text-gray-400">Topics will be: {prefix}/{sensor_name}</small>
                                     </div>
 
+                                    <div class="p-3 border border-green-600 rounded bg-green-900/10 flex flex-col gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-home text-green-400"></i>
+                                            <span class="font-bold text-green-400">Home Assistant Discovery</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <Checkbox v-model="config.mqtt.ha_discovery_enabled" binary inputId="ha_discovery_enabled" />
+                                            <label for="ha_discovery_enabled">Enable Home Assistant Discovery</label>
+                                        </div>
+                                        <div class="flex flex-col gap-2" v-if="config.mqtt.ha_discovery_enabled">
+                                            <label>Discovery Prefix</label>
+                                            <InputText v-model="config.mqtt.ha_discovery_prefix" placeholder="homeassistant" />
+                                            <small class="text-gray-400">Default: homeassistant</small>
+                                        </div>
+                                    </div>
+
                                     <div class="flex flex-col gap-2">
                                         <label>QoS Level</label>
                                         <select v-model="config.mqtt.qos" class="p-2 bg-gray-700 border border-gray-600 rounded">
@@ -420,7 +436,7 @@ const config = ref({
     influx: { url: '', org: '', bucket: '' },
     web: { write_enabled: false },
     logging: { interval: 60, realtime_mode: false },
-    mqtt: { enabled: false, broker: '', port: 1883, username: '', topic_prefix: 'idm/heatpump', qos: 0, use_tls: false, publish_interval: 60 },
+    mqtt: { enabled: false, broker: '', port: 1883, username: '', topic_prefix: 'idm/heatpump', qos: 0, use_tls: false, publish_interval: 60, ha_discovery_enabled: false, ha_discovery_prefix: 'homeassistant' },
     network_security: { enabled: false, whitelist: [], blacklist: [] }
 });
 const newPassword = ref('');
@@ -493,6 +509,8 @@ const saveConfig = async () => {
             mqtt_qos: config.value.mqtt?.qos || 0,
             mqtt_use_tls: config.value.mqtt?.use_tls || false,
             mqtt_publish_interval: config.value.mqtt?.publish_interval || 60,
+            mqtt_ha_discovery_enabled: config.value.mqtt?.ha_discovery_enabled || false,
+            mqtt_ha_discovery_prefix: config.value.mqtt?.ha_discovery_prefix || 'homeassistant',
             network_security_enabled: config.value.network_security?.enabled || false,
             network_security_whitelist: whitelistText.value,
             network_security_blacklist: blacklistText.value,

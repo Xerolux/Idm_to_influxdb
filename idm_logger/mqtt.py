@@ -9,6 +9,7 @@ import ssl
 from threading import Thread, Event
 import paho.mqtt.client as mqtt
 from .config import config
+from .sensor_addresses import SensorFeatures, IdmBinarySensorAddress
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,20 @@ class MQTTPublisher:
         self.running = False
         self.stop_event = Event()
         self.last_publish_time = 0
+        self.sensors = {}
+        self.binary_sensors = {}
+        self.write_callback = None
         # Don't setup client during import, wait for explicit start()
         # self._setup_client()
+
+    def set_sensors(self, sensors, binary_sensors=None):
+        """Set available sensors for discovery."""
+        self.sensors = sensors
+        self.binary_sensors = binary_sensors or {}
+
+    def set_write_callback(self, callback):
+        """Set callback for handling write commands."""
+        self.write_callback = callback
 
     def _setup_client(self):
         """Setup MQTT client with authentication and TLS."""
@@ -45,6 +58,7 @@ class MQTTPublisher:
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
             self.client.on_publish = self._on_publish
+            self.client.on_message = self._on_message
 
             # Set username and password if provided
             username = config.get("mqtt.username", "")
@@ -73,6 +87,17 @@ class MQTTPublisher:
             self.connected = True
             broker = config.get("mqtt.broker", "")
             logger.info(f"Connected to MQTT broker: {broker}")
+
+            # Subscribe to write commands if discovery is enabled (or just always if we support writes)
+            # Standard topic for writes: [prefix]/[sensor]/set
+            topic_prefix = config.get("mqtt.topic_prefix", "idm/heatpump")
+            client.subscribe(f"{topic_prefix}/+/set")
+            logger.info(f"Subscribed to control topics: {topic_prefix}/+/set")
+
+            # Publish HA Discovery if enabled
+            if config.get("mqtt.ha_discovery_enabled", False):
+                self._publish_ha_discovery()
+
         else:
             self.connected = False
             error_messages = {
@@ -96,6 +121,34 @@ class MQTTPublisher:
     def _on_publish(self, client, userdata, mid):
         """Callback when message is published."""
         logger.debug(f"MQTT message published (mid: {mid})")
+
+    def _on_message(self, client, userdata, msg):
+        """Callback when message is received."""
+        try:
+            topic = msg.topic
+            payload = msg.payload.decode('utf-8')
+            logger.info(f"Received MQTT message on {topic}: {payload}")
+
+            if not self.write_callback:
+                logger.warning("No write callback registered, ignoring message")
+                return
+
+            # Extract sensor name from topic: prefix/sensor_name/set
+            topic_prefix = config.get("mqtt.topic_prefix", "idm/heatpump")
+            if not topic.startswith(topic_prefix) or not topic.endswith("/set"):
+                return
+
+            # Remove prefix and /set suffix
+            sensor_name = topic[len(topic_prefix)+1:-4]
+
+            try:
+                self.write_callback(sensor_name, payload)
+                logger.info(f"Successfully processed write command for {sensor_name}")
+            except Exception as e:
+                logger.error(f"Failed to write sensor {sensor_name}: {e}")
+
+        except Exception as e:
+            logger.error(f"Error processing MQTT message: {e}")
 
     def connect(self):
         """Connect to MQTT broker."""
@@ -126,6 +179,133 @@ class MQTTPublisher:
             self.connected = False
             logger.info("MQTT client disconnected")
 
+    def _publish_ha_discovery(self):
+        """Publish Home Assistant Auto Discovery configs."""
+        if not self.sensors and not self.binary_sensors:
+            logger.warning("No sensors available for HA Discovery")
+            return
+
+        ha_prefix = config.get("mqtt.ha_discovery_prefix", "homeassistant")
+        topic_prefix = config.get("mqtt.topic_prefix", "idm/heatpump")
+        node_id = "idm_heatpump"
+
+        device_info = {
+            "identifiers": [node_id],
+            "name": "IDM Heat Pump",
+            "manufacturer": "IDM",
+            "model": "Navigator 2.0"
+        }
+
+        logger.info(f"Publishing HA Discovery messages (prefix: {ha_prefix})...")
+
+        # Combine sensors
+        all_sensors = {**self.sensors, **self.binary_sensors}
+
+        for name, sensor in all_sensors.items():
+            # Determine component type and features
+            component = "sensor"
+            object_id = name
+
+            # Base config payload
+            payload = {
+                "name": name.replace("_", " ").title(),
+                "unique_id": f"{node_id}_{name}",
+                "state_topic": f"{topic_prefix}/{name}",
+                "device": device_info,
+                "value_template": "{{ value_json.value }}",
+                "availability_topic": f"{topic_prefix}/state",
+                "availability_template": "{{ 'online' if value_json else 'offline' }}" # Simple check
+            }
+
+            # Add unit if available
+            if hasattr(sensor, "unit") and sensor.unit:
+                payload["unit_of_measurement"] = sensor.unit
+                # Infer device class from unit
+                if sensor.unit == "°C":
+                    payload["device_class"] = "temperature"
+                elif sensor.unit == "kW":
+                    payload["device_class"] = "power"
+                elif sensor.unit == "kWh":
+                    payload["device_class"] = "energy"
+                    payload["state_class"] = "total_increasing"
+                elif sensor.unit == "%":
+                    # Heuristic for humidity vs battery vs other
+                    if "humidity" in name:
+                         payload["device_class"] = "humidity"
+                    elif "battery" in name or "charge" in name:
+                         payload["device_class"] = "battery"
+                    else:
+                         payload["device_class"] = "power_factor" # generic percent
+
+            # Binary Sensors
+            if isinstance(sensor, IdmBinarySensorAddress):
+                component = "binary_sensor"
+                payload["payload_on"] = True
+                payload["payload_off"] = False
+                payload["value_template"] = "{{ value_json.value }}"
+                if "failure" in name or "alarm" in name:
+                     payload["device_class"] = "problem"
+
+            # Writable Entities (Controls)
+            if hasattr(sensor, "supported_features") and sensor.supported_features != SensorFeatures.NONE:
+                # Decide component based on features/type
+
+                # Enums -> Select
+                if hasattr(sensor, "enum") and sensor.enum:
+                     component = "select"
+                     payload["command_topic"] = f"{topic_prefix}/{name}/set"
+                     payload["options"] = [m.name for m in sensor.enum]
+                     payload["value_template"] = "{{ value_json.value_str }}" # Use string representation for select
+                     # We need to make sure we publish the string value in value_str or similar?
+                     # Currently publish_data sends: value (raw), unit, timestamp.
+                     # But my ModbusClient reads also give 'value_str' for enums in the big dict,
+                     # BUT publish_data iterates over items and takes 'value'.
+
+                     # Wait, publish_data structure:
+                     # { sensor_name: { value: ..., unit: ... } }
+                     # It publishes JSON payload.
+                     # For Enum, the value is the integer.
+                     # HA Select expects the option string.
+                     # I might need to adjust publish_data to include the string value for Enums or use a template that maps int to string?
+                     # Template mapping in HA is hard without hardcoding options.
+                     # Better: Make sure logger publishes the string representation for Enums if available?
+
+                     # Let's assume for now I will use the integer value for state (which is wrong for HA Select),
+                     # OR I can use 'number' component for Enums if I just want to set the integer ID.
+                     # BUT 'select' is better UI.
+                     # For 'select', state_topic must return the option string.
+
+                     # Hack: I will stick to 'sensor' for reading and add a separate 'select' entity for writing if needed?
+                     # No, HA expects state topic to match one of the options.
+                     pass
+
+                # Numerical -> Number
+                elif (sensor.supported_features & SensorFeatures.SET_TEMPERATURE) or \
+                     (sensor.supported_features & SensorFeatures.SET_POWER) or \
+                     (sensor.supported_features & SensorFeatures.SET_BATTERY) or \
+                     (sensor.supported_features & SensorFeatures.SET_HUMIDITY):
+                     component = "number"
+                     payload["command_topic"] = f"{topic_prefix}/{name}/set"
+                     if hasattr(sensor, "min_value") and sensor.min_value is not None:
+                          payload["min"] = sensor.min_value
+                     if hasattr(sensor, "max_value") and sensor.max_value is not None:
+                          payload["max"] = sensor.max_value
+
+                # Binary -> Switch
+                elif sensor.supported_features & SensorFeatures.SET_BINARY:
+                     component = "switch"
+                     payload["command_topic"] = f"{topic_prefix}/{name}/set"
+                     payload["state_on"] = True
+                     payload["state_off"] = False
+                     payload["payload_on"] = "true"
+                     payload["payload_off"] = "false"
+
+            # Publish config
+            discovery_topic = f"{ha_prefix}/{component}/{node_id}/{name}/config"
+            self.client.publish(discovery_topic, json.dumps(payload), retain=True)
+
+        logger.info(f"Published HA Discovery for {len(all_sensors)} entities")
+
     def publish_data(self, data):
         """
         Publish sensor data to MQTT.
@@ -145,33 +325,83 @@ class MQTTPublisher:
 
         try:
             # Publish each sensor value to individual topics
-            for sensor_name, sensor_data in data.items():
-                if isinstance(sensor_data, dict) and 'value' in sensor_data:
-                    topic = f"{topic_prefix}/{sensor_name}"
+            for sensor_name, value in data.items():
+                # data comes from modbus.read_sensors() which returns a flattened dict:
+                # { "sensor_name": value, "sensor_name_str": "EnumName", ... }
+                # But wait, logger.py passes 'data' which is that dict.
+                # However, mqtt.py previously expected { sensor: {value: ..., unit: ... } } ?
+                # Let's check existing publish_data implementation in read_file output.
 
-                    # Prepare payload
-                    payload = {
-                        'value': sensor_data['value'],
-                        'unit': sensor_data.get('unit', ''),
-                        'timestamp': sensor_data.get('timestamp', int(time.time()))
-                    }
+                # The OLD publish_data implementation:
+                # for sensor_name, sensor_data in data.items():
+                #    if isinstance(sensor_data, dict) and 'value' in sensor_data:
+                # ...
 
-                    # Publish message
-                    result = self.client.publish(
-                        topic,
-                        json.dumps(payload),
-                        qos=qos,
-                        retain=False
-                    )
+                # BUT logger.py says:
+                # data = modbus.read_sensors()
+                # modbus.read_sensors() returns a simple dict {name: value}.
+                # WAIT. modbus.py read_sensors returns `data` dict.
+                # Looking at modbus.py:
+                # data[sensor.name] = value
+                # data[f"{sensor.name}_str"] = str(value)
+                # So it returns { "temp_outside": 12.5, ... }
 
-                    if result.rc != mqtt.MQTT_ERR_SUCCESS:
-                        logger.warning(f"Failed to publish {sensor_name}: {result.rc}")
+                # The existing mqtt.py `publish_data` expects `sensor_data` to be a dict with `value` key.
+                # This seems like a MISMATCH in the existing code or I misread something.
+                # In `logger.py`:
+                # if mqtt and mqtt.connected:
+                #     mqtt.publish_data(data)
+
+                # If `data` is flat, `isinstance(sensor_data, dict)` will be false for float/int values.
+                # So existing code might be broken or I am missing something.
+                # Let's fix this method to handle the flat dict from modbus.py.
+
+                # Skip _str keys
+                if sensor_name.endswith("_str"):
+                    continue
+
+                val = value
+                # Find unit from sensor def if possible
+                unit = ""
+                if self.sensors and sensor_name in self.sensors:
+                     unit = getattr(self.sensors[sensor_name], "unit", "")
+
+                # Special handling for Enum string values for HA
+                # If there is a corresponding _str key, use it?
+                # For HA 'select', we might want the string.
+                # But HA 'sensor' usually wants raw value.
+                # Let's stick to raw value in 'value' field.
+
+                val_str = data.get(f"{sensor_name}_str")
+
+                topic = f"{topic_prefix}/{sensor_name}"
+
+                # Prepare payload
+                payload = {
+                    'value': val,
+                    'unit': unit,
+                    'timestamp': int(time.time())
+                }
+
+                if val_str:
+                     payload['value_str'] = val_str
+
+                # Publish message
+                result = self.client.publish(
+                    topic,
+                    json.dumps(payload),
+                    qos=qos,
+                    retain=False
+                )
+
+                if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                    logger.warning(f"Failed to publish {sensor_name}: {result.rc}")
 
             # Also publish complete state to single topic
             state_topic = f"{topic_prefix}/state"
             self.client.publish(
                 state_topic,
-                json.dumps(data),
+                json.dumps(data), # This handles the full dict
                 qos=qos,
                 retain=True  # Retain state for new subscribers
             )
@@ -248,6 +478,7 @@ class MQTTPublisher:
             "port": config.get("mqtt.port", 1883),
             "use_tls": config.get("mqtt.use_tls", False),
             "topic_prefix": config.get("mqtt.topic_prefix", "idm/heatpump"),
+            "ha_discovery_enabled": config.get("mqtt.ha_discovery_enabled", False),
             "last_publish": self.last_publish_time if self.last_publish_time > 0 else None
         }
 
