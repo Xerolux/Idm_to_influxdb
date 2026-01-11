@@ -403,8 +403,86 @@
                         </div>
                     </div>
                 </TabPanel>
+
+                <TabPanel header="Database">
+                    <Card class="bg-gray-800 text-white">
+                        <template #title>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-database text-red-400"></i>
+                                <span>Database Maintenance</span>
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-col gap-4 p-4 border border-red-600 rounded bg-red-900/10">
+                                    <div class="flex items-start gap-2 text-red-400">
+                                        <i class="pi pi-exclamation-triangle mt-1"></i>
+                                        <div>
+                                            <span class="font-bold">Danger Zone</span>
+                                            <p class="text-sm opacity-80">
+                                                These actions are destructive and cannot be undone. Please be careful.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between mt-2">
+                                        <div class="flex flex-col">
+                                            <span class="font-semibold">Delete All Data</span>
+                                            <span class="text-sm text-gray-400">Permanently remove all logged data from InfluxDB.</span>
+                                        </div>
+                                        <Button
+                                            label="Delete Database"
+                                            icon="pi pi-trash"
+                                            severity="danger"
+                                            @click="showDeleteDialog = true"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </Card>
+                </TabPanel>
             </TabView>
         </div>
+
+        <Dialog v-model:visible="showDeleteDialog" modal header="Delete Database" :style="{ width: '450px' }">
+            <div class="flex flex-col gap-4">
+                <div class="flex items-start gap-3">
+                    <i class="pi pi-exclamation-triangle text-red-500 text-2xl"></i>
+                    <div class="flex flex-col gap-2">
+                        <span class="font-bold text-lg">Are you absolutely sure?</span>
+                        <p class="text-gray-300">
+                            This action will permanently delete <span class="font-bold text-red-400">ALL</span> data from the database.
+                            This cannot be undone.
+                        </p>
+                        <p class="text-sm text-gray-400">
+                            Please type <span class="font-mono bg-gray-700 px-1 rounded">DELETE</span> to confirm.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <InputText
+                        v-model="deleteConfirmationText"
+                        placeholder="Type DELETE to confirm"
+                        class="w-full"
+                        :class="{'p-invalid': deleteConfirmationText && deleteConfirmationText !== 'DELETE'}"
+                    />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="Cancel" icon="pi pi-times" text @click="showDeleteDialog = false" />
+                <Button
+                    label="Delete Everything"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    @click="confirmDeleteDatabase"
+                    :disabled="deleteConfirmationText !== 'DELETE'"
+                    :loading="deletingDatabase"
+                />
+            </template>
+        </Dialog>
 
         <div class="flex gap-4 mt-4 justify-end border-t border-gray-700 pt-4">
             <Button label="Save Configuration" icon="pi pi-save" @click="saveConfig" :loading="saving" size="large" />
@@ -428,6 +506,7 @@ import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+import Dialog from 'primevue/dialog';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
@@ -457,6 +536,11 @@ const restoringBackup = ref(false);
 const backupIncludeInflux = ref(true);
 const selectedFile = ref(null);
 const fileInput = ref(null);
+
+// Database Maintenance
+const showDeleteDialog = ref(false);
+const deleteConfirmationText = ref('');
+const deletingDatabase = ref(false);
 
 onMounted(async () => {
     try {
@@ -685,5 +769,25 @@ const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+};
+
+const confirmDeleteDatabase = async () => {
+    if (deleteConfirmationText.value !== 'DELETE') return;
+
+    deletingDatabase.value = true;
+    try {
+        const res = await axios.post('/api/database/delete');
+        if (res.data.success) {
+            toast.add({ severity: 'success', summary: 'Success', detail: res.data.message, life: 5000 });
+            showDeleteDialog.value = false;
+            deleteConfirmationText.value = '';
+        } else {
+            toast.add({ severity: 'error', summary: 'Error', detail: res.data.error, life: 5000 });
+        }
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'Failed to delete database', life: 5000 });
+    } finally {
+        deletingDatabase.value = false;
+    }
 };
 </script>

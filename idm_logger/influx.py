@@ -250,6 +250,37 @@ class InfluxWriter:
             logger.error(f"InfluxDB query failed: {e}")
             return []
 
+    def delete_all_data(self) -> bool:
+        """Delete all data from the database."""
+        try:
+            if self.version == 2:
+                if not self.client:
+                    return False
+
+                delete_api = self.client.delete_api()
+                start = "1970-01-01T00:00:00Z"
+                stop = datetime.datetime.utcnow().isoformat() + "Z"
+                # Delete by predicate (measurement) to be safe
+                delete_api.delete(start, stop, '_measurement="idm_heatpump"', bucket=self.bucket, org=self.conf.get("org"))
+                logger.info("Deleted all data (v2)")
+                return True
+
+            elif self.version == 1:
+                if not self.client:
+                    return False
+
+                db = self.conf.get("database", "idm")
+                self.client.drop_database(db)
+                self.client.create_database(db)
+                logger.info("Deleted all data (v1)")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete data: {e}")
+            return False
+
+        return False
+
     def __del__(self):
         """Cleanup on destruction."""
         self._close()
