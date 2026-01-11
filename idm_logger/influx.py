@@ -57,7 +57,8 @@ class InfluxWriter:
         if InfluxDBClient3 is None:
             raise ImportError("influxdb-client-3 not installed")
 
-        url = self.conf.get("url", "http://localhost:8080") # IOx API port default
+        # User's v3 Core configuration uses port 8181
+        url = self.conf.get("url", "http://localhost:8181")
         token = self.conf.get("token", "")
         org = self.conf.get("org", "")
         bucket = self.conf.get("bucket", "idm")

@@ -16,15 +16,11 @@ services:
       - IDM_HOST=192.168.178.103
       - IDM_PORT=502
       # InfluxDB connection
-      # IOx API (Write) is typically on 8080
-      - INFLUX_URL=http://idm-influxdb:8080
-      - INFLUX_ORG=my-org
-      - INFLUX_BUCKET=idm_heatpump # Bucket is usually the database name in IOx
-      - INFLUX_TOKEN= # IOx might be auth-disabled by default in dev mode
-      # MQTT settings
-      # - MQTT_ENABLED=false
-      # - MQTT_BROKER=mqtt.example.com
-      # - MQTT_PORT=1883
+      - INFLUX_URL=http://idm-influxdb:8181
+      - INFLUX_ORG=docs # v3 Core might not use org same way, but keeping for client compat
+      - INFLUX_BUCKET=idm_heatpump
+      # Token matching the InfluxDB container config
+      - INFLUX_TOKEN=tokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentoken
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health', timeout=5)"]
       interval: 30s
@@ -33,25 +29,42 @@ services:
       start_period: 10s
 
   influxdb:
-    image: influxdata/iox:latest
+    image: influxdb:3-core
     container_name: idm-influxdb
-    restart: unless-stopped
-    # IOx requires a command to start. "run all-in-one" is typical for dev.
-    command: run all-in-one --no-auth
     ports:
-      - "8080:8080" # HTTP API
-      - "8082:8082" # Flight SQL
+      - "8181:8181"
+    command:
+      - influxdb3
+      - serve
+      - --node-id=node0
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      - --plugin-dir=/var/lib/influxdb3/plugins
     volumes:
-      - influxdb-data:/var/lib/iox
+      - influxdb-data:/var/lib/influxdb3/data
+      - influxdb-plugins:/var/lib/influxdb3/plugins
     environment:
-      - IOX_BIND_ADDR=0.0.0.0:8080
-      - IOX_GRPC_BIND_ADDR=0.0.0.0:8082
+      - INFLUXDB3_AUTH_TOKEN=tokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentoken
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "curl -f -H 'Authorization: Bearer tokentokentokentokentokentokentokentokentokentokentokentokentokentokentoken' http://localhost:8181/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 90s
+
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.0.0
+    container_name: idm-explorer
+    ports:
+      - "8888:80"
+    command: ["--mode=admin"]
+    environment:
+      - INFLUXDB_URL=http://idm-influxdb:8181
+      - INFLUXDB_VERSION=3
+      - INFLUXDB_TOKEN=tokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentokentoken
+    depends_on:
+      influxdb:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:latest
@@ -85,8 +98,8 @@ services:
 volumes:
   influxdb-data:
     name: idm-influxdb-data
-  influxdb-config:
-    name: idm-influxdb-config
+  influxdb-plugins:
+    name: idm-influxdb-plugins
   grafana-data:
     name: idm-grafana-data
   idm-data:
