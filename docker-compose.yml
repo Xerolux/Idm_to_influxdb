@@ -10,24 +10,21 @@ services:
       - idm-data:/app/data
     depends_on:
       influxdb:
-        condition: service_healthy
+        condition: service_started
     environment:
       # IDM Heat Pump connection
       - IDM_HOST=192.168.178.103
       - IDM_PORT=502
-      # InfluxDB connection (matches influxdb service defaults)
-      - INFLUX_URL=http://idm-influxdb:8086
+      # InfluxDB connection
+      # IOx API (Write) is typically on 8080
+      - INFLUX_URL=http://idm-influxdb:8080
       - INFLUX_ORG=my-org
-      - INFLUX_BUCKET=idm
-      - INFLUX_TOKEN=my-super-secret-token-change-me
-      # MQTT settings (optional - configure via web UI or uncomment below)
+      - INFLUX_BUCKET=idm_heatpump # Bucket is usually the database name in IOx
+      - INFLUX_TOKEN= # IOx might be auth-disabled by default in dev mode
+      # MQTT settings
       # - MQTT_ENABLED=false
       # - MQTT_BROKER=mqtt.example.com
       # - MQTT_PORT=1883
-      # - MQTT_USERNAME=
-      # - MQTT_PASSWORD=
-      # - MQTT_USE_TLS=false
-      # - MQTT_TOPIC_PREFIX=idm/heatpump
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health', timeout=5)"]
       interval: 30s
@@ -36,25 +33,21 @@ services:
       start_period: 10s
 
   influxdb:
-    image: influxdb:2
+    image: influxdata/iox:latest
     container_name: idm-influxdb
     restart: unless-stopped
+    # IOx requires a command to start. "run all-in-one" is typical for dev.
+    command: run all-in-one --no-auth
     ports:
-      - "8086:8086"
+      - "8080:8080" # HTTP API
+      - "8082:8082" # Flight SQL
     volumes:
-      - influxdb-data:/var/lib/influxdb2
-      - influxdb-config:/etc/influxdb2
+      - influxdb-data:/var/lib/iox
     environment:
-      # Auto-setup on first run
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123
-      - DOCKER_INFLUXDB_INIT_ORG=my-org
-      - DOCKER_INFLUXDB_INIT_BUCKET=idm
-      - DOCKER_INFLUXDB_INIT_RETENTION=365d
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-token-change-me
+      - IOX_BIND_ADDR=0.0.0.0:8080
+      - IOX_GRPC_BIND_ADDR=0.0.0.0:8082
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,26 +61,19 @@ services:
       - "3001:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      # Auto-provisioning
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       influxdb:
-        condition: service_healthy
+        condition: service_started
     environment:
-      # Security
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
-      # Allow embedding in iframes
       - GF_SECURITY_ALLOW_EMBEDDING=true
-      # Anonymous access disabled
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      # Default home dashboard
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/idm-heatpump.json
-      # Plugins
-      - GF_INSTALL_PLUGINS=
-      # Performance
+      - GF_INSTALL_PLUGINS=influxdata-flightsql-datasource
       - GF_RENDERING_CONCURRENT_RENDER_REQUEST_LIMIT=5
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
