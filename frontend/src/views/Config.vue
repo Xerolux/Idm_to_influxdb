@@ -405,42 +405,69 @@
                 </TabPanel>
 
                 <TabPanel header="Database">
-                    <Card class="bg-gray-800 text-white">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-database text-red-400"></i>
-                                <span>Database Maintenance</span>
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="flex flex-col gap-4">
-                                <div class="flex flex-col gap-4 p-4 border border-red-600 rounded bg-red-900/10">
-                                    <div class="flex items-start gap-2 text-red-400">
-                                        <i class="pi pi-exclamation-triangle mt-1"></i>
-                                        <div>
-                                            <span class="font-bold">Danger Zone</span>
-                                            <p class="text-sm opacity-80">
-                                                These actions are destructive and cannot be undone. Please be careful.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center justify-between mt-2">
+                    <div class="flex flex-col gap-6">
+                        <Card class="bg-gray-800 text-white">
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-external-link text-blue-400"></i>
+                                    <span>Data Explorer</span>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="flex flex-col gap-4">
+                                    <p class="text-gray-300">
+                                        The InfluxDB Data Explorer allows you to query and visualize data directly from the database (InfluxDB v3).
+                                    </p>
+                                    <div class="flex items-center justify-between p-3 bg-gray-700 rounded border border-gray-600">
                                         <div class="flex flex-col">
-                                            <span class="font-semibold">Delete All Data</span>
-                                            <span class="text-sm text-gray-400">Permanently remove all logged data from InfluxDB.</span>
+                                            <span class="font-bold">InfluxDB 3 UI</span>
+                                            <span class="text-sm text-gray-400">Port 8888</span>
                                         </div>
-                                        <Button
-                                            label="Delete Database"
-                                            icon="pi pi-trash"
-                                            severity="danger"
-                                            @click="showDeleteDialog = true"
-                                        />
+                                        <a :href="'http://' + hostname + ':8888'" target="_blank" rel="noopener noreferrer">
+                                            <Button label="Open Data Explorer" icon="pi pi-external-link" severity="info" />
+                                        </a>
                                     </div>
                                 </div>
-                            </div>
-                        </template>
-                    </Card>
+                            </template>
+                        </Card>
+
+                        <Card class="bg-gray-800 text-white">
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-database text-red-400"></i>
+                                    <span>Database Maintenance</span>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex flex-col gap-4 p-4 border border-red-600 rounded bg-red-900/10">
+                                        <div class="flex items-start gap-2 text-red-400">
+                                            <i class="pi pi-exclamation-triangle mt-1"></i>
+                                            <div>
+                                                <span class="font-bold">Danger Zone</span>
+                                                <p class="text-sm opacity-80">
+                                                    These actions are destructive and cannot be undone. Please be careful.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center justify-between mt-2">
+                                            <div class="flex flex-col">
+                                                <span class="font-semibold">Delete All Data</span>
+                                                <span class="text-sm text-gray-400">Permanently remove all logged data from InfluxDB.</span>
+                                            </div>
+                                            <Button
+                                                label="Delete Database"
+                                                icon="pi pi-trash"
+                                                severity="danger"
+                                                @click="showDeleteDialog = true"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
+                    </div>
                 </TabPanel>
             </TabView>
         </div>
@@ -541,6 +568,7 @@ const fileInput = ref(null);
 const showDeleteDialog = ref(false);
 const deleteConfirmationText = ref('');
 const deletingDatabase = ref(false);
+const hostname = ref(window.location.hostname);
 
 onMounted(async () => {
     try {
