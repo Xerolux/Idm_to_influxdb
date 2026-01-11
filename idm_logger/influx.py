@@ -1,6 +1,7 @@
 import logging
 import datetime
 import time
+import requests
 from .config import config
 
 # Import at top level as it is a core dependency now
@@ -24,8 +25,11 @@ class InfluxWriter:
         self.conf = config.get("influx")
         self.client = None
         self.bucket = None
+        self.url = None
+        self.token = None
         self._connected = False
         self._last_error = None
+        self._use_v3_api = True  # Use native v3 API by default
         self._setup_with_retry()
 
     def _setup_with_retry(self):
@@ -55,27 +59,40 @@ class InfluxWriter:
         """Initialize InfluxDB 3 client."""
         self._connected = False
 
-        if InfluxDBClient3 is None:
-            raise ImportError("influxdb3-python not installed")
-
         # User's v3 Core configuration uses port 8181
-        url = self.conf.get("url", "http://localhost:8181")
-        token = self.conf.get("token", "")
+        self.url = self.conf.get("url", "http://localhost:8181")
+        self.token = self.conf.get("token", "")
         org = self.conf.get("org", "")
-        bucket = self.conf.get("bucket", "idm")
+        self.bucket = self.conf.get("bucket", "idm")
 
-        if not token and not url: # Minimal check
-             pass
+        if not self.token or not self.url:
+            logger.warning("InfluxDB URL or token not configured")
+            return
 
-        # InfluxDB 3 client expects full URL with protocol
-        # The influxdb3-python library uses 'host' parameter for the full URL
-        self.bucket = bucket
-        self.client = InfluxDBClient3(
-            host=url,
-            token=token,
-            org=org,
-            database=bucket
-        )
+        if self._use_v3_api:
+            # For v3 API, we don't need the influxdb3-python client for writes
+            # We'll use direct HTTP requests to /api/v3/write_lp
+            logger.info("Using native InfluxDB v3 API (/api/v3/write_lp)")
+
+            # Still initialize client for queries (uses Flight SQL)
+            if InfluxDBClient3 is not None:
+                self.client = InfluxDBClient3(
+                    host=self.url,
+                    token=self.token,
+                    org=org,
+                    database=self.bucket
+                )
+        else:
+            # Use influxdb3-python library (v2 compatibility mode)
+            if InfluxDBClient3 is None:
+                raise ImportError("influxdb3-python not installed")
+
+            self.client = InfluxDBClient3(
+                host=self.url,
+                token=self.token,
+                org=org,
+                database=self.bucket
+            )
 
         # Ensure database exists in InfluxDB v3
         self._ensure_database_exists()
@@ -152,12 +169,82 @@ class InfluxWriter:
         return False
 
     def _write_internal(self, measurements: dict) -> bool:
-        """Internal write method using InfluxDB 3 Point objects."""
+        """Internal write method using InfluxDB 3 API."""
+        if self._use_v3_api:
+            # Use native v3 API with direct HTTP request
+            return self._write_v3_api(measurements)
+        else:
+            # Use influxdb3-python library (v2 compatibility)
+            return self._write_v2_compat(measurements)
+
+    def _write_v3_api(self, measurements: dict) -> bool:
+        """Write using native InfluxDB v3 API endpoint /api/v3/write_lp."""
+        import time as time_module
+
+        # Build line protocol string manually
+        # Format: measurement[,tag=value] field=value[,field2=value2] [timestamp]
+        measurement_name = "idm_heatpump"
+
+        # Collect fields and build line protocol
+        fields = []
+        for key, value in measurements.items():
+            # Skip string representation fields
+            if key.endswith("_str"):
+                continue
+            # Convert booleans to int
+            if isinstance(value, bool):
+                value = int(value)
+            # Only write numeric values as fields
+            if isinstance(value, (int, float)):
+                # Properly format field values for line protocol
+                # Integers need 'i' suffix, floats don't
+                if isinstance(value, int) and not isinstance(value, bool):
+                    fields.append(f"{key}={value}i")
+                else:
+                    fields.append(f"{key}={value}")
+
+        if not fields:
+            return False
+
+        # Build line protocol string with proper spacing
+        timestamp = int(time_module.time() * 1e9)
+        line_protocol = f"{measurement_name} {','.join(fields)} {timestamp}"
+
+        # Make HTTP POST request to v3 write endpoint
+        try:
+            write_url = f"{self.url}/api/v3/write_lp"
+            params = {"db": self.bucket}
+            headers = {
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "text/plain; charset=utf-8"
+            }
+
+            response = requests.post(
+                write_url,
+                params=params,
+                headers=headers,
+                data=line_protocol,
+                timeout=10
+            )
+
+            if response.status_code in (204, 200):
+                return True
+            else:
+                logger.warning(
+                    f"Write failed with status {response.status_code}: {response.text}"
+                )
+                return False
+
+        except Exception as e:
+            raise Exception(f"({getattr(e, 'response', type(e).__name__)})\n"
+                          f"Reason: {str(e)}")
+
+    def _write_v2_compat(self, measurements: dict) -> bool:
+        """Write using influxdb3-python library (v2 compatibility mode)."""
         if Point is None:
             return False
 
         # Create a point
-        # Measurement name matches what we used in v2: "idm_heatpump"
         p = Point("idm_heatpump")
 
         # Add fields - let the library handle timestamp automatically
@@ -175,9 +262,6 @@ class InfluxWriter:
                 has_fields = True
 
         if has_fields:
-            # write() method accepts Point objects
-            # For influxdb3-python, we just pass the point - database is set in client init
-            # Don't set explicit timestamp - let the client handle it
             self.client.write(p)
             return True
 
