@@ -26,5 +26,14 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
     "vite": "^7.2.4"
-  }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "Firefox >= 90",
+    "Edge >= 90",
+    "iOS >= 13",
+    "Android >= 5"
+  ]
 }
