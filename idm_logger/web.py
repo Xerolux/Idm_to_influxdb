@@ -736,6 +736,19 @@ def export_influx_config():
         return jsonify(result), 500
 
 
+@app.route('/api/database/delete', methods=['POST'])
+@login_required
+def delete_database():
+    """Delete all data from the database."""
+    if not influx_writer_instance:
+        return jsonify({"error": "InfluxDB not available"}), 503
+
+    if influx_writer_instance.delete_all_data():
+        return jsonify({"success": True, "message": "Database deleted successfully"}), 200
+    else:
+        return jsonify({"error": "Failed to delete database"}), 500
+
+
 def set_influx_writer(writer):
     """Set the InfluxDB writer instance for status reporting."""
     global influx_writer_instance
