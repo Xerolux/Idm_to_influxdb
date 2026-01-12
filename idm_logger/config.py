@@ -153,7 +153,7 @@ class Config:
                 "blacklist": []
             },
             "logging": {
-                "interval": 60,
+                "interval": 30,
                 "realtime_mode": False,
                 "level": "INFO"
             },
