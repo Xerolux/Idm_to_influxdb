@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -7,9 +7,13 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     && pip install --no-cache-dir -r requirements.txt \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Install InfluxDB v3 CLI (optional)
+# Note: For v3 CLI installation, visit https://docs.influxdata.com/influxdb/v3/reference/cli/
 
 # Copy application
 COPY idm_logger/ idm_logger/

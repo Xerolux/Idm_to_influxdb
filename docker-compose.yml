@@ -9,8 +9,7 @@ services:
     volumes:
       - idm-data:/app/data
     depends_on:
-      influxdb:
-        condition: service_healthy
+      - influxdb
     environment:
       # IDM Heat Pump connection
       - IDM_HOST=192.168.178.103
@@ -23,7 +22,7 @@ services:
       # and persists it to the database on startup.
       # To change the token, update it here and in the influxdb service below.
       # Use scripts/sync-token.sh to update all locations automatically.
-      - INFLUX_TOKEN=my-super-secret-token-change-me
+      - INFLUX_TOKEN=apiv3_my-super-secret-token-change-me
       # MQTT settings (optional - configure via web UI or uncomment below)
       # - MQTT_ENABLED=false
       # - MQTT_BROKER=mqtt.example.com
@@ -47,21 +46,17 @@ services:
       - "8181:8181"
     volumes:
       - influxdb-data:/var/lib/influxdb3
+      - ./influxdb-token:/etc/influxdb
     command: >
       serve
       --node-id idm-influxdb-node-1
       --object-store file
       --data-dir /var/lib/influxdb3
+      --admin-token-file /etc/influxdb/admin_token.txt
     environment:
       # Token for authentication - keep this consistent across deployments
       - INFLUXDB_TOKEN=my-super-secret-token-change-me
       - INFLUXDB_DATABASE=idm
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8181/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   grafana:
     image: grafana/grafana:latest
@@ -76,8 +71,7 @@ services:
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      influxdb:
-        condition: service_healthy
+      - influxdb
     environment:
       # Security
       - GF_SECURITY_ADMIN_USER=admin

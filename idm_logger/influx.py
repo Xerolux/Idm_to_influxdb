@@ -74,15 +74,19 @@ class InfluxWriter:
             logger.warning("InfluxDB token not configured")
             return
 
-        # Remove http:// or https:// prefix if present for the client
-        host_clean = host.replace("http://", "").replace("https://", "")
-
         try:
+            flight_client_options = {
+                "disable_server_verification": True,
+                "tls_root_certs": None
+            }
+
             self.client = InfluxDBClient3(
-                host=host_clean,
+                host=host,  # Pass full URL with http:// scheme
                 token=token,
                 database=database,
-                org=""  # InfluxDB v3 doesn't use org
+                org="",  # InfluxDB v3 doesn't use org
+                write_client_options={"disable_tls": True},
+                flight_client_options=flight_client_options
             )
 
             # Test connection by attempting a simple query
@@ -91,8 +95,9 @@ class InfluxWriter:
                 self.client.query("SELECT * FROM idm_heatpump LIMIT 1")
                 self._connected = True
             except Exception as e:
-                # If query fails due to no data, that's ok - connection works
-                if "no such table" in str(e).lower() or "not found" in str(e).lower():
+                # If query fails due to no data/empty table, that's ok - connection works
+                error_str = str(e).lower()
+                if "no such table" in error_str or "not found" in error_str or "list index out of range" in error_str:
                     self._connected = True
                 else:
                     raise
