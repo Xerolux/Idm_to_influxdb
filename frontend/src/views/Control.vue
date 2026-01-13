@@ -2,33 +2,31 @@
     <div class="p-4 flex flex-col gap-4">
         <h1 class="text-2xl font-bold mb-4">Manuelle Steuerung</h1>
 
-        <div v-if="loading" class="flex justify-center">
-            <i class="pi pi-spin pi-spinner text-4xl"></i>
+        <div v-if="loading" class="flex justify-center items-center py-12">
+            <LoadingSpinner size="xl" text="Lade Steuerungselemente..." />
         </div>
 
-        <div v-else-if="error" class="text-red-500">
-            {{ error }}
-        </div>
+        <ErrorDisplay v-else-if="error" :error="error" @dismiss="error = null" />
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             <Card v-for="sensor in sensors" :key="sensor.name" class="bg-gray-800 text-white">
                 <template #title>
-                    <div class="text-lg truncate" :title="sensor.name">{{ sensor.name }}</div>
+                    <div class="text-base sm:text-lg font-medium truncate" :title="sensor.name">{{ sensor.name }}</div>
                 </template>
                 <template #content>
                     <div class="flex flex-col gap-3">
                         <div class="text-gray-400 text-sm">{{ sensor.description }}</div>
 
                         <!-- EEPROM Warning -->
-                        <div v-if="sensor.eeprom_sensitive" class="bg-yellow-900 border border-yellow-600 text-yellow-200 p-2 rounded text-xs">
+                        <div v-if="sensor.eeprom_sensitive" class="bg-yellow-900/50 border border-yellow-600/50 text-yellow-200 p-2 sm:p-3 rounded text-xs sm:text-sm">
                             <i class="pi pi-exclamation-triangle mr-1"></i>
-                            <strong>ACHTUNG:</strong> EEPROM-sensitiv! Begrenzte Schreibzyklen - nicht häufig schreiben!
+                            <strong>ACHTUNG:</strong> EEPROM-sensitiv! Begrenzte Schreibzyklen
                         </div>
 
                         <!-- Cyclic Change Warning -->
-                        <div v-if="sensor.cyclic_change_required" class="bg-blue-900 border border-blue-600 text-blue-200 p-2 rounded text-xs">
+                        <div v-if="sensor.cyclic_change_required" class="bg-info-900/50 border border-info-600/50 text-info-200 p-2 sm:p-3 rounded text-xs sm:text-sm">
                             <i class="pi pi-info-circle mr-1"></i>
-                            <strong>HINWEIS:</strong> Wert sollte zyklisch geändert werden (z.B. alle 10 Minuten)
+                            <strong>HINWEIS:</strong> Zyklische Änderung empfohlen
                         </div>
 
                         <div v-if="sensor.enum" class="flex flex-col gap-2">
@@ -62,6 +60,9 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import SkeletonGroup from '../components/SkeletonGroup.vue';
+import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const sensors = ref([]);
 const formValues = ref({});

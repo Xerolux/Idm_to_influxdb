@@ -1,33 +1,40 @@
 <template>
     <div class="p-4 flex flex-col h-full">
-         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
-            <h1 class="text-2xl font-bold">Dashboard</h1>
-            <div class="flex gap-2">
-                 <Button label="Grafana öffnen" icon="pi pi-chart-line" @click="openGrafana" severity="secondary" />
-                 <Button label="Widget hinzufügen" icon="pi pi-plus" @click="openAddWidget" />
+         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 lg:mb-6 gap-4 lg:gap-0">
+             <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold">Dashboard</h1>
+             <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+                  <Button label="Grafana öffnen" icon="pi pi-chart-line" @click="openGrafana" severity="secondary" class="w-full sm:w-auto order-2 sm:order-1" />
+                  <Button label="Widget hinzufügen" icon="pi pi-plus" @click="openAddWidget" class="w-full sm:w-auto order-1 sm:order-2" />
+             </div>
+         </div>
+
+        <div class="grid-stack bg-gray-800 rounded-lg min-h-[500px]">
+            <!-- Loading skeleton for dashboard -->
+            <div v-if="!grid" class="absolute inset-0 p-6">
+                <SkeletonGroup variant="card" :count="6" />
             </div>
         </div>
 
-        <div class="grid-stack bg-gray-800 rounded-lg min-h-[500px]"></div>
-
         <Teleport v-for="widget in widgets" :key="widget.id" :to="'#mount_' + widget.id">
-            <div class="relative h-full w-full p-3 flex flex-col justify-between">
+            <div class="relative h-full w-full p-3 flex flex-col justify-between animate-fade-in">
                 <DashboardWidget
                     :title="widget.title"
                     :value="sensors[widget.sensor] !== undefined ? sensors[widget.sensor] : '...'"
                     :unit="widget.unit"
+                    :trend="getTrend(widget.sensor)"
+                    :status="getStatus(widget.sensor)"
                 />
-                 <div class="absolute top-1 right-1 cursor-pointer text-gray-500 hover:text-red-500 z-10" @click="removeWidget(widget.id)">
-                    <i class="pi pi-times"></i>
+                 <div class="absolute top-2 right-2 cursor-pointer text-gray-500 hover:text-red-500 z-10 transition-colors p-1 rounded hover:bg-red-500/10" @click="removeWidget(widget.id)">
+                    <i class="pi pi-times text-sm"></i>
                 </div>
             </div>
         </Teleport>
 
-        <Dialog v-model:visible="showAddWidget" header="Widget hinzufügen" :modal="true">
-            <div class="flex flex-col gap-4 min-w-[300px]">
-                <label>Sensor wählen</label>
-                <Dropdown v-model="selectedSensor" :options="sensorOptions" optionLabel="name" placeholder="Wähle einen Sensor" filter />
-                <Button label="Hinzufügen" @click="confirmAddWidget" :disabled="!selectedSensor" />
+        <Dialog v-model:visible="showAddWidget" header="Widget hinzufügen" :modal="true" :style="{ width: '90vw', maxWidth: '400px' }">
+            <div class="flex flex-col gap-4">
+                <label class="text-sm font-medium">Sensor wählen</label>
+                <Dropdown v-model="selectedSensor" :options="sensorOptions" optionLabel="name" placeholder="Wähle einen Sensor" filter class="w-full" />
+                <Button label="Hinzufügen" @click="confirmAddWidget" :disabled="!selectedSensor" class="w-full" />
             </div>
         </Dialog>
     </div>
@@ -42,6 +49,9 @@ import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DashboardWidget from '../components/DashboardWidget.vue';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import SkeletonGroup from '../components/SkeletonGroup.vue';
+import { debounce } from '../utils/performance.js';
 
 const grid = ref(null);
 const sensors = ref({});
@@ -60,13 +70,20 @@ onMounted(async () => {
 
     grid.value = GridStack.init({
         float: true,
-        cellHeight: 100,
+        cellHeight: 80,
         minRow: 1,
-        margin: 5,
+        margin: 3,
         column: 6,
         disableOneColumnMode: false,
         oneColumnModeDomSort: true,
-        oneColumnModeWidth: 768
+        oneColumnModeWidth: 640,
+        breakpointForNColumn: {
+            1: { width: 640, column: 1 },
+            2: { width: 768, column: 2 },
+            3: { width: 1024, column: 3 },
+            4: { width: 1280, column: 4 },
+            6: { width: 1536, column: 6 }
+        }
     });
 
     const savedLayout = localStorage.getItem('dashboard_layout');
@@ -105,7 +122,9 @@ onMounted(async () => {
             saveLayout();
     });
 
-    timer.value = setInterval(fetchData, 2000);
+    // Use debounced data fetching to improve performance
+    const debouncedFetchData = debounce(fetchData, 500);
+    timer.value = setInterval(debouncedFetchData, 2000);
 });
 
 onUnmounted(() => {
@@ -152,7 +171,7 @@ const addWidgetToGrid = (item) => {
     });
 };
 
-const saveLayout = () => {
+const debouncedSaveLayout = debounce(() => {
         const items = grid.value.getGridItems();
         const layout = items.map(item => {
             const w = widgets.value.find(x => x.id == item.gridstackNode.id);
@@ -168,17 +187,10 @@ const saveLayout = () => {
             };
         });
         localStorage.setItem('dashboard_layout', JSON.stringify(layout));
-};
+}, 300);
 
-const fetchData = async () => {
-    try {
-        const res = await axios.get('/api/data');
-        sensors.value = res.data;
-
-        if (sensorOptions.value.length === 0) {
-                sensorOptions.value = Object.keys(res.data).map(k => ({ name: k, value: k }));
-        }
-    } catch (e) {}
+const saveLayout = () => {
+    debouncedSaveLayout();
 };
 
 const openAddWidget = () => {
@@ -212,9 +224,64 @@ const removeWidget = (id) => {
         saveLayout();
 };
 
+const previousValues = ref({});
 const openGrafana = () => {
     const hostname = window.location.hostname;
     window.open(`http://${hostname}:3001`, '_blank');
+};
+
+const getTrend = (sensor) => {
+    if (!previousValues.value[sensor] || !sensors.value[sensor]) return 'neutral';
+    
+    const current = parseFloat(sensors.value[sensor]);
+    const previous = parseFloat(previousValues.value[sensor]);
+    
+    if (isNaN(current) || isNaN(previous)) return 'neutral';
+    
+    if (current > previous) return 'up';
+    if (current < previous) return 'down';
+    return 'neutral';
+};
+
+const getStatus = (sensor) => {
+    if (!sensors.value[sensor]) return 'normal';
+    
+    const value = parseFloat(sensors.value[sensor]);
+    if (isNaN(value)) return 'normal';
+    
+    // Example status logic based on sensor type
+    if (sensor.includes('temp')) {
+        if (value > 80) return 'error';
+        if (value > 60) return 'warning';
+        return 'normal';
+    }
+    
+    if (sensor.includes('power')) {
+        if (value > 5) return 'warning';
+        return 'normal';
+    }
+    
+    return 'normal';
+};
+
+// Update previous values for trend calculation
+const fetchData = async () => {
+    try {
+        const res = await axios.get('/api/data');
+        
+        // Store previous values before updating
+        Object.keys(res.data).forEach(key => {
+            if (sensors.value[key] !== undefined) {
+                previousValues.value[key] = sensors.value[key];
+            }
+        });
+        
+        sensors.value = res.data;
+
+        if (sensorOptions.value.length === 0) {
+                sensorOptions.value = Object.keys(res.data).map(k => ({ name: k, value: k }));
+        }
+    } catch (e) {}
 };
 </script>
 
@@ -222,8 +289,41 @@ const openGrafana = () => {
 .grid-stack-item-content {
     background-color: #1f2937; /* gray-800 */
     color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.grid-stack-item:hover .grid-stack-item-content {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+.grid-stack-item.ui-draggable-dragging .grid-stack-item-content {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+    transform: scale(1.02);
+    border-color: #60a5fa;
+}
+
+.grid-stack-item.ui-resizable-resizing .grid-stack-item-content {
+    border-color: #34d399;
+}
+
+/* GridStack handle styling */
+.grid-stack-item .ui-resizable-se {
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="10" cy="10" r="1.5" fill="%2360a5fa" opacity="0.5"/><circle cx="6" cy="10" r="1.5" fill="%2360a5fa" opacity="0.5"/><circle cx="10" cy="6" r="1.5" fill="%2360a5fa" opacity="0.5"/></svg>') no-repeat;
+    width: 12px;
+    height: 12px;
+    right: 3px;
+    bottom: 3px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.grid-stack-item:hover .ui-resizable-se {
+    opacity: 1;
 }
 </style>

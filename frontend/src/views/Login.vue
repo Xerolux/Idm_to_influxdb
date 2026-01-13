@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
@@ -7,6 +7,7 @@ import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import AppFooter from '../components/AppFooter.vue';
+import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const password = ref('');
 const error = ref('');
@@ -14,7 +15,22 @@ const auth = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
 
+const passwordError = computed(() => {
+  if (!password.value) return 'Passwort ist erforderlich';
+  if (password.value.length < 1) return 'Passwort ist zu kurz';
+  return '';
+});
+
+const isValid = computed(() => {
+  return password.value && !passwordError.value;
+});
+
 const handleLogin = async () => {
+    if (!isValid.value) {
+        error.value = 'Bitte geben Sie ein gültiges Passwort ein';
+        return;
+    }
+
     loading.value = true;
     error.value = '';
     const success = await auth.login(password.value);
@@ -28,17 +44,34 @@ const handleLogin = async () => {
 </script>
 
 <template>
-    <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
-        <Card class="w-full max-w-md bg-gray-800 border-gray-700 text-white mb-auto mt-auto">
+    <div class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-3 sm:p-4">
+        <Card class="w-full max-w-sm sm:max-w-md bg-gray-800 border-gray-700 text-white mb-auto mt-auto shadow-semantic-lg">
             <template #title>idm-metrics-collector</template>
             <template #content>
                 <div class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
-                        <label for="password">Passwort</label>
-                        <InputText id="password" v-model="password" type="password" @keyup.enter="handleLogin" />
+                        <label for="password" class="text-sm font-medium text-gray-300">Passwort</label>
+                        <InputText 
+                            id="password" 
+                            v-model="password" 
+                            type="password" 
+                            placeholder="Passwort eingeben"
+                            :class="{ 'border-error-500': passwordError, 'border-gray-600': !passwordError }"
+                            @keyup.enter="handleLogin"
+                        />
+                        <div v-if="passwordError" class="text-xs text-error-400 flex items-center gap-1">
+                            <i class="pi pi-exclamation-circle"></i>
+                            {{ passwordError }}
+                        </div>
                     </div>
-                    <Message v-if="error" severity="error">{{ error }}</Message>
-                    <Button label="Login" @click="handleLogin" :loading="loading" />
+                    <ErrorDisplay v-if="error" :error="error" @dismiss="error = null" />
+                    <Button 
+                        label="Login" 
+                        @click="handleLogin" 
+                        :loading="loading" 
+                        :disabled="!isValid"
+                        class="w-full"
+                    />
                 </div>
             </template>
         </Card>

@@ -5,6 +5,7 @@ import { useAuthStore } from "../stores/auth";
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
 import AppFooter from './AppFooter.vue';
+import NetworkStatus from './NetworkStatus.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -74,25 +75,26 @@ onUnmounted(() => {
 
 <template>
     <div class="flex flex-col min-h-screen">
+        <NetworkStatus />
         <Menubar :model="items" class="rounded-none border-0 border-b border-gray-700 bg-gray-800">
              <template #start>
-               <span class="text-xl font-bold px-4">IDM Logger</span>
+               <span class="text-lg sm:text-xl font-bold px-2 sm:px-4">IDM Logger</span>
             </template>
             <template #item="{ item, props }">
-                <a v-ripple class="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded cursor-pointer" v-bind="props.action">
-                    <i :class="item.icon"></i>
-                    <span>{{ item.label }}</span>
+                <a v-ripple class="flex items-center gap-2 px-2 sm:px-3 py-2 hover:bg-gray-700 rounded cursor-pointer transition-colors" v-bind="props.action">
+                    <i :class="item.icon" class="text-sm sm:text-base"></i>
+                    <span class="hidden sm:inline text-sm sm:text-base">{{ item.label }}</span>
                 </a>
             </template>
             <template #end>
                 <div class="flex items-center gap-2">
-                    <Button icon="pi pi-power-off" severity="danger" text @click="logout">
+                    <Button icon="pi pi-power-off" severity="danger" text @click="logout" class="p-2 sm:p-3">
                         <span class="hidden sm:inline ml-2">Abmelden</span>
                     </Button>
                 </div>
             </template>
         </Menubar>
-        <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+        <main class="flex-grow container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 lg:py-8">
              <router-view></router-view>
         </main>
         <AppFooter />
