@@ -103,8 +103,9 @@ class InfluxWriter:
         if self.client:
             try:
                 self.client.close()
-            except Exception:
-                pass
+            except Exception as e:
+                # Ignore errors during cleanup, but log for debugging
+                logger.debug(f"Error closing InfluxDB connection (non-critical): {e}")
         self.client = None
         self._connected = False
 
