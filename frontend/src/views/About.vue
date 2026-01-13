@@ -32,6 +32,9 @@ import Button from 'primevue/button';
                                 <a href="https://github.com/Xerolux/idm-metrics-collector/blob/main/LICENSE" target="_blank" rel="noopener">
                                     <Button label="MIT Lizenz" icon="pi pi-file" severity="secondary" outlined />
                                 </a>
+                                <a href="https://www.buymeacoffee.com/xerolux" target="_blank" rel="noopener">
+                                    <Button label="Spenden / Donate" icon="pi pi-coffee" severity="warning" />
+                                </a>
                             </div>
                         </div>
 
