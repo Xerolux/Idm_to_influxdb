@@ -1,78 +1,108 @@
 <template>
-    <div class="flex flex-col gap-6">
-        <div class="flex flex-col gap-2">
-            <label class="font-bold">Select Date</label>
-            <input
-                type="date"
-                v-model="selectedDate"
-                class="p-inputtext p-component w-full md:w-auto"
-            />
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-4 bg-gray-900/50 rounded border border-gray-700 flex flex-col gap-2">
-                <div class="text-sm text-gray-400">Level 1 (User)</div>
-                <div class="flex items-center justify-between">
-                    <div class="text-3xl font-mono font-bold text-green-400 tracking-wider">{{ codeLevel1 }}</div>
-                    <i class="pi pi-user text-green-400/50 text-2xl"></i>
-                </div>
-                <div class="text-xs text-gray-500">Format: DDMM</div>
-            </div>
-
-            <div class="p-4 bg-gray-900/50 rounded border border-gray-700 flex flex-col gap-2">
-                <div class="text-sm text-gray-400">Level 2 (Technician)</div>
-                <div class="flex items-center justify-between">
-                    <div class="text-3xl font-mono font-bold text-yellow-400 tracking-wider">{{ codeLevel2 }}</div>
-                    <i class="pi pi-cog text-yellow-400/50 text-2xl"></i>
-                </div>
-                <div class="text-xs text-gray-500">Daily changing code</div>
-            </div>
-        </div>
-
-        <div class="p-3 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-200">
-            <div class="flex gap-2">
-                <i class="pi pi-info-circle mt-0.5"></i>
-                <div>
-                    These codes are calculated based on the selected date.
-                    <br>
-                    <span class="opacity-70 text-xs">Algorithm derived from public information (IDM heat pump community). Use at your own risk.</span>
-                </div>
-            </div>
-        </div>
+  <div class="flex flex-col gap-6">
+    <div class="p-4 border border-yellow-600 rounded bg-yellow-900/10 text-yellow-200">
+      <div class="flex items-center gap-2 font-bold mb-2">
+         <i class="pi pi-exclamation-triangle"></i>
+         <span>Warning</span>
+      </div>
+      <p class="text-sm">
+        Use these codes only if you know what you are doing! Modifying settings in the technician menu can damage your heat pump.
+        <br>
+        The codes are calculated based on the current date and time (updated every second).
+      </p>
     </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Current Time Display -->
+       <div class="p-4 bg-gray-700 rounded flex flex-col items-center justify-center gap-2">
+         <span class="text-gray-400 text-sm">Reference Time</span>
+         <span class="text-2xl font-mono font-bold">{{ formattedTime }}</span>
+         <span class="text-sm text-gray-500">{{ formattedDate }}</span>
+       </div>
+
+      <!-- Codes -->
+      <div class="flex flex-col gap-4">
+          <div class="p-4 bg-gray-700 rounded flex flex-col gap-1">
+             <span class="text-gray-400 text-sm">Level 1 Code (4-digit)</span>
+             <div class="flex items-center justify-between">
+                <span class="text-3xl font-mono text-blue-400 font-bold tracking-widest">{{ codeLevel1 }}</span>
+                <Button icon="pi pi-copy" text rounded size="small" @click="copy(codeLevel1)" />
+             </div>
+          </div>
+
+           <div class="p-4 bg-gray-700 rounded flex flex-col gap-1">
+             <span class="text-gray-400 text-sm">Level 2 Code (5-digit)</span>
+             <div class="flex items-center justify-between">
+                <span class="text-3xl font-mono text-green-400 font-bold tracking-widest">{{ codeLevel2 }}</span>
+                <Button icon="pi pi-copy" text rounded size="small" @click="copy(codeLevel2)" />
+             </div>
+          </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import Button from 'primevue/button';
+import { useToast } from 'primevue/usetoast';
 
-// Default to today
-const selectedDate = ref(new Date().toISOString().split('T')[0]);
+const toast = useToast();
+const currentTime = ref(new Date());
+const intervalId = ref(null);
+
+const updateTime = () => {
+    currentTime.value = new Date();
+};
+
+onMounted(() => {
+    updateTime();
+    intervalId.value = setInterval(updateTime, 1000);
+});
+
+onUnmounted(() => {
+    if (intervalId.value) clearInterval(intervalId.value);
+});
+
+const formattedTime = computed(() => {
+    return currentTime.value.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+});
+
+const formattedDate = computed(() => {
+    return currentTime.value.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+});
 
 const codeLevel1 = computed(() => {
-    if (!selectedDate.value) return '----';
-    // Parse manually to avoid timezone issues
-    const parts = selectedDate.value.split('-');
-    const day = parts[2];
-    const month = parts[1];
-    return `${day}${month}`;
+    const d = currentTime.value.getDate().toString().padStart(2, '0');
+    const m = (currentTime.value.getMonth() + 1).toString().padStart(2, '0');
+    return `${d}${m}`;
 });
 
 const codeLevel2 = computed(() => {
-    if (!selectedDate.value) return '-----';
-    const parts = selectedDate.value.split('-');
-    const year = parseInt(parts[0]);
-    const month = parseInt(parts[1]);
-    const day = parseInt(parts[2]);
+    // Logic: hh_last + hh_first + year_last + month_last + day_last
 
-    // Algorithm:
-    // Base 62391 + 4 * (Day + 31 * Month + 372 * (Year - 2000))
-    // Note: 372 = 12 * 31
+    // Hours (24h format, 2 digits)
+    const hours = currentTime.value.getHours().toString().padStart(2, '0');
+    const hh_first = hours[0];
+    const hh_last = hours[1];
 
-    const year2digit = year % 100;
+    // Year (full year string)
+    const year = currentTime.value.getFullYear().toString();
+    const year_last = year.slice(-1);
 
-    const val = day + (31 * month) + (372 * year2digit);
-    const code = 62391 + (4 * val);
+    // Month (1-based string)
+    const month = (currentTime.value.getMonth() + 1).toString();
+    const month_last = month.slice(-1);
 
-    return code;
+    // Day (1-based string)
+    const day = currentTime.value.getDate().toString();
+    const day_last = day.slice(-1);
+
+    return `${hh_last}${hh_first}${year_last}${month_last}${day_last}`;
 });
+
+const copy = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.add({ severity: 'success', summary: 'Copied', detail: 'Code copied to clipboard', life: 2000 });
+};
 </script>
