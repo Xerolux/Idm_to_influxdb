@@ -186,6 +186,14 @@ Zugriff auf die Weboberfläche unter `http://<deine-server-ip>:5008` bei Verwend
     *   **Tools**: Generiere Technikercodes, Heizungsbauer und Fachmannebene und verwalte die Datenbank.
         ![Config Tools](docs/images/config_tools.png)
 
+*   **Service Codes**:
+    Das Tool beinhaltet einen Code-Generator für die verschiedenen Service-Ebenen der IDM Wärmepumpe:
+    *   **Heizungsbauerebene (Code 1111)**: Zugriff auf grundlegende Installationsparameter.
+    *   **Technikerebene**: Generierung des tagesaktuellen Codes für tiefergehende Systemeingriffe.
+    *   **Fachmannebene**: Erweiterter Zugriff für spezialisierte Einstellungen.
+
+    Die Codes werden sicher generiert und ermöglichen den Zugriff auf geschützte Menüs der Wärmepumpe, falls dies für Wartungsarbeiten notwendig ist.
+
 *   **Protokolle**: Siehe Live-Systemprotokolle ein.
     ![Logs](docs/images/logs.png)
 

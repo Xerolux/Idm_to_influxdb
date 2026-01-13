@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from 'vue-router'
 import { useAuthStore } from "../stores/auth";
 import Menubar from 'primevue/menubar';
@@ -50,6 +50,26 @@ const logout = async () => {
     await auth.logout();
     router.push('/login');
 }
+
+let timer;
+const resetTimer = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        logout();
+    }, 300000); // 5 minutes
+};
+
+onMounted(() => {
+    const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+    resetTimer();
+});
+
+onUnmounted(() => {
+    const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => window.removeEventListener(event, resetTimer));
+    clearTimeout(timer);
+});
 </script>
 
 <template>
