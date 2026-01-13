@@ -393,9 +393,9 @@ main() {
             ;;
         docker_compose)
             echo -e "${GREEN}Access your services:${NC}"
-            echo "  - Web UI:   http://$(hostname -I | awk '{print $1}'):5000"
-            echo "  - Grafana:  http://$(hostname -I | awk '{print $1}'):3000"
-            echo "  - InfluxDB: http://$(hostname -I | awk '{print $1}'):8086"
+            echo "  - Web UI:   http://$(hostname -I | awk '{print $1}'):5008"
+            echo "  - Grafana:  http://$(hostname -I | awk '{print $1}'):3001"
+            echo "  - InfluxDB: http://$(hostname -I | awk '{print $1}'):8181"
             echo ""
             echo -e "${YELLOW}IMPORTANT: Edit ${INSTALL_DIR}/config.yaml and set your heat pump IP address!${NC}"
             echo "Then restart: cd ${INSTALL_DIR} && docker compose restart"
