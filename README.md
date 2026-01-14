@@ -22,6 +22,7 @@ Ein umfassendes Überwachungs- und Steuerungssystem für IDM Wärmepumpen (Navig
 *   **Weboberfläche**: Modernes Dashboard für Live-Daten, Konfiguration, manuelle Steuerung und Zeitplanung
 *   **Automatisierung**: Eingebauter Zeitplaner, um Werte (z.B. Temperaturen) zu bestimmten Zeiten zu schreiben
 *   **Produktionsbereit**: Health Checks, automatische Neustarts, persistente Daten
+*   **Service Code Generator** : Erstellt die aktuellen Codes für Ebene 1 und Ebene 2
 
 ## Schnellstart
 
@@ -188,7 +189,6 @@ Zugriff auf die Weboberfläche unter `http://<deine-server-ip>:5008` bei Verwend
 
 *   **Service Codes**:
     Das Tool beinhaltet einen Code-Generator für die verschiedenen Service-Ebenen der IDM Wärmepumpe:
-    *   **Heizungsbauerebene (Code 1111)**: Zugriff auf grundlegende Installationsparameter.
     *   **Technikerebene**: Generierung des tagesaktuellen Codes für tiefergehende Systemeingriffe.
     *   **Fachmannebene**: Erweiterter Zugriff für spezialisierte Einstellungen.
 
