@@ -440,6 +440,25 @@ On first access to the Web UI (http://your-server-ip:5000):
 4. Configure InfluxDB connection
 5. Test heat pump connection
 
+### Signal-CLI Registrierung (optional)
+
+Wenn du Signal-Benachrichtigungen nutzen möchtest, muss `signal-cli` einmalig registriert werden.
+
+**Beispiel (Docker/Compose):**
+
+```bash
+# Container öffnen
+docker exec -it idm-logger bash
+
+# Nummer registrieren (erzeugt einen Bestätigungscode per SMS/Anruf)
+signal-cli -u +491234567890 register
+
+# Code bestätigen
+signal-cli -u +491234567890 verify <CODE>
+```
+
+Danach kannst du die Sendernummer und Empfänger in der Web-UI unter **Konfiguration → Benachrichtigungen** eintragen.
+
 ### Security Recommendations
 
 1. **Change default passwords**:

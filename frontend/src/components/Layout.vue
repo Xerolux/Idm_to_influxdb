@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from 'vue-router'
 import { useAuthStore } from "../stores/auth";
+import { useUiStore } from "../stores/ui";
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
 import AppFooter from './AppFooter.vue';
@@ -9,6 +10,11 @@ import NetworkStatus from './NetworkStatus.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
+const ui = useUiStore();
+
+const editModeLabel = computed(() => (ui.editMode ? 'Bearbeiten: An' : 'Bearbeiten: Aus'));
+const editModeIcon = computed(() => (ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock'));
+const editModeSeverity = computed(() => (ui.editMode ? 'success' : 'secondary'));
 
 const navigate = (path) => {
     router.push(path);
@@ -52,6 +58,11 @@ const logout = async () => {
     router.push('/login');
 }
 
+const openGrafana = () => {
+    const hostname = window.location.hostname;
+    window.open(`http://${hostname}:3001`, '_blank', 'noopener');
+};
+
 let timer;
 const resetTimer = () => {
     clearTimeout(timer);
@@ -61,6 +72,7 @@ const resetTimer = () => {
 };
 
 onMounted(() => {
+    ui.init();
     const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, resetTimer));
     resetTimer();
@@ -88,6 +100,17 @@ onUnmounted(() => {
             </template>
             <template #end>
                 <div class="flex items-center gap-2">
+                    <Button
+                        :label="editModeLabel"
+                        :icon="editModeIcon"
+                        :severity="editModeSeverity"
+                        text
+                        class="p-2 sm:p-3"
+                        @click="ui.toggleEditMode"
+                    />
+                    <Button icon="pi pi-chart-line" severity="secondary" text class="p-2 sm:p-3" @click="openGrafana">
+                        <span class="hidden sm:inline ml-2">Grafana</span>
+                    </Button>
                     <Button icon="pi pi-power-off" severity="danger" text @click="logout" class="p-2 sm:p-3">
                         <span class="hidden sm:inline ml-2">Abmelden</span>
                     </Button>
