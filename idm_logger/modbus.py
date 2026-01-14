@@ -135,66 +135,69 @@ class ModbusClient:
             logger.error("Could not connect to Modbus server")
             return data
 
-        # Build blocks if not already done (could be cached if sensors don't change)
-        # For now we rebuild since sensors can be added dynamically? No, they are set in __init__
-        # But let's cache it for performance
-        if not hasattr(self, '_read_blocks'):
-            self._read_blocks = self._build_read_blocks()
-            self._failed_blocks = set()  # Track blocks that consistently fail
-            logger.info(f"Optimized Modbus reading: {len(self._read_blocks)} requests for {len(self.sensors) + len(self.binary_sensors)} sensors")
+        try:
+            # Build blocks if not already done (could be cached if sensors don't change)
+            # For now we rebuild since sensors can be added dynamically? No, they are set in __init__
+            # But let's cache it for performance
+            if not hasattr(self, '_read_blocks'):
+                self._read_blocks = self._build_read_blocks()
+                self._failed_blocks = set()  # Track blocks that consistently fail
+                logger.info(f"Optimized Modbus reading: {len(self._read_blocks)} requests for {len(self.sensors) + len(self.binary_sensors)} sensors")
 
-        for block_idx, block in enumerate(self._read_blocks):
-            if not block:
-                continue
+            for block_idx, block in enumerate(self._read_blocks):
+                if not block:
+                    continue
 
-            start_addr = block[0].address
-            end_addr = max(s.address + s.size for s in block)
-            count = end_addr - start_addr
+                start_addr = block[0].address
+                end_addr = max(s.address + s.size for s in block)
+                count = end_addr - start_addr
 
-            # Skip blocks that have failed multiple times
-            block_key = (start_addr, end_addr)
-            if block_key in self._failed_blocks:
-                # Directly read individual sensors for known failed blocks
-                self._read_block_individually(block, data)
-                continue
-
-            try:
-                rr = self.client.read_holding_registers(start_addr, count=count, device_id=1)
-                if rr.isError():
-                    # Check if this is an illegal address error (exception code 2)
-                    if hasattr(rr, 'exception_code') and rr.exception_code == 2:
-                        logger.debug(f"Bulk read failed for block {start_addr}-{end_addr}: Illegal Data Address. Marking block for individual reads.")
-                        self._failed_blocks.add(block_key)
-                    else:
-                        logger.warning(f"Bulk read failed for block {start_addr}-{end_addr}: {rr}. Falling back to individual reads.")
-
-                    # Fallback to individual sensor reads
+                # Skip blocks that have failed multiple times
+                block_key = (start_addr, end_addr)
+                if block_key in self._failed_blocks:
+                    # Directly read individual sensors for known failed blocks
                     self._read_block_individually(block, data)
                     continue
 
-                # Parse sensors in this block
-                for sensor in block:
-                    # Calculate offset in the response registers
-                    offset = sensor.address - start_addr
-                    sensor_registers = rr.registers[offset : offset + sensor.size]
+                try:
+                    rr = self.client.read_holding_registers(start_addr, count=count, device_id=1)
+                    if rr.isError():
+                        # Check if this is an illegal address error (exception code 2)
+                        if hasattr(rr, 'exception_code') and rr.exception_code == 2:
+                            logger.debug(f"Bulk read failed for block {start_addr}-{end_addr}: Illegal Data Address. Marking block for individual reads.")
+                            self._failed_blocks.add(block_key)
+                        else:
+                            logger.warning(f"Bulk read failed for block {start_addr}-{end_addr}: {rr}. Falling back to individual reads.")
 
-                    try:
-                        success, value = sensor.decode(sensor_registers)
-                        if success:
-                            # Handle Enums and Flags
-                            if hasattr(value, "value"):
-                                data[sensor.name] = value.value
-                                data[f"{sensor.name}_str"] = str(value)
-                            else:
-                                data[sensor.name] = value
-                    except Exception as e:
-                        logger.debug(f"Error decoding {sensor.name}: {e}")
+                        # Fallback to individual sensor reads
+                        self._read_block_individually(block, data)
+                        continue
 
-            except Exception as e:
-                logger.error(f"Exception reading block starting at {start_addr}: {e}")
-                # Mark block as failed and use individual reads
-                self._failed_blocks.add(block_key)
-                self._read_block_individually(block, data)
+                    # Parse sensors in this block
+                    for sensor in block:
+                        # Calculate offset in the response registers
+                        offset = sensor.address - start_addr
+                        sensor_registers = rr.registers[offset : offset + sensor.size]
+
+                        try:
+                            success, value = sensor.decode(sensor_registers)
+                            if success:
+                                # Handle Enums and Flags
+                                if hasattr(value, "value"):
+                                    data[sensor.name] = value.value
+                                    data[f"{sensor.name}_str"] = str(value)
+                                else:
+                                    data[sensor.name] = value
+                        except Exception as e:
+                            logger.debug(f"Error decoding {sensor.name}: {e}")
+
+                except Exception as e:
+                    logger.error(f"Exception reading block starting at {start_addr}: {e}")
+                    # Mark block as failed and use individual reads
+                    self._failed_blocks.add(block_key)
+                    self._read_block_individually(block, data)
+        finally:
+            self.close()
 
         return data
 
@@ -229,9 +232,23 @@ class ModbusClient:
         # Convert value based on type
 
         try:
-             # If it's a binary sensor, expect bool or 0/1
-            if isinstance(sensor, type(BINARY_SENSOR_ADDRESSES.get("request_heating"))): # simplistic check
-                 value = bool(int(value) if str(value).isdigit() else value == 'true')
+            if name in self.binary_sensors:
+                if isinstance(value, bool):
+                    value = value
+                elif isinstance(value, int):
+                    if value not in (0, 1):
+                        raise ValueError("Binary sensors accept only 0 or 1")
+                    value = bool(value)
+                elif isinstance(value, str):
+                    normalized = value.strip().lower()
+                    if normalized in {"true", "1", "yes", "on"}:
+                        value = True
+                    elif normalized in {"false", "0", "no", "off"}:
+                        value = False
+                    else:
+                        raise ValueError("Binary sensors accept only true/false or 0/1")
+                else:
+                    raise ValueError("Binary sensors accept only bool, int, or string values")
 
             # If it's a float sensor
             elif hasattr(sensor, "scale"):
@@ -245,7 +262,7 @@ class ModbusClient:
                  if str(value).isdigit():
                       value = sensor.enum(int(value))
                  else:
-                      value = sensor.enum[value] # access by name
+                      value = sensor.enum[str(value).strip().upper()] # access by name
 
             # If it's UChar/Word
             else:
@@ -268,5 +285,7 @@ class ModbusClient:
         except Exception as e:
              logger.error(f"Write failed: {e}")
              raise
+        finally:
+             self.close()
 
         return True
