@@ -241,4 +241,21 @@ class Database:
             logger.error(f"Failed to update alert {alert_id}: {e}", exc_info=True)
             raise
 
+    def update_alerts_last_triggered(self, alert_ids, timestamp):
+        """Update the last_triggered timestamp for multiple alerts."""
+        if not alert_ids:
+            return
+        try:
+            with self._get_locked_connection() as conn:
+                cursor = conn.cursor()
+                placeholders = ','.join('?' for _ in alert_ids)
+                query = f"UPDATE alerts SET last_triggered=? WHERE id IN ({placeholders})"
+                params = [timestamp] + alert_ids
+                cursor.execute(query, tuple(params))
+            logger.debug(f"Updated last_triggered for {len(alert_ids)} alerts.")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to bulk update alerts: {e}", exc_info=True)
+            raise
+
+
 db = Database()
