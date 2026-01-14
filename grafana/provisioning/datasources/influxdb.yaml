@@ -9,7 +9,9 @@ datasources:
       version: SQL
       dbName: idm
       httpMode: POST
-      tlsSkipVerify: true
+      defaultBucket: idm
+      organization: idm
+      tlsSkipVerify: false
     secureJsonData:
       token: apiv3_my-super-secret-token-change-me
     isDefault: true
