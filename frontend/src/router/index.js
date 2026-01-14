@@ -1,61 +1,51 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-import Dashboard from '../views/Dashboard.vue'
-import Login from '../views/Login.vue'
-import Setup from '../views/Setup.vue'
-import Control from '../views/Control.vue'
-import Schedule from '../views/Schedule.vue'
-import Config from '../views/Config.vue'
-import Logs from '../views/Logs.vue'
-import About from '../views/About.vue'
-import Layout from '../components/Layout.vue'
-
 const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: () => import('../views/Login.vue')
   },
   {
     path: '/setup',
     name: 'Setup',
-    component: Setup
+    component: () => import('../views/Setup.vue')
   },
   {
     path: '/',
-    component: Layout,
+    component: () => import('../components/Layout.vue'),
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
         name: 'Dashboard',
-        component: Dashboard
+        component: () => import('../views/Dashboard.vue')
       },
       {
         path: '/control',
         name: 'Control',
-        component: Control
+        component: () => import('../views/Control.vue')
       },
       {
         path: '/schedule',
         name: 'Schedule',
-        component: Schedule
+        component: () => import('../views/Schedule.vue')
       },
       {
         path: '/config',
         name: 'Config',
-        component: Config
+        component: () => import('../views/Config.vue')
       },
       {
         path: '/logs',
         name: 'Logs',
-        component: Logs
+        component: () => import('../views/Logs.vue')
       },
       {
         path: '/about',
         name: 'About',
-        component: About
+        component: () => import('../views/About.vue')
       }
     ]
   }
