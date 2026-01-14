@@ -177,6 +177,41 @@
                     </Card>
                 </TabPanel>
 
+                <TabPanel header="Benachrichtigungen">
+                    <Card class="bg-gray-800 text-white" v-if="config.signal">
+                        <template #title>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-comments text-green-400"></i>
+                                <span>Signal</span>
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="flex flex-col gap-4">
+                                <div class="flex items-center gap-2">
+                                    <Checkbox v-model="config.signal.enabled" binary inputId="signal_enabled" />
+                                    <label for="signal_enabled" class="font-bold">Signal-Benachrichtigungen aktivieren</label>
+                                </div>
+
+                                <div v-if="config.signal.enabled" class="flex flex-col gap-4 p-3 border border-green-600 rounded bg-green-900/10">
+                                    <div class="flex flex-col gap-2">
+                                        <label>Signal CLI Pfad</label>
+                                        <InputText v-model="config.signal.cli_path" placeholder="signal-cli" />
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <label>Sender-Nummer</label>
+                                        <InputText v-model="config.signal.sender" placeholder="+49..." />
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <label>Empfänger (eine Nummer pro Zeile)</label>
+                                        <Textarea v-model="signalRecipientsText" rows="4" class="font-mono text-sm" />
+                                    </div>
+                                    <Button label="Signal Test senden" icon="pi pi-send" severity="success" @click="sendSignalTest" />
+                                </div>
+                            </div>
+                        </template>
+                    </Card>
+                </TabPanel>
+
                 <TabPanel header="Sicherheit">
                     <div class="flex flex-col gap-6">
                         <Card class="bg-gray-800 text-white">
@@ -260,6 +295,85 @@
 
                 <TabPanel header="System">
                     <div class="flex flex-col gap-6">
+                        <Card class="bg-gray-800 text-white">
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-chart-bar text-teal-400"></i>
+                                    <span>Status</span>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-semibold">Updates</div>
+                                            <div class="text-sm text-gray-400">
+                                                Aktuell: {{ updateStatus.current_version || '...' }} · Latest: {{ updateStatus.latest_version || '...' }}
+                                            </div>
+                                            <div class="text-xs text-gray-400" v-if="updateStatus.update_type && updateStatus.update_type !== 'none'">
+                                                Typ: {{ updateStatus.update_type }}
+                                            </div>
+                                        </div>
+                                        <span
+                                            class="text-xs font-semibold px-2 py-1 rounded-full"
+                                            :class="updateStatus.update_available ? 'bg-yellow-500/20 text-yellow-200' : 'bg-green-500/20 text-green-200'"
+                                        >
+                                            {{ updateStatus.update_available ? 'Update verfügbar' : 'Aktuell' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-semibold">Signal</div>
+                                            <div class="text-sm text-gray-400">
+                                                {{ signalStatus.enabled ? 'Aktiviert' : 'Deaktiviert' }}
+                                                · Empfänger: {{ signalStatus.recipients_count ?? 0 }}
+                                            </div>
+                                            <div class="text-xs text-gray-400">
+                                                CLI: {{ signalStatus.cli_available ? 'Verfügbar' : 'Nicht gefunden' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-end">
+                                        <Button label="Status aktualisieren" icon="pi pi-refresh" size="small" @click="loadStatus" :loading="statusLoading" />
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
+
+                        <Card class="bg-gray-800 text-white" v-if="config.updates">
+                            <template #title>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-refresh text-purple-400"></i>
+                                    <span>Auto-Updates</span>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <Checkbox v-model="config.updates.enabled" binary inputId="updates_enabled" />
+                                        <label for="updates_enabled">Automatisch auf Updates prüfen & anwenden</label>
+                                    </div>
+                                    <div class="flex flex-col gap-2" v-if="config.updates.enabled">
+                                        <label>Prüf-Intervall (Stunden)</label>
+                                        <InputNumber v-model="config.updates.interval_hours" :min="1" :max="168" :useGrouping="false" />
+                                        <small class="text-gray-400">1-168 Stunden (1 Woche)</small>
+                                        <label class="mt-2">Modus</label>
+                                        <select v-model="config.updates.mode" class="p-2 bg-gray-700 border border-gray-600 rounded">
+                                            <option value="apply">Automatisch updaten</option>
+                                            <option value="check">Nur prüfen</option>
+                                        </select>
+                                        <label class="mt-2">Update-Ziel</label>
+                                        <select v-model="config.updates.target" class="p-2 bg-gray-700 border border-gray-600 rounded">
+                                            <option value="all">Alle Updates</option>
+                                            <option value="major">Nur Major</option>
+                                            <option value="minor">Nur Minor</option>
+                                            <option value="patch">Nur Patch</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
+
                         <Card class="bg-gray-800 text-white">
                             <template #title>Weboberfläche</template>
                             <template #content>
@@ -548,12 +662,18 @@ const config = ref({
     web: { write_enabled: false },
     logging: { interval: 60, realtime_mode: false },
     mqtt: { enabled: false, broker: '', port: 1883, username: '', topic_prefix: 'idm/heatpump', qos: 0, use_tls: false, publish_interval: 60, ha_discovery_enabled: false, ha_discovery_prefix: 'homeassistant' },
-    network_security: { enabled: false, whitelist: [], blacklist: [] }
+    network_security: { enabled: false, whitelist: [], blacklist: [] },
+    signal: { enabled: false, cli_path: 'signal-cli', sender: '', recipients: [] },
+    updates: { enabled: false, interval_hours: 12, mode: 'apply', target: 'all' }
 });
 const newPassword = ref('');
 const mqttPassword = ref('');
 const whitelistText = ref('');
 const blacklistText = ref('');
+const signalRecipientsText = ref('');
+const updateStatus = ref({});
+const signalStatus = ref({});
+const statusLoading = ref(false);
 const currentClientIP = ref('');
 const loading = ref(true);
 const saving = ref(false);
@@ -589,6 +709,10 @@ onMounted(async () => {
             blacklistText.value = (config.value.network_security.blacklist || []).join('\n');
         }
 
+        if (config.value.signal) {
+            signalRecipientsText.value = (config.value.signal.recipients || []).join('\n');
+        }
+
         // Get current client IP
         try {
             const ipRes = await axios.get('/api/health');
@@ -599,6 +723,7 @@ onMounted(async () => {
 
         // Load backups
         loadBackups();
+        loadStatus();
     } catch (e) {
         toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konfiguration konnte nicht geladen werden', life: 3000 });
     } finally {
@@ -609,6 +734,35 @@ onMounted(async () => {
 const openExplorer = () => {
     if (typeof window === 'undefined') return;
     window.open(explorerUrl.value, '_blank', 'noopener');
+};
+
+const sendSignalTest = async () => {
+    try {
+        const res = await axios.post('/api/signal/test', { message: 'Signal Test vom IDM Metrics Collector' });
+        if (res.data.success) {
+            toast.add({ severity: 'success', summary: 'Erfolg', detail: res.data.message, life: 3000 });
+        } else {
+            toast.add({ severity: 'error', summary: 'Fehler', detail: res.data.error || 'Signal Test fehlgeschlagen', life: 3000 });
+        }
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.error || e.message, life: 5000 });
+    }
+};
+
+const loadStatus = async () => {
+    statusLoading.value = true;
+    try {
+        const [updateRes, signalRes] = await Promise.all([
+            axios.get('/api/check-update'),
+            axios.get('/api/signal/status')
+        ]);
+        updateStatus.value = updateRes.data;
+        signalStatus.value = signalRes.data;
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Status konnte nicht geladen werden', life: 3000 });
+    } finally {
+        statusLoading.value = false;
+    }
 };
 
 const saveConfig = async () => {
@@ -639,6 +793,14 @@ const saveConfig = async () => {
             network_security_enabled: config.value.network_security?.enabled || false,
             network_security_whitelist: whitelistText.value,
             network_security_blacklist: blacklistText.value,
+            signal_enabled: config.value.signal?.enabled || false,
+            signal_sender: config.value.signal?.sender || '',
+            signal_cli_path: config.value.signal?.cli_path || 'signal-cli',
+            signal_recipients: signalRecipientsText.value,
+            updates_enabled: config.value.updates?.enabled || false,
+            updates_interval_hours: config.value.updates?.interval_hours || 12,
+            updates_mode: config.value.updates?.mode || 'apply',
+            updates_target: config.value.updates?.target || 'all',
             new_password: newPassword.value || undefined
         };
         const res = await axios.post('/api/config', payload);

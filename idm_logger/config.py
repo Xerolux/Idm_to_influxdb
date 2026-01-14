@@ -118,6 +118,26 @@ class Config:
         if os.environ.get("MQTT_HA_DISCOVERY_PREFIX"):
             self.data["mqtt"]["ha_discovery_prefix"] = os.environ["MQTT_HA_DISCOVERY_PREFIX"]
 
+        # Signal settings from environment
+        if os.environ.get("SIGNAL_ENABLED"):
+            self.data["signal"]["enabled"] = os.environ["SIGNAL_ENABLED"].lower() in ("true", "1", "yes")
+        if os.environ.get("SIGNAL_SENDER"):
+            self.data["signal"]["sender"] = os.environ["SIGNAL_SENDER"]
+        if os.environ.get("SIGNAL_RECIPIENTS"):
+            self.data["signal"]["recipients"] = [x.strip() for x in os.environ["SIGNAL_RECIPIENTS"].split(",") if x.strip()]
+        if os.environ.get("SIGNAL_CLI_PATH"):
+            self.data["signal"]["cli_path"] = os.environ["SIGNAL_CLI_PATH"]
+
+        # Update settings from environment
+        if os.environ.get("UPDATES_ENABLED"):
+            self.data["updates"]["enabled"] = os.environ["UPDATES_ENABLED"].lower() in ("true", "1", "yes")
+        if os.environ.get("UPDATES_INTERVAL_HOURS"):
+            self.data["updates"]["interval_hours"] = int(os.environ["UPDATES_INTERVAL_HOURS"])
+        if os.environ.get("UPDATES_MODE"):
+            self.data["updates"]["mode"] = os.environ["UPDATES_MODE"]
+        if os.environ.get("UPDATES_TARGET"):
+            self.data["updates"]["target"] = os.environ["UPDATES_TARGET"]
+
     def _merge_dicts(self, default, override):
         """Recursively merge override dictionary into default."""
         new_dict = default.copy()
@@ -169,6 +189,18 @@ class Config:
                 "qos": 1,
                 "ha_discovery_enabled": False,
                 "ha_discovery_prefix": "homeassistant"
+            },
+            "signal": {
+                "enabled": False,
+                "cli_path": "signal-cli",
+                "sender": "",
+                "recipients": []
+            },
+            "updates": {
+                "enabled": False,
+                "interval_hours": 12,
+                "mode": "apply",
+                "target": "all"
             },
             "setup_completed": False
         }

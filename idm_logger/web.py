@@ -7,6 +7,9 @@ from .sensor_addresses import SensorFeatures
 from .log_handler import memory_handler
 from .backup import backup_manager, BACKUP_DIR
 from .mqtt import mqtt_publisher
+from .signal_notifications import send_signal_message
+from .update_manager import check_for_update, perform_update as run_update, get_current_version, can_run_updates
+from shutil import which
 import threading
 import logging
 import functools
@@ -16,7 +19,6 @@ import signal
 import ipaddress
 import time
 import subprocess
-import requests
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -402,6 +404,46 @@ def config_page():
                 except ValueError:
                     return jsonify({"error": "Ungültiger MQTT QoS Wert"}), 400
 
+            # Signal Settings
+            if 'signal_enabled' in data:
+                config.data['signal']['enabled'] = bool(data['signal_enabled'])
+
+            if 'signal_sender' in data:
+                config.data['signal']['sender'] = data['signal_sender']
+
+            if 'signal_cli_path' in data:
+                config.data['signal']['cli_path'] = data['signal_cli_path']
+
+            if 'signal_recipients' in data:
+                recipients = data['signal_recipients']
+                if isinstance(recipients, str):
+                    recipients = [x.strip() for x in recipients.split('\n') if x.strip()]
+                config.data['signal']['recipients'] = recipients
+
+            # Auto Update Settings
+            if 'updates_enabled' in data:
+                config.data['updates']['enabled'] = bool(data['updates_enabled'])
+
+            if 'updates_interval_hours' in data:
+                try:
+                    interval = int(data['updates_interval_hours'])
+                    if 1 <= interval <= 168:
+                        config.data['updates']['interval_hours'] = interval
+                    else:
+                        return jsonify({"error": "Update-Intervall muss zwischen 1 und 168 Stunden sein"}), 400
+                except ValueError:
+                    return jsonify({"error": "Ungültiger Update-Intervallwert"}), 400
+
+            if 'updates_mode' in data:
+                if data['updates_mode'] not in ['check', 'apply']:
+                    return jsonify({"error": "Update-Modus muss 'check' oder 'apply' sein"}), 400
+                config.data['updates']['mode'] = data['updates_mode']
+
+            if 'updates_target' in data:
+                if data['updates_target'] not in ['all', 'major', 'minor', 'patch']:
+                    return jsonify({"error": "Update-Ziel muss all, major, minor oder patch sein"}), 400
+                config.data['updates']['target'] = data['updates_target']
+
             # Network Security Settings
             if 'network_security_enabled' in data:
                 config.data['network_security']['enabled'] = bool(data['network_security_enabled'])
@@ -475,25 +517,7 @@ def restart_service():
 def get_version():
     """Get current application version from git or package."""
     try:
-        # Try to get version from git
-        result = subprocess.run(
-            ['git', 'describe', '--tags', '--always'],
-            capture_output=True,
-            text=True,
-            cwd='/app',
-            timeout=5
-        )
-        if result.returncode == 0:
-            version = result.stdout.strip()
-        else:
-            # Fallback to reading from a version file
-            version_file = Path('/app/VERSION')
-            if version_file.exists():
-                version = version_file.read_text().strip()
-            else:
-                version = 'v0.5.0'  # Default version
-
-        return jsonify({"version": version})
+        return jsonify({"version": get_current_version()})
     except Exception as e:
         logger.error(f"Error getting version: {e}")
         return jsonify({"version": "unknown"})
@@ -503,32 +527,7 @@ def get_version():
 def check_update():
     """Check for updates from GitHub."""
     try:
-        # Get current version
-        current_version = get_version().json.get('version', 'unknown')
-
-        # Check GitHub for latest release
-        github_api = "https://api.github.com/repos/Xerolux/idm-metrics-collector/releases/latest"
-        response = requests.get(github_api, timeout=10)
-
-        if response.status_code == 200:
-            latest_release = response.json()
-            latest_version = latest_release.get('tag_name', '')
-            release_date = latest_release.get('published_at', '')
-            release_notes = latest_release.get('body', '')[:200]  # First 200 chars
-
-            # Simple version comparison (assumes semantic versioning)
-            update_available = latest_version != current_version and latest_version > current_version
-
-            return jsonify({
-                "update_available": update_available,
-                "current_version": current_version,
-                "latest_version": latest_version,
-                "release_date": release_date,
-                "release_notes": release_notes
-            })
-        else:
-            return jsonify({"error": "Fehler beim Prüfen auf Updates"}), 500
-
+        return jsonify(check_for_update())
     except Exception as e:
         logger.error(f"Error checking for updates: {e}")
         return jsonify({"error": str(e)}), 500
@@ -545,58 +544,10 @@ def perform_update():
             try:
                 time.sleep(2)  # Give time for response to be sent
 
-                # Change to app directory
-                os.chdir('/opt/idm-metrics-collector')
-
-                # Git pull
-                logger.info("Pulling latest changes from git...")
-                result = subprocess.run(
-                    ['git', 'pull', 'origin', 'main'],
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
-
-                if result.returncode != 0:
-                    logger.error(f"Git pull failed: {result.stderr}")
+                if not can_run_updates():
+                    logger.warning("Update skipped: repo path not found.")
                     return
-
-                # Docker compose down and up
-                logger.info("Restarting Docker Compose stack...")
-
-                # Try docker compose (v2)
-                compose_cmd = ['docker', 'compose']
-                check_result = subprocess.run(
-                    compose_cmd + ['version'],
-                    capture_output=True,
-                    timeout=5
-                )
-
-                if check_result.returncode != 0:
-                    # Fallback to docker-compose (v1)
-                    compose_cmd = ['docker-compose']
-
-                # Pull images
-                subprocess.run(
-                    compose_cmd + ['pull'],
-                    capture_output=True,
-                    timeout=300
-                )
-
-                # Restart
-                subprocess.run(
-                    compose_cmd + ['down'],
-                    capture_output=True,
-                    timeout=60
-                )
-
-                subprocess.run(
-                    compose_cmd + ['up', '-d'],
-                    capture_output=True,
-                    timeout=120
-                )
-
-                logger.info("Update completed successfully")
+                run_update()
 
             except Exception as e:
                 logger.error(f"Update failed: {e}")
@@ -609,6 +560,32 @@ def perform_update():
     except Exception as e:
         logger.error(f"Error starting update: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/signal/test', methods=['POST'])
+@login_required
+def signal_test():
+    data = request.get_json() or {}
+    message = data.get('message', 'Testnachricht vom IDM Metrics Collector')
+    try:
+        send_signal_message(message)
+        return jsonify({"success": True, "message": "Signal-Testnachricht gesendet"})
+    except Exception as e:
+        logger.error(f"Signal test failed: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/signal/status', methods=['GET'])
+@login_required
+def signal_status():
+    signal_config = config.data.get("signal", {})
+    recipients = signal_config.get("recipients", []) or []
+    cli_path = signal_config.get("cli_path", "signal-cli")
+    return jsonify({
+        "enabled": signal_config.get("enabled", False),
+        "sender_set": bool(signal_config.get("sender")),
+        "recipients_count": len(recipients),
+        "cli_path": cli_path,
+        "cli_available": which(cli_path) is not None
+    })
 
 def validate_write(sensor_name, value):
     """Validates the value against sensor constraints."""

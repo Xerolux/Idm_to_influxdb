@@ -3,8 +3,7 @@
          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 lg:mb-6 gap-4 lg:gap-0">
              <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold">Dashboard</h1>
              <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-                  <Button label="Grafana öffnen" icon="pi pi-chart-line" @click="openGrafana" severity="secondary" class="w-full sm:w-auto order-2 sm:order-1" />
-                  <Button label="Widget hinzufügen" icon="pi pi-plus" @click="openAddWidget" class="w-full sm:w-auto order-1 sm:order-2" />
+                  <Button label="Widget hinzufügen" icon="pi pi-plus" @click="openAddWidget" :disabled="!editMode" class="w-full sm:w-auto order-1 sm:order-3" />
              </div>
          </div>
 
@@ -24,7 +23,7 @@
                     :trend="getTrend(widget.sensor)"
                     :status="getStatus(widget.sensor)"
                 />
-                 <div class="absolute top-2 right-2 cursor-pointer text-gray-500 hover:text-red-500 z-10 transition-colors p-1 rounded hover:bg-red-500/10" @click="removeWidget(widget.id)">
+                 <div v-if="editMode" class="absolute top-2 right-2 cursor-pointer text-gray-500 hover:text-red-500 z-10 transition-colors p-1 rounded hover:bg-red-500/10" @click="removeWidget(widget.id)">
                     <i class="pi pi-times text-sm"></i>
                 </div>
             </div>
@@ -41,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 import axios from 'axios';
@@ -52,6 +51,8 @@ import DashboardWidget from '../components/DashboardWidget.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SkeletonGroup from '../components/SkeletonGroup.vue';
 import { debounce } from '../utils/performance.js';
+import { useUiStore } from '../stores/ui';
+import { storeToRefs } from 'pinia';
 
 const grid = ref(null);
 const sensors = ref({});
@@ -60,6 +61,8 @@ const showAddWidget = ref(false);
 const selectedSensor = ref(null);
 const sensorOptions = ref([]);
 const timer = ref(null);
+const ui = useUiStore();
+const { editMode } = storeToRefs(ui);
 
 onMounted(async () => {
         try {
@@ -67,6 +70,8 @@ onMounted(async () => {
         sensors.value = res.data;
         sensorOptions.value = Object.keys(res.data).map(k => ({ name: k, value: k }));
         } catch(e) {}
+
+    ui.init();
 
     grid.value = GridStack.init({
         float: true,
@@ -84,6 +89,10 @@ onMounted(async () => {
             4: { width: 1280, column: 4 },
             6: { width: 1536, column: 6 }
         }
+    });
+    applyEditMode();
+    watch(editMode, () => {
+        applyEditMode();
     });
 
     const savedLayout = localStorage.getItem('dashboard_layout');
@@ -171,6 +180,13 @@ const addWidgetToGrid = (item) => {
     });
 };
 
+const applyEditMode = () => {
+    if (!grid.value) return;
+    grid.value.setStatic(!editMode.value);
+    grid.value.enableMove(editMode.value);
+    grid.value.enableResize(editMode.value);
+};
+
 const debouncedSaveLayout = debounce(() => {
         const items = grid.value.getGridItems();
         const layout = items.map(item => {
@@ -225,11 +241,6 @@ const removeWidget = (id) => {
 };
 
 const previousValues = ref({});
-const openGrafana = () => {
-    const hostname = window.location.hostname;
-    window.open(`http://${hostname}:3001`, '_blank');
-};
-
 const getTrend = (sensor) => {
     if (!previousValues.value[sensor] || !sensors.value[sensor]) return 'neutral';
     

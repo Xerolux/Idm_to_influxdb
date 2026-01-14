@@ -10,6 +10,7 @@ from .web import run_web, update_current_data, set_influx_writer
 from .scheduler import Scheduler
 from .log_handler import memory_handler
 from .mqtt import mqtt_publisher
+from .update_manager import check_for_update, perform_update, can_run_updates, is_update_allowed
 
 # Get logger instance (configure in main())
 logger = logging.getLogger("idm_logger")
@@ -65,6 +66,34 @@ def main():
             time.sleep(1)
     except Exception as e:
         logger.error(f"Failed to start web server: {e}", exc_info=True)
+
+    def update_worker():
+        while not stop_event.is_set():
+            if config.get("updates.enabled", False):
+                try:
+                    if not can_run_updates():
+                        logger.warning("Auto-Update deaktiviert: Repo-Pfad nicht gefunden.")
+                    else:
+                        update_info = check_for_update()
+                        if update_info.get("update_available"):
+                            update_type = update_info.get("update_type", "unknown")
+                            mode = config.get("updates.mode", "apply")
+                            target = config.get("updates.target", "all")
+                            if is_update_allowed(update_type, target):
+                                if mode == "apply":
+                                    logger.info(f"Update verfügbar ({update_type}). Starte automatisches Update...")
+                                    perform_update()
+                                else:
+                                    logger.info(f"Update verfügbar ({update_type}). Auto-Update auf 'check' gesetzt.")
+                            else:
+                                logger.info(f"Update verfügbar ({update_type}), aber Ziel '{target}' blockiert.")
+                except Exception as e:
+                    logger.error(f"Auto-Update Fehler: {e}")
+            interval_hours = config.get("updates.interval_hours", 12)
+            stop_event.wait(max(3600, int(interval_hours) * 3600))
+
+    update_thread = threading.Thread(target=update_worker, daemon=True)
+    update_thread.start()
 
     # Now initialize the backend components
     try:

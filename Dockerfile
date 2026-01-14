@@ -4,11 +4,21 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
+ARG SIGNAL_CLI_VERSION=0.12.8
+
 RUN --mount=type=cache,target=/root/.cache/pip \
     apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    ca-certificates \
     curl \
+    openjdk-17-jre-headless \
+    tar \
     && pip install --no-cache-dir -r requirements.txt \
+    && curl -fsSL -o /tmp/signal-cli.tar.gz \
+        https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux.tar.gz \
+    && tar -xzf /tmp/signal-cli.tar.gz -C /opt \
+    && ln -s /opt/signal-cli-${SIGNAL_CLI_VERSION}/bin/signal-cli /usr/local/bin/signal-cli \
+    && rm /tmp/signal-cli.tar.gz \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
 
