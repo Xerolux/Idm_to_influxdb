@@ -62,6 +62,7 @@ class AlertManager:
 
         with self.lock:
             now = time.time()
+            triggered_alerts_ids = []
             for alert in self.alerts:
                 if not alert.get('enabled'):
                     continue
@@ -127,12 +128,15 @@ class AlertManager:
                     if should_trigger:
                         self._trigger_alert(alert, trigger_value)
 
-                        # Update last_triggered
+                        # Update last_triggered in memory and batch update for db
                         alert['last_triggered'] = now
-                        db.update_alert(alert['id'], {'last_triggered': now})
+                        triggered_alerts_ids.append(alert['id'])
 
                 except Exception as e:
                     logger.error(f"Error checking alert {alert.get('name')}: {e}")
+
+            if triggered_alerts_ids:
+                db.update_alerts_last_triggered(triggered_alerts_ids, now)
 
     def _trigger_alert(self, alert, value):
         logger.info(f"Triggering alert: {alert['name']}")
