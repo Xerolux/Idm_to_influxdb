@@ -86,7 +86,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_outside FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Aussentemperatur",
@@ -155,7 +157,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_pump_flow FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Vorlauf WP",
@@ -224,7 +228,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_pump_return FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Ruecklauf WP",
@@ -293,7 +299,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_water_heater_top FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Warmwasser oben",
@@ -358,7 +366,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, power_current_draw FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Leistungsaufnahme",
@@ -465,7 +475,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, status_heat_pump FROM idm_heatpump WHERE time > now() - INTERVAL '1 hour' ORDER BY time DESC LIMIT 1",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Status WP",
@@ -613,7 +625,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_outside FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -621,7 +635,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_pump_flow FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -629,7 +645,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_pump_return FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "C"
+          "refId": "C",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Waermepumpe Temperaturen",
@@ -797,7 +815,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_water_heater_top FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -805,7 +825,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_water_heater_bottom FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -813,7 +835,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_water_target FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "C"
+          "refId": "C",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Warmwasser Temperaturen",
@@ -938,7 +962,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, power_current_draw FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -946,7 +972,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, power_current FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Leistung",
@@ -1050,7 +1078,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, energy_heat_total FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1058,7 +1088,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, energy_heat_heating FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1066,7 +1098,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, energy_heat_total_water FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "C"
+          "refId": "C",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Energie (kumuliert)",
@@ -1247,7 +1281,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_flow_current_circuit_a FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1255,7 +1291,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_flow_target_circuit_a FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1263,7 +1301,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_room_circuit_a FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "C"
+          "refId": "C",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Heizkreis A - Temperaturen",
@@ -1375,7 +1415,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_storage FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1383,7 +1425,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_cold_storage FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "B"
+          "refId": "B",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1391,7 +1435,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_source_input FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "C"
+          "refId": "C",
+          "format": "time_series",
+          "queryType": "sql"
         },
         {
           "datasource": {
@@ -1399,7 +1445,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, temp_heat_source_output FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "D"
+          "refId": "D",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "Speicher & Quelltemperaturen",
@@ -1514,7 +1562,9 @@
             "uid": "${DS_INFLUXDB}"
           },
           "query": "SELECT time, power_current FROM idm_heatpump WHERE time >= $__timeFrom() AND time <= $__timeTo() ORDER BY time ASC",
-          "refId": "A"
+          "refId": "A",
+          "format": "time_series",
+          "queryType": "sql"
         }
       ],
       "title": "COP Verlauf",

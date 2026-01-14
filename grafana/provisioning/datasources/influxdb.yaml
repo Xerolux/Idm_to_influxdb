@@ -11,7 +11,7 @@ datasources:
       httpMode: POST
       defaultBucket: idm
       organization: idm
-      tlsSkipVerify: false
+      tlsSkipVerify: true
     secureJsonData:
       token: apiv3_my-super-secret-token-change-me
     isDefault: true
