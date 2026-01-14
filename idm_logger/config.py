@@ -218,6 +218,20 @@ class Config:
             "setup_completed": False
         }
 
+        # Auto-complete setup in Docker environment
+        # If InfluxDB token is provided via ENV, auto-enable setup
+        if os.environ.get("INFLUX_TOKEN") or os.environ.get("INFLUXDB3_AUTH_TOKEN") or os.environ.get("INFLUXDB_TOKEN"):
+            defaults["setup_completed"] = True
+            defaults["web"]["write_enabled"] = True
+            defaults["influx"]["url"] = os.environ.get("INFLUX_URL", os.environ.get("INFLUXDB_URL", "http://idm-influxdb:8181"))
+            defaults["influx"]["database"] = os.environ.get("INFLUX_DATABASE", os.environ.get("INFLUXDB_DATABASE", "idm"))
+            defaults["influx"]["token"] = (
+                os.environ.get("INFLUXDB3_AUTH_TOKEN") or
+                os.environ.get("INFLUX_TOKEN") or
+                os.environ.get("INFLUXDB_TOKEN") or
+                ""
+            )
+
         # Load from DB, structure into dict like old yaml
         raw = db.get_setting("config")
         if raw:
