@@ -330,37 +330,7 @@ class MQTTPublisher:
         try:
             # Publish each sensor value to individual topics
             for sensor_name, value in data.items():
-                # data comes from modbus.read_sensors() which returns a flattened dict:
-                # { "sensor_name": value, "sensor_name_str": "EnumName", ... }
-                # But wait, logger.py passes 'data' which is that dict.
-                # However, mqtt.py previously expected { sensor: {value: ..., unit: ... } } ?
-                # Let's check existing publish_data implementation in read_file output.
-
-                # The OLD publish_data implementation:
-                # for sensor_name, sensor_data in data.items():
-                #    if isinstance(sensor_data, dict) and 'value' in sensor_data:
-                # ...
-
-                # BUT logger.py says:
-                # data = modbus.read_sensors()
-                # modbus.read_sensors() returns a simple dict {name: value}.
-                # WAIT. modbus.py read_sensors returns `data` dict.
-                # Looking at modbus.py:
-                # data[sensor.name] = value
-                # data[f"{sensor.name}_str"] = str(value)
-                # So it returns { "temp_outside": 12.5, ... }
-
-                # The existing mqtt.py `publish_data` expects `sensor_data` to be a dict with `value` key.
-                # This seems like a MISMATCH in the existing code or I misread something.
-                # In `logger.py`:
-                # if mqtt and mqtt.connected:
-                #     mqtt.publish_data(data)
-
-                # If `data` is flat, `isinstance(sensor_data, dict)` will be false for float/int values.
-                # So existing code might be broken or I am missing something.
-                # Let's fix this method to handle the flat dict from modbus.py.
-
-                # Skip _str keys
+                # Skip _str keys, as they are published alongside their raw counterparts
                 if sensor_name.endswith("_str"):
                     continue
 
