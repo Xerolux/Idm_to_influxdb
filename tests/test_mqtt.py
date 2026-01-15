@@ -1,7 +1,20 @@
 import json
 import pytest
 from unittest.mock import MagicMock, patch, ANY
-from idm_logger.mqtt import MQTTPublisher, config
+import idm_logger.mqtt
+
+# Patch where config is IMPORTED, not where it is defined
+# idm_logger.mqtt imports config as 'config'
+@pytest.fixture
+def mock_config():
+    with patch("idm_logger.mqtt.config") as mock:
+        def config_get(key, default=None):
+            if key == "mqtt.enabled": return True
+            if key == "mqtt.topic_prefix": return "idm/heatpump"
+            if key == "mqtt.broker": return "mock_broker"
+            return default
+        mock.get.side_effect = config_get
+        yield mock
 
 @pytest.fixture
 def mock_mqtt_client():
@@ -11,22 +24,13 @@ def mock_mqtt_client():
         yield mock_client
 
 @pytest.fixture
-def publisher(mock_mqtt_client):
-    # Mock config to enable mqtt
-    with patch("idm_logger.mqtt.config") as mock_config:
-        # Default config behavior
-        def config_get(key, default=None):
-            if key == "mqtt.enabled": return True
-            if key == "mqtt.topic_prefix": return "idm/heatpump"
-            if key == "mqtt.broker": return "mock_broker"  # Ensure broker is returned
-            return default
-        mock_config.get.side_effect = config_get
-
-        pub = MQTTPublisher()
-        pub._setup_client() # Force setup since __init__ comments it out
-        pub.client = mock_mqtt_client # Ensure client is our mock
-        pub.connected = True
-        return pub
+def publisher(mock_mqtt_client, mock_config):
+    from idm_logger.mqtt import MQTTPublisher
+    pub = MQTTPublisher()
+    pub._setup_client()
+    pub.client = mock_mqtt_client
+    pub.connected = True
+    return pub
 
 def test_publish_data_flat_dict(publisher, mock_mqtt_client):
     """Test publishing data from a flat dictionary (ModbusClient format)."""
