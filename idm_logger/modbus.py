@@ -47,6 +47,10 @@ class ModbusClient:
 
     def connect(self):
         """Connects to the Modbus server."""
+        if not self.host:
+            logger.error("Modbus host is not configured")
+            return False
+
         if self.client.is_socket_open():
             return True
         logger.info(f"Connecting to Modbus server at {self.host}:{self.port}")
