@@ -8,13 +8,13 @@ import os
 
 import pytest
 
+# Import for pymodbus 3.x
+from pymodbus.client import ModbusTcpClient
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-
-# Import for pymodbus 3.x
-from pymodbus.client import ModbusTcpClient
 
 # Test configuration
 HOST = "192.168.178.103"

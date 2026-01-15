@@ -3,6 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class NotificationProvider(ABC):
     """Abstract base class for notification providers."""
 

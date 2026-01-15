@@ -47,7 +47,6 @@ class AnomalyDetector:
         Uses Welford's algorithm for running mean and variance.
         """
         with self.lock:
-            updated = False
             for sensor, value in data.items():
                 # Only learn from numeric values
                 try:
@@ -66,8 +65,6 @@ class AnomalyDetector:
                 stats["mean"] += delta / stats["n"]
                 delta2 = x - stats["mean"]
                 stats["m2"] += delta * delta2
-
-                updated = True
 
             # if updated and stats["n"] % 10 == 0:  # Save periodically (every 10 updates per sensor roughly)
             #    pass # Don't save every update, maybe handle in main loop or shutdown

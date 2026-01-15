@@ -115,8 +115,8 @@
               <div>
                 <label for="alert-condition" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bedingung</label>
                 <select id="alert-condition" v-model="form.condition" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                  <option value=">">Größer als (>)</option>
-                  <option value="<">Kleiner als (<)</option>
+                  <option value=">">Größer als (&gt;)</option>
+                  <option value="<">Kleiner als (&lt;)</option>
                   <option value="=">Gleich (=)</option>
                   <option value="!=">Ungleich (!=)</option>
                 </select>

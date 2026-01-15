@@ -61,7 +61,6 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
-import SkeletonGroup from '../components/SkeletonGroup.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const sensors = ref([]);
@@ -82,7 +81,9 @@ onMounted(async () => {
              sensors.value.forEach(s => {
                 formValues.value[s.name] = dataRes.data[s.name];
             });
-        } catch(e) {}
+        } catch {
+            // ignore
+        }
 
     } catch (e) {
         error.value = e.response?.data?.error || e.message;

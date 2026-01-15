@@ -5,6 +5,7 @@ from ..config import config
 
 logger = logging.getLogger(__name__)
 
+
 class DiscordProvider(NotificationProvider):
     @property
     def name(self) -> str:
@@ -21,12 +22,10 @@ class DiscordProvider(NotificationProvider):
             return False
 
         try:
-            response = requests.post(webhook_url, json={
-                "content": message
-            }, timeout=10)
+            response = requests.post(webhook_url, json={"content": message}, timeout=10)
             if not response.ok:
-                 logger.error(f"Discord Webhook error: {response.text}")
-                 return False
+                logger.error(f"Discord Webhook error: {response.text}")
+                return False
             return True
         except Exception as e:
             logger.error(f"Failed to send Discord message: {e}")
