@@ -7,6 +7,7 @@ from ..config import config
 
 logger = logging.getLogger(__name__)
 
+
 class SignalProvider(NotificationProvider):
     @property
     def name(self) -> str:
@@ -16,7 +17,7 @@ class SignalProvider(NotificationProvider):
         if not value:
             return []
         if isinstance(value, str):
-            return [entry.strip() for entry in value.split(',') if entry.strip()]
+            return [entry.strip() for entry in value.split(",") if entry.strip()]
         if isinstance(value, Iterable):
             return [str(entry).strip() for entry in value if str(entry).strip()]
         return []
@@ -27,15 +28,15 @@ class SignalProvider(NotificationProvider):
 
         cli_path = config.get("signal.cli_path", "signal-cli")
         if not which(cli_path):
-             logger.error(f"Signal CLI not found at {cli_path}")
-             return False
+            logger.error(f"Signal CLI not found at {cli_path}")
+            return False
 
         sender = config.get("signal.sender", "")
         recipients = self._normalize_recipients(config.get("signal.recipients", []))
 
         if not sender or not recipients:
-             logger.error("Signal sender or recipients not configured")
-             return False
+            logger.error("Signal sender or recipients not configured")
+            return False
 
         try:
             command = [cli_path, "-u", sender, "send", "-m", message] + recipients

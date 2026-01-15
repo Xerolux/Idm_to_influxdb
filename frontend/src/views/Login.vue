@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
-import Message from 'primevue/message';
 import AppFooter from '../components/AppFooter.vue';
 import ErrorDisplay from '../components/ErrorDisplay.vue';
 

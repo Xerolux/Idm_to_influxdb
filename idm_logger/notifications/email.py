@@ -7,6 +7,7 @@ from ..config import config
 
 logger = logging.getLogger(__name__)
 
+
 class EmailProvider(NotificationProvider):
     @property
     def name(self) -> str:
@@ -24,18 +25,18 @@ class EmailProvider(NotificationProvider):
         recipients = config.get("email.recipients")
 
         if not smtp_server or not recipients:
-             logger.error("Email SMTP server or recipients not configured")
-             return False
+            logger.error("Email SMTP server or recipients not configured")
+            return False
 
         if isinstance(recipients, str):
             recipients = [x.strip() for x in recipients.split(",") if x.strip()]
 
         try:
             msg = MIMEMultipart()
-            msg['From'] = sender
-            msg['To'] = ", ".join(recipients)
-            msg['Subject'] = kwargs.get('subject', 'IDM Metrics Notification')
-            msg.attach(MIMEText(message, 'plain'))
+            msg["From"] = sender
+            msg["To"] = ", ".join(recipients)
+            msg["Subject"] = kwargs.get("subject", "IDM Metrics Notification")
+            msg.attach(MIMEText(message, "plain"))
 
             with smtplib.SMTP(smtp_server, smtp_port) as server:
                 server.starttls()

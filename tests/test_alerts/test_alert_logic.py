@@ -14,7 +14,7 @@ class TestAlertManager(unittest.TestCase):
     def setUp(self):
         # Mock database and configuration
         self.mock_db = MagicMock()
-        self.mock_config = MagicMock() # This is likely failing because `from .config import config` in alerts.py doesn't expose 'config' as an attribute of the module in the way patch expects if it was imported differently or if patch can't find it.
+        self.mock_config = MagicMock()  # This is likely failing because `from .config import config` in alerts.py doesn't expose 'config' as an attribute of the module in the way patch expects if it was imported differently or if patch can't find it.
         # Actually, in idm_logger/alerts.py we do `from .config import config`. So `idm_logger.alerts.config` should exist.
         # But wait, I refactored alerts.py to use `idm_logger.notifications.notification_manager`.
 
@@ -25,11 +25,12 @@ class TestAlertManager(unittest.TestCase):
         self.mock_db.get_alerts.return_value = []
 
         # We need to patch the notification_manager in alerts.py, not config or send_signal_message anymore.
-        self.notification_manager_patcher = patch("idm_logger.alerts.notification_manager")
+        self.notification_manager_patcher = patch(
+            "idm_logger.alerts.notification_manager"
+        )
         self.mock_notification_manager = self.notification_manager_patcher.start()
 
         self.alert_manager = AlertManager()
-
 
     def tearDown(self):
         self.db_patcher.stop()
@@ -57,7 +58,9 @@ class TestAlertManager(unittest.TestCase):
 
         # Test case 2: Value above threshold
         self.alert_manager.check_alerts({"temp": 60})
-        self.mock_notification_manager.send_all.assert_called_with("High Temp: 60", subject="IDM Alert: Test Alert")
+        self.mock_notification_manager.send_all.assert_called_with(
+            "High Temp: 60", subject="IDM Alert: Test Alert"
+        )
         self.mock_db.update_alerts_last_triggered.assert_called_once_with(["1"], ANY)
 
     def test_threshold_alert_cooldown(self):
@@ -101,7 +104,9 @@ class TestAlertManager(unittest.TestCase):
 
         # Should trigger
         self.alert_manager.check_alerts({})
-        self.mock_notification_manager.send_all.assert_called_with("Status OK", subject="IDM Alert: Status Report")
+        self.mock_notification_manager.send_all.assert_called_with(
+            "Status OK", subject="IDM Alert: Status Report"
+        )
 
 
 if __name__ == "__main__":

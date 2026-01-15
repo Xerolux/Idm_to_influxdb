@@ -48,7 +48,6 @@ import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import DashboardWidget from '../components/DashboardWidget.vue';
-import LoadingSpinner from '../components/LoadingSpinner.vue';
 import SkeletonGroup from '../components/SkeletonGroup.vue';
 import { debounce } from '../utils/performance.js';
 import { useUiStore } from '../stores/ui';
@@ -69,7 +68,9 @@ onMounted(async () => {
         const res = await axios.get('/api/data');
         sensors.value = res.data;
         sensorOptions.value = Object.keys(res.data).map(k => ({ name: k, value: k }));
-        } catch(e) {}
+        } catch {
+            // ignore
+        }
 
     ui.init();
 
@@ -119,15 +120,15 @@ onMounted(async () => {
 
     loadGrid(layoutToLoad);
 
-    grid.value.on('change', (event, items) => {
+    grid.value.on('change', () => {
         saveLayout();
     });
 
-        grid.value.on('dragstop', (event, element) => {
+        grid.value.on('dragstop', () => {
             saveLayout();
     });
 
-    grid.value.on('resizestop', (event, element) => {
+    grid.value.on('resizestop', () => {
             saveLayout();
     });
 
@@ -292,7 +293,9 @@ const fetchData = async () => {
         if (sensorOptions.value.length === 0) {
                 sensorOptions.value = Object.keys(res.data).map(k => ({ name: k, value: k }));
         }
-    } catch (e) {}
+    } catch {
+        // ignore
+    }
 };
 </script>
 

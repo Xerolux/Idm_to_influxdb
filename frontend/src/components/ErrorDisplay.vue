@@ -16,7 +16,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['dismiss']);
+defineEmits(['dismiss']);
 
 const errorType = computed(() => {
   if (props.error?.response) {

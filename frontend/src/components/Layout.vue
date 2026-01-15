@@ -15,7 +15,6 @@ const auth = useAuthStore();
 const ui = useUiStore();
 const { t, locale } = useI18n();
 
-const editModeLabel = computed(() => (ui.editMode ? t('edit') + ': On' : t('edit') + ': Off'));
 const editModeIcon = computed(() => (ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock'));
 const editModeSeverity = computed(() => (ui.editMode ? 'success' : 'secondary'));
 

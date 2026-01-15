@@ -149,33 +149,51 @@ class Config:
 
         # Telegram settings
         if os.environ.get("TELEGRAM_ENABLED"):
-             self.data["telegram"]["enabled"] = os.environ["TELEGRAM_ENABLED"].lower() in ("true", "1", "yes")
+            self.data["telegram"]["enabled"] = os.environ[
+                "TELEGRAM_ENABLED"
+            ].lower() in ("true", "1", "yes")
         if os.environ.get("TELEGRAM_BOT_TOKEN"):
-             self.data["telegram"]["bot_token"] = os.environ["TELEGRAM_BOT_TOKEN"]
+            self.data["telegram"]["bot_token"] = os.environ["TELEGRAM_BOT_TOKEN"]
         if os.environ.get("TELEGRAM_CHAT_IDS"):
-             self.data["telegram"]["chat_ids"] = [x.strip() for x in os.environ["TELEGRAM_CHAT_IDS"].split(",") if x.strip()]
+            self.data["telegram"]["chat_ids"] = [
+                x.strip()
+                for x in os.environ["TELEGRAM_CHAT_IDS"].split(",")
+                if x.strip()
+            ]
 
         # Discord settings
         if os.environ.get("DISCORD_ENABLED"):
-             self.data["discord"]["enabled"] = os.environ["DISCORD_ENABLED"].lower() in ("true", "1", "yes")
+            self.data["discord"]["enabled"] = os.environ["DISCORD_ENABLED"].lower() in (
+                "true",
+                "1",
+                "yes",
+            )
         if os.environ.get("DISCORD_WEBHOOK_URL"):
-             self.data["discord"]["webhook_url"] = os.environ["DISCORD_WEBHOOK_URL"]
+            self.data["discord"]["webhook_url"] = os.environ["DISCORD_WEBHOOK_URL"]
 
         # Email settings
         if os.environ.get("EMAIL_ENABLED"):
-             self.data["email"]["enabled"] = os.environ["EMAIL_ENABLED"].lower() in ("true", "1", "yes")
+            self.data["email"]["enabled"] = os.environ["EMAIL_ENABLED"].lower() in (
+                "true",
+                "1",
+                "yes",
+            )
         if os.environ.get("EMAIL_SMTP_SERVER"):
-             self.data["email"]["smtp_server"] = os.environ["EMAIL_SMTP_SERVER"]
+            self.data["email"]["smtp_server"] = os.environ["EMAIL_SMTP_SERVER"]
         if os.environ.get("EMAIL_SMTP_PORT"):
-             self.data["email"]["smtp_port"] = int(os.environ["EMAIL_SMTP_PORT"])
+            self.data["email"]["smtp_port"] = int(os.environ["EMAIL_SMTP_PORT"])
         if os.environ.get("EMAIL_USERNAME"):
-             self.data["email"]["username"] = os.environ["EMAIL_USERNAME"]
+            self.data["email"]["username"] = os.environ["EMAIL_USERNAME"]
         if os.environ.get("EMAIL_PASSWORD"):
-             self.data["email"]["password"] = os.environ["EMAIL_PASSWORD"]
+            self.data["email"]["password"] = os.environ["EMAIL_PASSWORD"]
         if os.environ.get("EMAIL_SENDER"):
-             self.data["email"]["sender"] = os.environ["EMAIL_SENDER"]
+            self.data["email"]["sender"] = os.environ["EMAIL_SENDER"]
         if os.environ.get("EMAIL_RECIPIENTS"):
-             self.data["email"]["recipients"] = [x.strip() for x in os.environ["EMAIL_RECIPIENTS"].split(",") if x.strip()]
+            self.data["email"]["recipients"] = [
+                x.strip()
+                for x in os.environ["EMAIL_RECIPIENTS"].split(",")
+                if x.strip()
+            ]
 
         # AI settings from environment
         if os.environ.get("AI_ENABLED"):
@@ -319,11 +337,11 @@ class Config:
                 del to_save["mqtt"]["password"]
 
         if "email" in to_save:
-             to_save["email"]["encrypted_password"] = self._encrypt(
-                 to_save["email"].get("password", "")
-             )
-             if "password" in to_save["email"]:
-                 del to_save["email"]["password"]
+            to_save["email"]["encrypted_password"] = self._encrypt(
+                to_save["email"].get("password", "")
+            )
+            if "password" in to_save["email"]:
+                del to_save["email"]["password"]
 
         db.set_setting("config", json.dumps(to_save))
 

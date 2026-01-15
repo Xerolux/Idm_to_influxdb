@@ -5,13 +5,14 @@ from .telegram import TelegramProvider
 from .discord import DiscordProvider
 from .email import EmailProvider
 
+
 class NotificationManager:
     def __init__(self):
         self.providers: List[NotificationProvider] = [
             SignalProvider(),
             TelegramProvider(),
             DiscordProvider(),
-            EmailProvider()
+            EmailProvider(),
         ]
 
     def send_all(self, message: str, **kwargs):
@@ -23,5 +24,6 @@ class NotificationManager:
             except Exception:
                 # Logged inside providers usually, but just in case
                 pass
+
 
 notification_manager = NotificationManager()

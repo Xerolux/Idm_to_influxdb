@@ -5,6 +5,7 @@ from ..config import config
 
 logger = logging.getLogger(__name__)
 
+
 class TelegramProvider(NotificationProvider):
     @property
     def name(self) -> str:
@@ -29,10 +30,9 @@ class TelegramProvider(NotificationProvider):
 
         for chat_id in chat_ids:
             try:
-                response = requests.post(url, json={
-                    "chat_id": chat_id,
-                    "text": message
-                }, timeout=10)
+                response = requests.post(
+                    url, json={"chat_id": chat_id, "text": message}, timeout=10
+                )
                 if not response.ok:
                     logger.error(f"Telegram API error for {chat_id}: {response.text}")
                     success = False

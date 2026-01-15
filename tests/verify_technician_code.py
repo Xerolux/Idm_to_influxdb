@@ -89,7 +89,7 @@ def run(playwright):
         try:
             page.wait_for_selector("input[placeholder='Password']", timeout=2000)
             print("Detected Login Page. Attempting to bypass...")
-        except:
+        except Exception:
             pass
 
         print("Waiting for Configuration header...")
