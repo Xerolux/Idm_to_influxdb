@@ -18,6 +18,7 @@ def publisher(mock_mqtt_client):
         def config_get(key, default=None):
             if key == "mqtt.enabled": return True
             if key == "mqtt.topic_prefix": return "idm/heatpump"
+            if key == "mqtt.broker": return "mock_broker"  # Ensure broker is returned
             return default
         mock_config.get.side_effect = config_get
 
