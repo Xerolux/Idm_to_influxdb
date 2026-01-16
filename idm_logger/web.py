@@ -26,7 +26,6 @@ from .update_manager import (
 )
 from .alerts import alert_manager
 from .templates import get_alert_templates
-from .ai.anomaly import anomaly_detector
 from shutil import which
 import threading
 import logging
@@ -321,21 +320,6 @@ def get_data():
     """
     with data_lock:
         return jsonify(current_data)
-
-
-@app.route("/api/ai/status")
-@login_required
-def get_ai_status():
-    """
-    Get current AI model status.
-    ---
-    tags:
-      - AI
-    responses:
-      200:
-        description: AI status statistics
-    """
-    return jsonify(anomaly_detector.get_stats())
 
 
 @app.route("/api/health")
