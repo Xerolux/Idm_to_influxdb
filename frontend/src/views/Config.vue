@@ -168,6 +168,14 @@
                                     <label>Empfänger (Pro Zeile eine Nummer)</label>
                                     <Textarea v-model="signalRecipientsText" rows="3" class="w-full font-mono" />
                                 </div>
+                                <div class="flex flex-col gap-2 border-t border-gray-700 pt-4 mt-2">
+                                    <label class="text-sm font-bold">Erweitert</label>
+                                    <div class="flex flex-col gap-2">
+                                        <label class="text-xs">Signal CLI Pfad</label>
+                                        <InputText v-model="config.signal.cli_path" placeholder="signal-cli" class="w-full md:w-1/2" />
+                                        <small class="text-gray-400">Standard: signal-cli (im PATH)</small>
+                                    </div>
+                                </div>
                                 <Button label="Testnachricht senden" icon="pi pi-send" severity="success" outlined @click="sendSignalTest" class="w-full md:w-auto self-start" />
                             </div>
                         </Fieldset>
