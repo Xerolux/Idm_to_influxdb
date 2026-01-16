@@ -1,6 +1,9 @@
 import logging
 import requests
 import os
+import queue
+import threading
+import time
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -14,7 +17,14 @@ class MetricsWriter:
         )
         self._connected = True  # HTTP is stateless
         self.session = requests.Session()
-        logger.info(f"MetricsWriter initialized with URL: {self.url}")
+
+        # Async queue for metrics to avoid blocking main loop
+        self.queue = queue.Queue(maxsize=1000)
+        self.stop_event = threading.Event()
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
+        self.worker_thread.start()
+
+        logger.info(f"MetricsWriter initialized with URL: {self.url} (Async)")
 
     def is_connected(self) -> bool:
         return self._connected
@@ -23,6 +33,31 @@ class MetricsWriter:
         if not measurements:
             return True
 
+        try:
+            self.queue.put_nowait(measurements)
+            return True
+        except queue.Full:
+            logger.warning("Metrics queue full, dropping data")
+            return False
+
+    def _worker(self):
+        """Worker thread to process metrics queue."""
+        while not self.stop_event.is_set():
+            try:
+                # Wait for data with timeout to allow checking stop_event
+                measurements = self.queue.get(timeout=1.0)
+            except queue.Empty:
+                continue
+
+            try:
+                self._send_data(measurements)
+            except Exception as e:
+                logger.error(f"Error in metrics worker: {e}")
+            finally:
+                self.queue.task_done()
+
+    def _send_data(self, measurements: dict) -> bool:
+        """Internal method to send data to VictoriaMetrics (executed in worker thread)."""
         # Construct Line Protocol
         # measurement field1=val1,field2=val2
         # We omit timestamp to let VictoriaMetrics assign the current server time
@@ -67,4 +102,10 @@ class MetricsWriter:
             "connected": self._connected,
             "type": "VictoriaMetrics",
             "url": self.url,
+            "queue_size": self.queue.qsize()
         }
+
+    def stop(self):
+        """Stop the worker thread."""
+        self.stop_event.set()
+        self.worker_thread.join(timeout=2.0)
