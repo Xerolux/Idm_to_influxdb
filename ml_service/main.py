@@ -6,12 +6,24 @@ import schedule
 from river import anomaly
 from river import preprocessing
 from river import compose
+import sys
+
+# Add parent directory to path to import idm_logger modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from idm_logger.sensor_addresses import (
+    COMMON_SENSORS,
+    BINARY_SENSOR_ADDRESSES,
+    heating_circuit_sensors,
+    zone_sensors,
+    HeatingCircuit,
+)
 
 # Configuration
 # Default to "http://victoriametrics:8428"
 METRICS_URL = os.environ.get("METRICS_URL", "http://victoriametrics:8428")
 MEASUREMENT_NAME = os.environ.get("MEASUREMENT_NAME", "idm_heatpump")
-UPDATE_INTERVAL = int(os.environ.get("UPDATE_INTERVAL", 60))
+UPDATE_INTERVAL = int(os.environ.get("UPDATE_INTERVAL", 30))
 
 # Logging setup
 logging.basicConfig(
@@ -20,17 +32,48 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ml-service")
 
-# Selected Sensors (MVP)
-SENSORS = [
-    "temp_flow_current_circuit_a",
-    "temp_heat_pump_return",
-    "power_current",
-    "temp_water_heater_top",
-    "temp_outside",
-    "temp_heat_storage",
-    "temp_cold_storage",
-    "state_compressor_1"
-]
+# Get all available sensors from the sensor_addresses module
+# Only include sensors that have read_supported=True
+def get_all_readable_sensors():
+    """Get all sensors that are readable (read_supported=True)."""
+    sensors = []
+
+    # Add common sensors
+    for sensor in COMMON_SENSORS:
+        if sensor.read_supported:
+            sensors.append(sensor.name)
+
+    # Add binary sensors
+    for sensor_name, sensor in BINARY_SENSOR_ADDRESSES.items():
+        if sensor.read_supported:
+            sensors.append(sensor.name)
+
+    # Add heating circuit sensors for all configured circuits
+    # Default to Circuit A if none configured
+    circuits = ["A"]  # Default circuit
+    # You could extend this to read from config if needed
+
+    for circuit_name in circuits:
+        try:
+            circuit_enum = HeatingCircuit[circuit_name.upper()]
+            circuit_sensors = heating_circuit_sensors(circuit_enum)
+            for sensor in circuit_sensors:
+                if sensor.read_supported:
+                    sensors.append(sensor.name)
+        except KeyError:
+            logger.warning(f"Invalid heating circuit: {circuit_name}")
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_sensors = []
+    for sensor in sensors:
+        if sensor not in seen:
+            seen.add(sensor)
+            unique_sensors.append(sensor)
+
+    return unique_sensors
+
+SENSORS = get_all_readable_sensors()
 
 # Initialize River Model
 # StandardScaler to normalize features + HalfSpaceTrees for anomaly detection
