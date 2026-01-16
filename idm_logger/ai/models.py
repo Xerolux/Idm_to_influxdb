@@ -3,6 +3,7 @@ import collections
 import logging
 import time
 import numpy as np
+import math
 from typing import Dict, Any
 try:
     from sklearn.ensemble import IsolationForest
@@ -44,9 +45,9 @@ class RollingWindowStats(BaseAnomalyModel):
     def __init__(self, window_size: int = 2000):
         self.window_size = window_size
         self.history: Dict[str, collections.deque] = {}
-        # We cache stats to avoid recomputing mean/std on every read if needed,
-        # but for accuracy on every step, we recompute or use Welford's if we wanted pure streaming.
-        # With deque and numpy, recomputing on window is fast enough for 2000 points.
+        # Optimization: Maintain running sums to avoid O(N) calculation on every detect
+        self.sums: Dict[str, float] = {}
+        self.sq_sums: Dict[str, float] = {}
 
     def get_stats(self) -> Dict[str, Any]:
         return {
@@ -60,7 +61,20 @@ class RollingWindowStats(BaseAnomalyModel):
         for sensor, value in data.items():
             if sensor not in self.history:
                 self.history[sensor] = collections.deque(maxlen=self.window_size)
-            self.history[sensor].append(value)
+                self.sums[sensor] = 0.0
+                self.sq_sums[sensor] = 0.0
+
+            history = self.history[sensor]
+
+            # If buffer is full, remove oldest from running stats before appending new
+            if len(history) == self.window_size:
+                oldest = history[0]
+                self.sums[sensor] -= oldest
+                self.sq_sums[sensor] -= oldest * oldest
+
+            history.append(value)
+            self.sums[sensor] += value
+            self.sq_sums[sensor] += value * value
 
     def detect(self, data: Dict[str, float], sensitivity: float) -> Dict[str, Any]:
         anomalies = {}
@@ -69,14 +83,22 @@ class RollingWindowStats(BaseAnomalyModel):
                 continue
 
             history = self.history[sensor]
-            if len(history) < 20: # Minimum samples
+            n = len(history)
+
+            if n < 20: # Minimum samples
                 continue
 
-            # Calculate stats on current window
-            # Using numpy for speed
-            vals = np.array(history)
-            mean = np.mean(vals)
-            std = np.std(vals)
+            # Calculate stats using running sums (O(1))
+            mean = self.sums[sensor] / n
+
+            # Variance = E[X^2] - (E[X])^2
+            variance = (self.sq_sums[sensor] / n) - (mean * mean)
+
+            # Handle potential floating point inaccuracies
+            if variance < 0:
+                variance = 0.0
+
+            std = math.sqrt(variance)
 
             if std == 0:
                 continue
@@ -99,8 +121,14 @@ class RollingWindowStats(BaseAnomalyModel):
 
     def load_state(self, state: Dict[str, Any]):
         self.history = {}
+        self.sums = {}
+        self.sq_sums = {}
+
         for k, v in state.items():
             self.history[k] = collections.deque(v, maxlen=self.window_size)
+            # Recompute running stats from loaded history
+            self.sums[k] = sum(v)
+            self.sq_sums[k] = sum(x*x for x in v)
 
 
 class IsolationForestModel(BaseAnomalyModel):
