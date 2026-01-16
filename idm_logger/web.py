@@ -116,7 +116,6 @@ def check_ip_whitelist():
     except ValueError:
         logger.warning(f"Invalid client IP: {client_ip}")
         abort(403)
-        return
 
     whitelist = config.get("network_security.whitelist", [])
     blacklist = config.get("network_security.blacklist", [])
