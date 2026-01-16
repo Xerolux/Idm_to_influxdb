@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 const isBrowserOnline = ref(navigator.onLine);
 const isBackendOnline = ref(false);
@@ -63,19 +63,6 @@ onUnmounted(() => {
   window.removeEventListener('offline', handleBrowserOffline);
 });
 
-// Watch for backend status changes and update status
-const updateOnlineStatus = () => {
-  const wasOnline = isOnline.value;
-  isOnline.value = isBrowserOnline.value && isBackendOnline.value;
-  
-  // Show offline banner if we went offline
-  if (wasOnline && !isOnline.value) {
-    showOfflineBanner.value = true;
-  } else if (!wasOnline && isOnline.value) {
-    showOfflineBanner.value = false;
-  }
-};
-
 // Get status text for tooltip
 const getStatusText = () => {
   if (!isBrowserOnline.value) return 'Browser Offline';
@@ -83,11 +70,10 @@ const getStatusText = () => {
   return 'Online';
 };
 
-// Update status when backend changes
-const unwatchBackend = [isBackendOnline];
-setInterval(() => {
+// Watch for backend status changes and update combined status
+watch([isBrowserOnline, isBackendOnline], () => {
   updateOnlineStatus();
-}, 1000);
+});
 </script>
 
 <template>
