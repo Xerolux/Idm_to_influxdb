@@ -75,6 +75,9 @@ docker compose logs -f
 
 # Pull latest images
 docker compose pull
+
+# Rebuild and start (for code updates)
+docker compose up -d --build
 ```
 
 #### Service URLs
