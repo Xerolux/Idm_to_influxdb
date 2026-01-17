@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 MQTT Publisher for IDM Heat Pump Logger
 Publishes sensor data to MQTT broker with authentication support.

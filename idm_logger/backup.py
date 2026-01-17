@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Backup and restore functionality for IDM Logger configuration and data."""
 
 import json

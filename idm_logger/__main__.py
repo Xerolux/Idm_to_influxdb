@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 IDM Heat Pump Logger - Entry point for Python module execution.
 """

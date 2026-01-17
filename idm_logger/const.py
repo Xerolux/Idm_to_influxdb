@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Constants for idm_logger."""
 
 from enum import EnumMeta, IntEnum, IntFlag

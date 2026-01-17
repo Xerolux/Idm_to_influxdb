@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import logging
 import smtplib
 from email.mime.text import MIMEText

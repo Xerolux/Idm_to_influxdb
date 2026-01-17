@@ -1,0 +1,57 @@
+# Attribution
+
+This file recognizes the individuals and organizations who have contributed to
+the IDM Metrics Collector project.
+
+## Project Creator and Primary Maintainer
+
+**Xerolux (Basti)**
+- GitHub: [@Xerolux](https://github.com/Xerolux)
+- Role: Project creator, primary developer, and maintainer
+- Contributions: Core architecture, Modbus integration, frontend development,
+  ML service implementation, and ongoing maintenance
+
+## Automated Contributors
+
+**Google Labs Jules (Bot)**
+- Automated code reviews and contributions via Google Labs Jules bot
+
+**Claude (Anthropic)**
+- AI-assisted development and code contributions
+
+## License
+
+This project is licensed under the MIT License.
+Copyright (c) 2024-2026 Xerolux
+
+## How to Contribute
+
+Contributions to this project are welcome! Please ensure that:
+
+1. You agree to license your contributions under the MIT License
+2. You have the right to submit the contribution
+3. Your code follows the project's coding standards
+4. You respect the project's code of conduct
+
+For more information about contributing, please:
+- Open an issue on GitHub to discuss proposed changes
+- Submit pull requests with clear descriptions
+- Follow the existing code style and conventions
+
+## Acknowledgments
+
+Special thanks to:
+- The open-source community for the excellent libraries and tools this project
+  depends on (see NOTICE file for full list)
+- IDM Energiesysteme GmbH for their heat pump technology (note: this project
+  is not affiliated with or endorsed by IDM Energiesysteme GmbH)
+- All users who have provided feedback, bug reports, and feature requests
+
+## Third-Party Attributions
+
+For a complete list of third-party software and their licenses, please refer
+to the NOTICE file in the root of this repository.
+
+---
+
+Last updated: 2026-01-17

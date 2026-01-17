@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import threading
 import time
 import logging

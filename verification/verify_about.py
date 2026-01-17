@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 from playwright.sync_api import sync_playwright, expect
 
 def test_about_page_content(page):

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import logging
 import requests
 import os

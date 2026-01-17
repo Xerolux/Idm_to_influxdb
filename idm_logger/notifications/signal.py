@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import logging
 import subprocess
 from typing import Iterable, List

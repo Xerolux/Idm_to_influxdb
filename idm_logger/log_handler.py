@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import logging
 from collections import deque
 import datetime

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Sensor addresses."""
 
 from abc import ABC, abstractmethod
