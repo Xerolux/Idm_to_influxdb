@@ -1,11 +1,8 @@
-# Copyright (c) 2024 Xerolux
-# All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2025 Xerolux
 #
-# This file contains proprietary logic for IDM Heat Pump authentication.
-# Unauthorized copying, modification, or distribution of this code is strictly prohibited.
-#
-# This code is encrypted to prevent unauthorized usage and access to the algorithm.
-# Property of Xerolux.
+# This file contains encrypted logic for IDM Heat Pump authentication.
+# The code is obfuscated to protect the authentication algorithm implementation.
 
 from cryptography.fernet import Fernet
 

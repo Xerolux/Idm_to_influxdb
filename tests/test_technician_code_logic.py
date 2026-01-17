@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 
 from datetime import datetime
 from unittest.mock import patch

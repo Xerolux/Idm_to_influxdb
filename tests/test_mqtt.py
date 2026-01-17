@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 import json
 import pytest
 from unittest.mock import MagicMock, patch

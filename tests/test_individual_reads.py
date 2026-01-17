@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Test individual sensor reads to find which addresses work."""
 
 import sys

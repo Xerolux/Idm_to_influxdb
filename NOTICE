@@ -1,0 +1,253 @@
+IDM Metrics Collector
+Copyright (c) 2024-2025 Xerolux
+
+This software is licensed under the MIT License (see LICENSE file).
+
+================================================================================
+
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+This project incorporates material from third-party open source software projects.
+The original copyright notices and licenses under which we received such components
+are set forth below for informational purposes. We reserve all rights not expressly
+granted herein, whether by implication, estoppel or otherwise.
+
+================================================================================
+
+PYTHON DEPENDENCIES
+================================================================================
+
+1. PyModbus
+   License: BSD-3-Clause
+   Copyright: Various contributors
+   https://github.com/pymodbus-dev/pymodbus
+
+2. Flask
+   License: BSD-3-Clause
+   Copyright: 2010 Pallets
+   https://palletsprojects.com/p/flask/
+
+3. PyYAML
+   License: MIT
+   Copyright: 2017-2021 Ingy döt Net, 2006-2016 Kirill Simonov
+   https://github.com/yaml/pyyaml
+
+4. Cryptography
+   License: Apache-2.0 OR BSD-3-Clause
+   Copyright: Individual contributors
+   https://github.com/pyca/cryptography
+
+5. Werkzeug
+   License: BSD-3-Clause
+   Copyright: 2007 Pallets
+   https://palletsprojects.com/p/werkzeug/
+
+6. Waitress
+   License: ZPL-2.1 (Zope Public License)
+   Copyright: Zope Foundation and Contributors
+   https://github.com/Pylons/waitress
+
+7. Paho MQTT
+   License: EPL-2.0 OR EDL-1.0
+   Copyright: Eclipse Foundation
+   https://github.com/eclipse/paho.mqtt.python
+
+8. Requests
+   License: Apache-2.0
+   Copyright: Kenneth Reitz and contributors
+   https://github.com/psf/requests
+
+9. Pytest
+   License: MIT
+   Copyright: Holger Krekel and others
+   https://github.com/pytest-dev/pytest
+
+10. Ruff
+    License: MIT
+    Copyright: Charlie Marsh and contributors
+    https://github.com/astral-sh/ruff
+
+11. Flasgger
+    License: MIT
+    Copyright: Rochacbruno and contributors
+    https://github.com/flasgger/flasgger
+
+12. Flask-Limiter
+    License: MIT
+    Copyright: Ali-Akber Saifee
+    https://github.com/alisaifee/flask-limiter
+
+13. Scikit-learn
+    License: BSD-3-Clause
+    Copyright: 2007-2024 The scikit-learn developers
+    https://github.com/scikit-learn/scikit-learn
+
+14. NumPy
+    License: BSD-3-Clause
+    Copyright: 2005-2024 NumPy Developers
+    https://github.com/numpy/numpy
+
+15. WebDAV4
+    License: MIT
+    Copyright: Sam Hames and contributors
+    https://github.com/skshetry/webdav4
+
+16. River
+    License: BSD-3-Clause
+    Copyright: River developers
+    https://github.com/online-ml/river
+
+17. Schedule
+    License: MIT
+    Copyright: Daniel Bader
+    https://github.com/dbader/schedule
+
+18. Typing Extensions
+    License: PSF-2.0 (Python Software Foundation License)
+    Copyright: Python Software Foundation
+    https://github.com/python/typing_extensions
+
+================================================================================
+
+FRONTEND (JAVASCRIPT) DEPENDENCIES
+================================================================================
+
+1. Vue.js
+   License: MIT
+   Copyright: 2013-present Yuxi (Evan) You
+   https://github.com/vuejs/core
+
+2. Vite
+   License: MIT
+   Copyright: 2019-present Yuxi (Evan) You and Vite contributors
+   https://github.com/vitejs/vite
+
+3. PrimeVue
+   License: MIT
+   Copyright: PrimeTek Informatics
+   https://github.com/primefaces/primevue
+
+4. TailwindCSS
+   License: MIT
+   Copyright: Tailwind Labs, Inc.
+   https://github.com/tailwindlabs/tailwindcss
+
+5. Axios
+   License: MIT
+   Copyright: Matt Zabriskie and contributors
+   https://github.com/axios/axios
+
+6. GridStack
+   License: MIT
+   Copyright: Alain Dumesny and contributors
+   https://github.com/gridstack/gridstack.js
+
+7. Pinia
+   License: MIT
+   Copyright: Eduardo San Martin Morote
+   https://github.com/vuejs/pinia
+
+8. Vue Router
+   License: MIT
+   Copyright: Eduardo San Martin Morote
+   https://github.com/vuejs/router
+
+9. VueUse
+   License: MIT
+   Copyright: Anthony Fu
+   https://github.com/vueuse/vueuse
+
+10. PrimeIcons
+    License: MIT
+    Copyright: PrimeTek Informatics
+    https://github.com/primefaces/primeicons
+
+11. Vue I18n
+    License: MIT
+    Copyright: Kazuya Kawaguchi
+    https://github.com/intlify/vue-i18n-next
+
+12. UUID
+    License: MIT
+    Copyright: Various contributors
+    https://github.com/uuidjs/uuid
+
+13. ESLint
+    License: MIT
+    Copyright: OpenJS Foundation and ESLint contributors
+    https://github.com/eslint/eslint
+
+14. Prettier
+    License: MIT
+    Copyright: James Long and contributors
+    https://github.com/prettier/prettier
+
+================================================================================
+
+APACHE-2.0 LICENSE NOTICE
+
+Some dependencies are licensed under the Apache License, Version 2.0
+("Apache-2.0"). You may obtain a copy of the Apache License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the Apache License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+Components licensed under Apache-2.0:
+- Cryptography (dual-licensed Apache-2.0 OR BSD-3-Clause)
+- Requests
+
+================================================================================
+
+BSD LICENSE NOTICE
+
+Many dependencies are licensed under BSD licenses (BSD-2-Clause, BSD-3-Clause).
+These licenses require that copyright notices and license text be preserved in
+distributions. Please refer to individual project repositories for full license
+text and copyright information.
+
+Components licensed under BSD variants:
+- PyModbus (BSD-3-Clause)
+- Flask (BSD-3-Clause)
+- Werkzeug (BSD-3-Clause)
+- Scikit-learn (BSD-3-Clause)
+- NumPy (BSD-3-Clause)
+- River (BSD-3-Clause)
+- Cryptography (dual-licensed Apache-2.0 OR BSD-3-Clause)
+
+================================================================================
+
+ECLIPSE PUBLIC LICENSE NOTICE
+
+Paho MQTT is licensed under the Eclipse Public License 2.0 (EPL-2.0) or the
+Eclipse Distribution License 1.0 (EDL-1.0). You may obtain copies of these
+licenses at:
+
+    EPL-2.0: https://www.eclipse.org/legal/epl-2.0/
+    EDL-1.0: https://www.eclipse.org/org/documents/edl-v10.php
+
+================================================================================
+
+ADDITIONAL INFORMATION
+
+For complete and up-to-date license information for all dependencies, please
+refer to:
+
+- Python dependencies: requirements.txt, ml_service/requirements.txt
+- Frontend dependencies: frontend/package.json, frontend/package-lock.json
+
+Each dependency's full license text can be found in its respective repository
+or in the node_modules directory after installation.
+
+================================================================================
+
+DISCLAIMER
+
+This project is a private development and is not affiliated with IDM
+Energiesysteme GmbH. Use is at your own risk. In particular, write operations
+(control functions) should be configured carefully.
+
+================================================================================
