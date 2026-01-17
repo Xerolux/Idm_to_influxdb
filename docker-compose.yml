@@ -44,7 +44,9 @@ services:
       - "-retentionPeriod=1y"
 
   ml-service:
-    build: ./ml_service
+    build:
+      context: .
+      dockerfile: ml_service/Dockerfile
     container_name: idm-ml-service
     restart: unless-stopped
     depends_on:
