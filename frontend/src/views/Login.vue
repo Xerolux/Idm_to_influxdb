@@ -10,6 +10,7 @@ import ErrorDisplay from '../components/ErrorDisplay.vue';
 
 const password = ref('');
 const error = ref('');
+const touched = ref(false);
 const auth = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
@@ -20,11 +21,16 @@ const passwordError = computed(() => {
   return '';
 });
 
+const showPasswordError = computed(() => {
+  return touched.value && passwordError.value;
+});
+
 const isValid = computed(() => {
   return password.value && !passwordError.value;
 });
 
 const handleLogin = async () => {
+    touched.value = true;
     if (!isValid.value) {
         error.value = 'Bitte geben Sie ein gültiges Passwort ein';
         return;
@@ -55,10 +61,11 @@ const handleLogin = async () => {
                             v-model="password" 
                             type="password" 
                             placeholder="Passwort eingeben"
-                            :class="{ 'border-error-500': passwordError, 'border-gray-600': !passwordError }"
+                            :class="{ 'border-error-500': showPasswordError, 'border-gray-600': !showPasswordError }"
+                            @blur="touched = true"
                             @keyup.enter="handleLogin"
                         />
-                        <div v-if="passwordError" class="text-xs text-error-400 flex items-center gap-1">
+                        <div v-if="showPasswordError" class="text-xs text-error-400 flex items-center gap-1">
                             <i class="pi pi-exclamation-circle"></i>
                             {{ passwordError }}
                         </div>
