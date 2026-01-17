@@ -61,96 +61,68 @@ async function startFrontend() {
 }
 
 async function capture() {
+    // Clean up temp_videos first
+    if (fs.existsSync(VIDEO_DIR)) {
+        fs.rmSync(VIDEO_DIR, { recursive: true, force: true });
+        fs.mkdirSync(VIDEO_DIR);
+    }
+
     const viteProcess = await startFrontend();
     const browser = await chromium.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Add these for container environments
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    // Create a context with video recording for GIFs
+    const BASE_URL = 'http://localhost:5173/static';
+
+    // -------------------------------------------------------------------------
+    // PHASE 1: Static Screenshots (No Video)
+    // -------------------------------------------------------------------------
+    console.log("Starting screenshots...");
     const context = await browser.newContext({
-        viewport: { width: 1280, height: 800 },
-        recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },
-        baseURL: 'http://localhost:5173/static/' // Adjusted base URL
+        viewport: { width: 1280, height: 800 }
     });
-
     const page = await context.newPage();
 
-    // Mock API Routes
-    await page.route('/api/auth/check', async route => {
-        await route.fulfill({ json: MOCK_AUTH });
-    });
-
-    await page.route('/api/login', async route => {
-        await route.fulfill({ json: { success: true } });
-    });
-
-    await page.route('/api/data', async route => {
-        await route.fulfill({ json: MOCK_DATA });
-    });
-
-    await page.route('/api/version', async route => {
-        await route.fulfill({ json: MOCK_VERSION });
-    });
-
-    await page.route('/api/config', async route => {
-        await route.fulfill({ json: MOCK_CONFIG });
-    });
+    // Setup Mocks for Screenshots
+    await page.route('**/api/auth/check', async route => route.fulfill({ json: MOCK_AUTH }));
+    await page.route('**/api/login', async route => route.fulfill({ json: { success: true } }));
+    await page.route('**/api/data', async route => route.fulfill({ json: MOCK_DATA }));
+    await page.route('**/api/version', async route => route.fulfill({ json: MOCK_VERSION }));
+    await page.route('**/api/config', async route => route.fulfill({ json: MOCK_CONFIG }));
 
     // 1. Login Screen (Unauthenticated)
-    // We need a separate context or just navigate to login and mock auth check as false temporarily
-    // But easier to just mock 'must_change_password: false' and valid auth for most shots.
-    // Let's do a quick fake login shot first by overriding the route for one shot.
-    await page.route('/api/auth/check', async route => {
-        await route.fulfill({ json: { authenticated: false } });
-    });
-    await page.goto('/login');
+    await page.route('**/api/auth/check', async route => route.fulfill({ json: { authenticated: false } }));
+    await page.goto(`${BASE_URL}/login`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_login.png') });
 
     // Restore Auth
-    await page.unroute('/api/auth/check'); // Remove specific override
-    await page.route('/api/auth/check', async route => {
-         await route.fulfill({ json: { authenticated: true, must_change_password: false } });
-    });
+    await page.unroute('**/api/auth/check');
+    await page.route('**/api/auth/check', async route => route.fulfill({ json: MOCK_AUTH }));
 
     // 2. Dashboard
-    await page.goto('/');
-    await page.waitForTimeout(2000); // Wait for animations
+    await page.goto(`${BASE_URL}/`);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '02_dashboard.png') });
 
-    // Capture Video for Dashboard GIF (simulating live data)
-    // We will update the mock data slightly
-    let tempData = { ...MOCK_DATA };
-    await page.route('/api/data', async route => {
-        // slight jitter
-        tempData.temp_heat_pump_flow += (Math.random() - 0.5);
-        await route.fulfill({ json: tempData });
-    });
-
-    // Just stay on page for 5 seconds to record "activity" (polling)
-    await page.waitForTimeout(5000);
-    // Note: Video is saved when page/context closes. We'll handle conversion later.
-
     // 3. Control
-    await page.goto('/control');
+    await page.goto(`${BASE_URL}/control`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '03_control.png') });
 
     // 4. Schedule
-    await page.goto('/schedule');
+    await page.goto(`${BASE_URL}/schedule`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '04_schedule.png') });
 
     // 5. Alerts
-    await page.goto('/alerts');
+    await page.goto(`${BASE_URL}/alerts`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '05_alerts.png') });
 
     // 6. Config (Blur sensitive)
-    await page.goto('/config');
+    await page.goto(`${BASE_URL}/config`);
     await page.waitForTimeout(1000);
-
-    // Inject CSS to blur
     await page.addStyleTag({
         content: `
             input[type="password"],
@@ -166,29 +138,69 @@ async function capture() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '06_config.png') });
 
     // 7. Logs
-    await page.goto('/logs');
+    await page.goto(`${BASE_URL}/logs`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '07_logs.png') });
 
     // 8. Tools
-    await page.goto('/tools');
+    await page.goto(`${BASE_URL}/tools`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '08_tools.png') });
 
     // 9. About
-    await page.goto('/about');
+    await page.goto(`${BASE_URL}/about`);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '09_about.png') });
 
-    // Close to save video
     await context.close();
-    await browser.close();
+    console.log("Screenshots complete.");
 
-    // Stop Vite
+    // -------------------------------------------------------------------------
+    // PHASE 2: Demo GIF (Dashboard Only)
+    // -------------------------------------------------------------------------
+    console.log("Starting demo video recording...");
+    const videoContext = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } }
+    });
+    const videoPage = await videoContext.newPage();
+
+    // Setup Mocks for Video
+    await videoPage.route('**/api/auth/check', async route => route.fulfill({ json: MOCK_AUTH }));
+    await videoPage.route('**/api/login', async route => route.fulfill({ json: { success: true } }));
+    await videoPage.route('**/api/version', async route => route.fulfill({ json: MOCK_VERSION }));
+    await videoPage.route('**/api/config', async route => route.fulfill({ json: MOCK_CONFIG }));
+
+    // Dynamic Data Mock
+    let tempData = { ...MOCK_DATA };
+    await videoPage.route('**/api/data', async route => {
+        // Simple Jitter Simulation
+        // Add random fluctuation between -0.3 and +0.3
+        const delta = (Math.random() * 0.6) - 0.3;
+        tempData.temp_heat_pump_flow = parseFloat((tempData.temp_heat_pump_flow + delta).toFixed(1));
+
+        // Keep within bounds
+        if (tempData.temp_heat_pump_flow > 40) tempData.temp_heat_pump_flow = 35.2;
+        if (tempData.temp_heat_pump_flow < 30) tempData.temp_heat_pump_flow = 35.2;
+
+        await route.fulfill({ json: tempData });
+    });
+
+    // Navigate and Record
+    await videoPage.goto(`${BASE_URL}/`);
+
+    // Stay on dashboard for 8 seconds
+    await videoPage.waitForTimeout(8000);
+
+    await videoContext.close(); // Saves video to disk
+    console.log("Video recording complete.");
+
+    await browser.close();
     viteProcess.kill();
 
-    // Convert Video to GIF
-    // Find the video file
+    // -------------------------------------------------------------------------
+    // PHASE 3: Convert to GIF
+    // -------------------------------------------------------------------------
     const videoFile = fs.readdirSync(VIDEO_DIR).find(f => f.endsWith('.webm'));
     if (videoFile) {
         const inputPath = path.join(VIDEO_DIR, videoFile);
@@ -196,9 +208,6 @@ async function capture() {
 
         console.log(`Converting ${inputPath} to ${outputPath}...`);
 
-        // Use ffmpeg to convert.
-        // -vf "fps=10,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
-        // This generates a high quality GIF.
         const ffmpeg = spawn('ffmpeg', [
             '-y',
             '-i', inputPath,
@@ -206,6 +215,9 @@ async function capture() {
             '-loop', '0',
             outputPath
         ]);
+
+        ffmpeg.stdout.on('data', (data) => console.log(`ffmpeg out: ${data}`));
+        ffmpeg.stderr.on('data', (data) => console.error(`ffmpeg err: ${data}`));
 
         ffmpeg.on('close', (code) => {
             console.log(`FFmpeg finished with code ${code}`);
