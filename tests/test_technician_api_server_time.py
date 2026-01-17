@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: MIT
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from idm_logger.web import app
-import time
 
 @pytest.fixture
 def client():

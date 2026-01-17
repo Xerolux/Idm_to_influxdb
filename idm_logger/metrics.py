@@ -4,7 +4,6 @@ import requests
 import os
 import queue
 import threading
-import time
 from .config import config
 
 logger = logging.getLogger(__name__)

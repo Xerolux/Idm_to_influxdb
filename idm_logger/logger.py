@@ -18,7 +18,6 @@ from .update_manager import (
     is_update_allowed,
 )
 from .alerts import alert_manager
-from .signal_notifications import send_signal_message
 from .backup import backup_manager
 
 # Get logger instance (configure in main())

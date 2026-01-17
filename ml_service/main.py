@@ -246,7 +246,7 @@ def write_metrics(score: float, is_anomaly: bool, features_count: int, processin
         f"idm_anomaly_flag value={1 if is_anomaly else 0}",
         f"idm_ml_features_count value={features_count}",
         f"idm_ml_processing_time_ms value={processing_time * 1000}",
-        f"idm_ml_model_updates value=1"  # Counter
+        "idm_ml_model_updates value=1"  # Counter
     ]
 
     data = "\n".join(lines)
