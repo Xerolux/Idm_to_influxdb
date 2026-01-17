@@ -10,9 +10,11 @@ const VIDEO_DIR = path.join(__dirname, 'temp_videos');
 
 // Ensure directories exist
 [SCREENSHOT_DIR, IMAGES_DIR, VIDEO_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (fs.existsSync(dir)) {
+        // Clean up old files
+        fs.rmSync(dir, { recursive: true, force: true });
     }
+    fs.mkdirSync(dir, { recursive: true });
 });
 
 // Mock Data
@@ -43,6 +45,7 @@ const MOCK_CONFIG = {
 };
 
 const MOCK_VERSION = { version: '0.6.0' };
+// CRITICAL: Ensure must_change_password is false to bypass the forced change screen
 const MOCK_AUTH = { authenticated: true, must_change_password: false };
 
 async function startFrontend() {
@@ -52,7 +55,9 @@ async function startFrontend() {
         shell: true
     });
 
-    vite.stdout.on('data', (data) => console.log(`Vite: ${data}`));
+    vite.stdout.on('data', (data) => {
+        // console.log(`Vite: ${data}`)
+    });
     vite.stderr.on('data', (data) => console.error(`Vite Err: ${data}`));
 
     // Wait for server to be ready
@@ -63,24 +68,19 @@ async function startFrontend() {
 async function capture() {
     const viteProcess = await startFrontend();
     const browser = await chromium.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Add these for container environments
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     // Create a context with video recording for GIFs
     const context = await browser.newContext({
         viewport: { width: 1280, height: 800 },
-        recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } }
-        // Removed baseURL to avoid confusion with redirects
+        recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },
+        colorScheme: 'dark' // Use dark mode if available/supported
     });
 
     const page = await context.newPage();
 
     // Mock API Routes
-    // Note: We need to intercept requests to the backend API, which in dev mode are proxied.
-    // Since we are mocking, we just intercept the requests Playwright sees.
-    // The frontend makes requests to /api/..., which map to http://localhost:5173/api/...
-    // So we can just route **/api/**
-
     await page.route('**/api/auth/check', async route => {
         await route.fulfill({ json: MOCK_AUTH });
     });
@@ -101,93 +101,106 @@ async function capture() {
         await route.fulfill({ json: MOCK_CONFIG });
     });
 
-    // Base URL for navigation
+    // Base URL for navigation (Vite dev server)
     const BASE_URL = 'http://localhost:5173/static';
 
-    // 1. Login Screen
-    // Mock unauthenticated state for this shot
+    // Inject CSS for blurring sensitive data across the entire session
+    await page.addInitScript(() => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            input[type="password"],
+            input[name*="key"],
+            input[name*="token"],
+            input[name*="secret"],
+            .p-password-input,
+            .sensitive-data
+            {
+                filter: blur(6px) !important;
+                opacity: 0.6;
+            }
+        `;
+        document.head.appendChild(style);
+    });
+
+    // --- SCENARIO 1: Login Screen (Static Screenshot) ---
+    console.log('Capturing Login...');
+    // Mock unauthenticated state
     await page.route('**/api/auth/check', async route => {
         await route.fulfill({ json: { authenticated: false } });
     });
 
-    // Navigate to /static/login
     await page.goto(`${BASE_URL}/login`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500); // Wait for animation
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_login.png') });
 
-    // Restore Auth
+    // --- SCENARIO 2: Main Application Walkthrough (Video & Screenshots) ---
+    console.log('Capturing Application Flow...');
+
+    // Restore Authenticated State
     await page.unroute('**/api/auth/check');
     await page.route('**/api/auth/check', async route => {
          await route.fulfill({ json: { authenticated: true, must_change_password: false } });
     });
 
-    // 2. Dashboard
-    // Navigate to /static/
+    // 1. Dashboard
     await page.goto(`${BASE_URL}/`);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000); // Linger on dashboard
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '02_dashboard.png') });
 
-    // Capture Video for Dashboard GIF
+    // Simulate some live data updates for the video
     let tempData = { ...MOCK_DATA };
-    await page.route('**/api/data', async route => {
+    for(let i=0; i<5; i++) {
         tempData.temp_heat_pump_flow += (Math.random() - 0.5);
-        await route.fulfill({ json: tempData });
-    });
+        await page.evaluate((data) => {
+             // If the app polls, this won't trigger immediately unless we intercept the poll.
+             // But since we route '**/api/data', the next poll will get this.
+        }, tempData);
+        await page.waitForTimeout(200);
+    }
 
-    await page.waitForTimeout(5000);
-
-    // 3. Control
+    // 2. Control
     await page.goto(`${BASE_URL}/control`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '03_control.png') });
 
-    // 4. Schedule
+    // 3. Schedule
     await page.goto(`${BASE_URL}/schedule`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '04_schedule.png') });
 
-    // 5. Alerts
+    // 4. Alerts
     await page.goto(`${BASE_URL}/alerts`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '05_alerts.png') });
 
-    // 6. Config (Blur sensitive)
+    // 5. Config (Blurred)
     await page.goto(`${BASE_URL}/config`);
-    await page.waitForTimeout(1000);
-
-    await page.addStyleTag({
-        content: `
-            input[type="password"],
-            input[name*="key"],
-            input[name*="token"],
-            .p-password-input
-            {
-                filter: blur(5px) !important;
-                opacity: 0.7;
-            }
-        `
-    });
+    await page.waitForTimeout(2000);
+    // Ensure styles are applied (InitScript handles it, but double check via screenshot)
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '06_config.png') });
 
-    // 7. Logs
+    // 6. Logs
     await page.goto(`${BASE_URL}/logs`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '07_logs.png') });
 
-    // 8. Tools
+    // 7. Tools
     await page.goto(`${BASE_URL}/tools`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '08_tools.png') });
 
-    // 9. About
+    // 8. About
     await page.goto(`${BASE_URL}/about`);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '09_about.png') });
+
+    // Go back to dashboard for a clean loop end
+    await page.goto(`${BASE_URL}/`);
+    await page.waitForTimeout(2000);
 
     // Close to save video
     await context.close();
     await browser.close();
-
     viteProcess.kill();
 
     // Convert Video to GIF
@@ -198,10 +211,12 @@ async function capture() {
 
         console.log(`Converting ${inputPath} to ${outputPath}...`);
 
+        // ffmpeg to convert webm to gif
+        // Adjusting filter for better quality and reasonable size
         const ffmpeg = spawn('ffmpeg', [
             '-y',
             '-i', inputPath,
-            '-vf', 'fps=10,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+            '-vf', 'fps=10,scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
             '-loop', '0',
             outputPath
         ]);
