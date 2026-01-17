@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: MIT
-import time
 from playwright.sync_api import sync_playwright, expect
 
 def verify_login_ux():

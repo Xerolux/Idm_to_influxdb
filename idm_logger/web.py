@@ -383,7 +383,6 @@ def ml_alert_endpoint():
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        alert_type = data.get("type", "anomaly")
         score = data.get("score", 0.0)
         threshold = data.get("threshold", 0.7)
         message = data.get("message", f"ML Alert: Score {score}")
@@ -694,10 +693,12 @@ def config_page():
 
             # Backup
             if "backup_enabled" in data:
-                if "backup" not in config.data: config.data["backup"] = {}
+                if "backup" not in config.data:
+                    config.data["backup"] = {}
                 config.data["backup"]["enabled"] = bool(data["backup_enabled"])
             if "backup_interval" in data:
-                if "backup" not in config.data: config.data["backup"] = {}
+                if "backup" not in config.data:
+                    config.data["backup"] = {}
                 try:
                     interval = int(data["backup_interval"])
                     if 1 <= interval <= 168:
@@ -707,7 +708,8 @@ def config_page():
                 except ValueError:
                     return jsonify({"error": "Backup Intervall ungültig"}), 400
             if "backup_retention" in data:
-                if "backup" not in config.data: config.data["backup"] = {}
+                if "backup" not in config.data:
+                    config.data["backup"] = {}
                 try:
                     ret = int(data["backup_retention"])
                     if 1 <= ret <= 50:
@@ -717,7 +719,8 @@ def config_page():
                 except ValueError:
                      return jsonify({"error": "Backup Anzahl ungültig"}), 400
             if "backup_auto_upload" in data:
-                if "backup" not in config.data: config.data["backup"] = {}
+                if "backup" not in config.data:
+                    config.data["backup"] = {}
                 config.data["backup"]["auto_upload"] = bool(data["backup_auto_upload"])
 
             # Network Security

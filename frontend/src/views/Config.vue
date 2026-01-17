@@ -548,7 +548,6 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
 import SelectButton from 'primevue/selectbutton';
-import Slider from 'primevue/slider';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
@@ -569,10 +568,6 @@ const config = ref({
     updates: { enabled: false, interval_hours: 12, mode: 'apply', target: 'all', channel: 'latest' },
     backup: { enabled: false, interval: 24, retention: 10, auto_upload: false }
 });
-const aiModelOptions = ref([
-    { label: 'Statistisch (Rolling Window)', value: 'rolling' },
-    { label: 'Isolation Forest (Expert)', value: 'isolation_forest' }
-]);
 const showPasswordDialog = ref(false);
 const newPassword = ref('');
 const confirmPassword = ref('');

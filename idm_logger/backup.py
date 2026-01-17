@@ -6,7 +6,6 @@ import logging
 import os
 import zipfile
 import shutil
-import tarfile
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -83,7 +82,7 @@ class BackupManager:
                 logger.error(f"Failed to copy VM snapshot: {result.stderr}")
                 return False
 
-            logger.info(f"VictoriaMetrics snapshot copied successfully")
+            logger.info("VictoriaMetrics snapshot copied successfully")
 
             # Clean up snapshot in container (optional, to save space)
             delete_response = requests.post(
@@ -93,7 +92,7 @@ class BackupManager:
             )
 
             if delete_response.status_code == 200:
-                logger.info(f"Cleaned up VM snapshot in container")
+                logger.info("Cleaned up VM snapshot in container")
 
             return True
 
@@ -454,7 +453,7 @@ class BackupManager:
             webdav_result = None
             if config.get("webdav.enabled", False) and config.get("backup.auto_upload", False):
                 logger.info("Auto-uploading backup to WebDAV...")
-                webdav_result = self.upload_to_webdav(str(backup_path))
+                webdav_result = BackupManager.upload_to_webdav(str(backup_path))
 
             return {
                 "success": True,
