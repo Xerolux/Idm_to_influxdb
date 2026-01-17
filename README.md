@@ -2,17 +2,15 @@
 
 [![GitHub Release][releases-shield]][releases]
 [![Downloads][downloads-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
-
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
-[![Buy Me A Coffee][buymeacoffee-badge]][buymeacoffee]
-[![Tesla](https://img.shields.io/badge/Tesla-Referral-red?style=for-the-badge&logo=tesla)](https://ts.la/sebastian564489)
 
 **Die Komplettlösung für deine IDM Wärmepumpe.**
 
 Überwache, steuere und automatiere deine Wärmepumpe (Navigator 2.0) bequem über den Browser. Eine Docker-basierte Anwendung, die alles vereint: Live-Monitoring, Langzeit-Datenspeicherung und professionelle Analyse-Tools.
+
+![Demo](docs/images/demo.gif)
 
 > **Kompatibilität**
 >
@@ -21,7 +19,14 @@
 
 ---
 
-![Demo](docs/images/demo.gif)
+## 📖 Dokumentation
+
+Wir legen Wert auf eine erstklassige Dokumentation.
+
+*   📄 **[Ausführliches Handbuch (PDF) herunterladen](docs/IDM_Metrics_Collector_Handbuch.pdf)**
+*   📚 [Online Dokumentation lesen](docs/MANUAL.md)
+
+---
 
 ## ✨ Funktionen
 
@@ -105,18 +110,12 @@ docker compose up -d
 
 Öffne `http://<deine-ip>:5008` im Browser.
 
-1.  **Login:** Melde dich mit `admin` / `admin` an.
-2.  **Passwort ändern:** Aus Sicherheitsgründen wirst du aufgefordert, sofort ein neues Passwort zu vergeben.
-3.  **Konfiguration:** Gehe zu "Einstellungen" (Config) und trage die IP-Adresse deiner Wärmepumpe ein.
+1.  **Ersteinrichtung:** Folge dem Assistenten, um die IP deiner Wärmepumpe einzutragen und ein sicheres Passwort zu vergeben.
+2.  **Login:** Melde dich mit `admin` und deinem neuen Passwort an.
 
-![Login](docs/screenshots/01_login.png)
+![Setup](docs/screenshots/00_setup.png)
 
 ---
-
-## ⚠️ Wichtige Hinweise
-
-*   **Sicherheit:** Ändere das Standard-Passwort sofort nach der Installation. Das System zwingt dich dazu, diesen Schritt nicht zu überspringen. In den Demo-Bildern wurden sensible Codes unkenntlich gemacht.
-*   **Haftung:** Dies ist ein privates Projekt. Die Nutzung erfolgt auf eigene Gefahr. Sei vorsichtig beim Ändern von Parametern an der Heizung.
 
 ## 🤝 Support
 
@@ -132,12 +131,8 @@ License: MIT
 [releases-shield]: https://img.shields.io/github/release/xerolux/idm-metrics-collector.svg?style=for-the-badge
 [releases]: https://github.com/xerolux/idm-metrics-collector/releases
 [downloads-shield]: https://img.shields.io/github/downloads/xerolux/idm-metrics-collector/latest/total.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/xerolux/idm-metrics-collector.svg?style=for-the-badge
-[commits]: https://github.com/xerolux/idm-metrics-collector/commits/main
 [license-shield]: https://img.shields.io/github/license/xerolux/idm-metrics-collector.svg?style=for-the-badge
 [discord]: https://discord.gg/Qa5fW2R
 [discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
-[buymeacoffee]: https://www.buymeacoffee.com/xerolux
-[buymeacoffee-badge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
