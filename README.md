@@ -12,7 +12,7 @@
 
 **Die Komplettlösung für deine IDM Wärmepumpe.**
 
-Überwache, steuere und automatisiere deine Wärmepumpe (Navigator 2.0) bequem über den Browser. Eine Docker-basierte Anwendung, die alles vereint: Live-Monitoring, Langzeit-Datenspeicherung und professionelle Analyse-Tools.
+Überwache, steuere und automatiere deine Wärmepumpe (Navigator 2.0) bequem über den Browser. Eine Docker-basierte Anwendung, die alles vereint: Live-Monitoring, Langzeit-Datenspeicherung und professionelle Analyse-Tools.
 
 > **Kompatibilität**
 >
@@ -55,12 +55,28 @@ Das System wacht über deine Anlage.
 
 ![Alerts](docs/screenshots/05_alerts.png)
 
+### ⚙️ Konfiguration (Config)
+Passe das System an deine Bedürfnisse an.
+*   **Verbindung:** IP-Adresse und Modbus-Parameter.
+*   **Heizkreise:** Aktiviere die Heizkreise, die du nutzen möchtest (A, B, C...).
+*   **Backup:** Automatische Backups deiner Einstellungen und Datenbank.
+*   **Datenschutz:** Sensible Daten wie Passwörter werden in Screenshots automatisch unkenntlich gemacht.
+
+![Config](docs/screenshots/06_config.png)
+
 ### 🔧 Tools & Service
 Nützliche Werkzeuge für Profis und Eigentümer.
 *   **Code Generator:** Erzeuge temporäre Fachmann- oder Technikercodes für tiefergehende Einstellungen am Navigator Panel.
 *   **System Logs:** Detaillierte Einblicke in die Kommunikation mit der Wärmepumpe.
 
 ![Tools](docs/screenshots/08_tools.png)
+
+### ℹ️ Über (About)
+Systeminformationen und Versionierung auf einen Blick.
+*   **Version:** Anzeige der aktuellen Software-Version.
+*   **Links:** Direkter Zugang zu Dokumentation, Support und Community.
+
+![About](docs/screenshots/09_about.png)
 
 ### 📊 Langzeit-Analyse (Grafana)
 Für alle Daten-Liebhaber ist ein voll konfiguriertes Grafana Dashboard integriert.
@@ -93,22 +109,13 @@ docker compose up -d
 2.  **Passwort ändern:** Aus Sicherheitsgründen wirst du aufgefordert, sofort ein neues Passwort zu vergeben.
 3.  **Konfiguration:** Gehe zu "Einstellungen" (Config) und trage die IP-Adresse deiner Wärmepumpe ein.
 
-![Config](docs/screenshots/06_config.png)
+![Login](docs/screenshots/01_login.png)
 
 ---
 
-## ⚙️ Konfiguration
-
-In den Einstellungen kannst du das System an deine Bedürfnisse anpassen:
-
-*   **Verbindung:** IP-Adresse und Modbus-Parameter.
-*   **Heizkreise:** Aktiviere die Heizkreise, die du nutzen möchtest (A, B, C...).
-*   **Schreibrechte:** Aktiviere "Write Access", wenn du die Steuerung nutzen möchtest.
-*   **Backup:** Automatische Backups deiner Einstellungen und Datenbank.
-
 ## ⚠️ Wichtige Hinweise
 
-*   **Sicherheit:** Ändere das Standard-Passwort sofort nach der Installation. Das System zwingt dich dazu, diesen Schritt nicht zu überspringen.
+*   **Sicherheit:** Ändere das Standard-Passwort sofort nach der Installation. Das System zwingt dich dazu, diesen Schritt nicht zu überspringen. In den Demo-Bildern wurden sensible Codes unkenntlich gemacht.
 *   **Haftung:** Dies ist ein privates Projekt. Die Nutzung erfolgt auf eigene Gefahr. Sei vorsichtig beim Ändern von Parametern an der Heizung.
 
 ## 🤝 Support
