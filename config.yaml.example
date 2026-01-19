@@ -14,6 +14,9 @@ metrics:
   # VictoriaMetrics write URL
   url: "http://victoriametrics:8428/write"
 
+# Internal Security
+# internal_api_key: "change_me_to_random_secret"
+
 web:
   # Enable web interface
   enabled: true

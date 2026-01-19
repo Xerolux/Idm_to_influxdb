@@ -241,6 +241,10 @@ class Config:
         if os.environ.get("UPDATES_TARGET"):
             self.data["updates"]["target"] = os.environ["UPDATES_TARGET"]
 
+        # Internal API Key
+        if os.environ.get("INTERNAL_API_KEY"):
+            self.data["internal_api_key"] = os.environ["INTERNAL_API_KEY"]
+
     def _merge_dicts(self, default, override):
         """Recursively merge override dictionary into default."""
         new_dict = default.copy()
@@ -323,6 +327,7 @@ class Config:
                 "retention": 10,
                 "auto_upload": False,
             },
+            "internal_api_key": "",
             "setup_completed": False,
         }
 
