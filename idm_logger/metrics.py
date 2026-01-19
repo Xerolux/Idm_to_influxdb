@@ -4,6 +4,7 @@ import requests
 import os
 import queue
 import threading
+import time
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -42,50 +43,80 @@ class MetricsWriter:
 
     def _worker(self):
         """Worker thread to process metrics queue."""
+        batch = []
+        last_flush_time = time.time()
+        BATCH_SIZE = 50
+        BATCH_TIMEOUT = 1.0
+
         while not self.stop_event.is_set():
             try:
-                # Wait for data with timeout to allow checking stop_event
-                measurements = self.queue.get(timeout=1.0)
-            except queue.Empty:
-                continue
+                # Calculate how long to wait for the next item
+                time_since_last_flush = time.time() - last_flush_time
+                if batch:
+                    # If we have items, wait only until the timeout expires
+                    wait_time = max(0.1, BATCH_TIMEOUT - time_since_last_flush)
+                else:
+                    # If empty, wait up to 1s (to check stop_event periodically)
+                    wait_time = 1.0
 
-            try:
-                self._send_data(measurements)
-            except Exception as e:
-                logger.error(f"Error in metrics worker: {e}")
-            finally:
+                measurements = self.queue.get(timeout=wait_time)
+                batch.append(measurements)
                 self.queue.task_done()
+            except queue.Empty:
+                pass
 
-    def _send_data(self, measurements: dict) -> bool:
+            # Check flush conditions
+            current_time = time.time()
+            if batch and (
+                len(batch) >= BATCH_SIZE
+                or (current_time - last_flush_time) >= BATCH_TIMEOUT
+            ):
+                try:
+                    self._send_batch(batch)
+                except Exception as e:
+                    logger.error(f"Error in metrics worker: {e}")
+                finally:
+                    batch = []
+                    last_flush_time = current_time
+
+        # Flush remaining items on stop
+        if batch:
+            try:
+                self._send_batch(batch)
+            except Exception as e:
+                logger.error(f"Error in metrics worker flushing on stop: {e}")
+
+    def _send_batch(self, batch: list) -> bool:
         """Internal method to send data to VictoriaMetrics (executed in worker thread)."""
-        # Construct Line Protocol
-        # measurement field1=val1,field2=val2
-        # We omit timestamp to let VictoriaMetrics assign the current server time
+        lines = []
+        for measurements in batch:
+            measurement = "idm_heatpump"
+            fields = []
 
-        measurement = "idm_heatpump"
-        fields = []
+            for key, value in measurements.items():
+                # Skip string representation fields
+                if key.endswith("_str"):
+                    continue
+                # Convert booleans to int
+                if isinstance(value, bool):
+                    value = int(value)
+                # Only write numeric values
+                if isinstance(value, (int, float)):
+                    fields.append(f"{key}={value}")
 
-        for key, value in measurements.items():
-            # Skip string representation fields
-            if key.endswith("_str"):
-                continue
-            # Convert booleans to int
-            if isinstance(value, bool):
-                value = int(value)
-            # Only write numeric values
-            if isinstance(value, (int, float)):
-                fields.append(f"{key}={value}")
+            if fields:
+                field_str = ",".join(fields)
+                lines.append(f"{measurement} {field_str}")
 
-        if not fields:
+        if not lines:
             return False
 
-        field_str = ",".join(fields)
-        line = f"{measurement} {field_str}"
+        payload = "\n".join(lines)
 
         try:
             # VictoriaMetrics /write endpoint
             # Use session for connection pooling
-            response = self.session.post(self.url, data=line, timeout=5)
+            response = self.session.post(self.url, data=payload, timeout=5)
             if response.status_code in (200, 204):
                 return True
             else:
