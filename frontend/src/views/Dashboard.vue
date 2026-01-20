@@ -23,9 +23,16 @@
                     :trend="getTrend(widget.sensor)"
                     :status="getStatus(widget.sensor)"
                 />
-                 <div v-if="editMode" class="absolute top-2 right-2 cursor-pointer text-gray-400 hover:text-red-400 z-10 transition-colors p-1 rounded hover:bg-red-500/20 bg-gray-800 shadow-sm" @click="removeWidget(widget.id)">
+                 <button
+                    v-if="editMode"
+                    type="button"
+                    class="absolute top-2 right-2 cursor-pointer text-gray-400 hover:text-red-400 z-10 transition-colors p-1 rounded hover:bg-red-500/20 bg-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                    @click="removeWidget(widget.id)"
+                    aria-label="Widget entfernen"
+                    v-tooltip.left="'Widget entfernen'"
+                >
                     <i class="pi pi-times text-sm"></i>
-                </div>
+                </button>
             </div>
         </Teleport>
 
