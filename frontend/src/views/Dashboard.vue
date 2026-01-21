@@ -11,9 +11,9 @@
                 <span class="text-gray-900 font-semibold">Home Dashboard</span>
             </div>
             <div class="flex items-center gap-3">
-                 <button class="p-2 hover:bg-gray-200 rounded text-gray-600"><i class="pi pi-expand"></i></button>
-                 <button class="p-2 hover:bg-gray-200 rounded text-gray-600"><i class="pi pi-bell"></i></button>
-                 <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-bold">MK</div>
+                 <button class="p-2 hover:bg-gray-200 rounded text-gray-600" aria-label="Expand view" v-tooltip="'Expand view'"><i class="pi pi-expand"></i></button>
+                 <button class="p-2 hover:bg-gray-200 rounded text-gray-600" aria-label="Notifications" v-tooltip="'Notifications'"><i class="pi pi-bell"></i></button>
+                 <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-bold" role="img" aria-label="User Avatar">MK</div>
             </div>
         </div>
 
@@ -24,7 +24,7 @@
                     <button class="flex-1 bg-teal-700 hover:bg-teal-800 text-white py-2 px-3 rounded flex items-center justify-center gap-2 text-sm font-medium transition-colors">
                         <i class="pi pi-chart-bar"></i> Chart Dashboard
                     </button>
-                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-3 rounded flex items-center justify-center gap-2 text-sm font-medium transition-colors">
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-3 rounded flex items-center justify-center gap-2 text-sm font-medium transition-colors" aria-label="Export data" v-tooltip="'Export data'">
                         <i class="pi pi-file-export"></i>
                     </button>
                 </div>
