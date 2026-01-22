@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from idm_logger.web import app, config
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def test_ml_alert_no_auth_by_default(client):
     if "internal_api_key" in config.data:
         del config.data["internal_api_key"]
 
-    with patch('idm_logger.web.notification_manager') as mock_notify:
+    with patch('idm_logger.web.notification_manager'):
         response = client.post('/api/internal/ml_alert', json={
             "score": 0.9, "threshold": 0.7, "message": "Test"
         })

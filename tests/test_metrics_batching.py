@@ -64,9 +64,7 @@ class TestMetricsBatching:
         """
         q = queue.Queue()
         batch = []
-        last_send = time.time() - 2.0 # Force timeout immediately if checked
         BATCH_SIZE = 3
-        BATCH_TIMEOUT = 1.0
 
         # Scenario 1: Fill batch to size
         items = [{"v": i} for i in range(3)]
@@ -93,7 +91,6 @@ class TestMetricsBatching:
         batch.append(item)
 
         # Simulate timeout check
-        now = time.time()
         # if batch and (now - last_send > BATCH_TIMEOUT)...
         # Since we set last_send long ago, it should trigger
         if batch: # Assume timeout logic triggered in real worker
