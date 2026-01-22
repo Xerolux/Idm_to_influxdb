@@ -405,7 +405,12 @@ const fetchData = async () => {
 
     const datasets = [];
 
-    const promises = props.queries.map(async (q) => {
+    // Separate metric and expression queries
+    const metricQueries = props.queries.filter(q => !q.type || q.type === 'metric');
+    const expressionQueries = props.queries.filter(q => q.type === 'expression');
+
+    // Fetch all metric queries first
+    const metricPromises = metricQueries.map(async (q) => {
         try {
             const res = await axios.get('/api/metrics/query_range', {
                 params: {
@@ -422,9 +427,13 @@ const fetchData = async () => {
         }
     });
 
-    const results = await Promise.all(promises);
+    const metricResults = await Promise.all(metricPromises);
 
-    for (const { q, res } of results) {
+    // Build a map of query data for expression evaluation
+    const queryDataMap = {};
+
+    // Process metric queries
+    for (const { q, res } of metricResults) {
         if (res && res.data && res.data.status === 'success') {
             const result = res.data.data.result;
             if (result.length > 0) {
@@ -448,6 +457,48 @@ const fetchData = async () => {
                 }
 
                 datasets.push(dataset);
+
+                // Store data for expression evaluation
+                if (q.label) {
+                    queryDataMap[q.label.toUpperCase()] = values;
+                }
+            }
+        }
+    }
+
+    // Evaluate expression queries
+    for (const q of expressionQueries) {
+        if (q.expression && q.label) {
+            try {
+                const exprRes = await axios.post('/api/query/evaluate', {
+                    expression: q.expression,
+                    queries: queryDataMap
+                });
+
+                if (exprRes.data && exprRes.data.status === 'success') {
+                    const values = exprRes.data.data.values; // [[timestamp, value], ...]
+                    const dataPoints = values.map(v => ({
+                        x: v[0] * 1000,
+                        y: parseFloat(v[1])
+                    }));
+
+                    const dataset = {
+                        label: q.label,
+                        data: dataPoints,
+                        borderColor: q.color,
+                        backgroundColor: q.color,
+                        fill: false
+                    };
+
+                    // Assign to second Y-axis if in dual mode
+                    if (props.yAxisMode === 'dual' && datasets.length >= 1) {
+                        dataset.yAxisID = 'y1';
+                    }
+
+                    datasets.push(dataset);
+                }
+            } catch (e) {
+                console.error(`Expression evaluation error for ${q.label}:`, e);
             }
         }
     }

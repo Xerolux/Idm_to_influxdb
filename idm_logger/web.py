@@ -32,6 +32,7 @@ from .dashboard_config import dashboard_manager
 from .templates import get_alert_templates
 from .annotations import AnnotationManager
 from .variables import VariableManager
+from .expression_parser import ExpressionParser
 from shutil import which
 import threading
 import logging
@@ -77,6 +78,9 @@ annotation_manager = AnnotationManager(config)
 
 # Variable Manager
 variable_manager = VariableManager(config)
+
+# Expression Parser
+expression_parser = ExpressionParser()
 
 # Shared state
 current_data = {}
@@ -647,6 +651,60 @@ def query_metrics_range():
         return jsonify(response.json())
     except Exception as e:
         logger.error(f"Metrics query failed: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/query/evaluate", methods=["POST"])
+@login_required
+def evaluate_expression():
+    """
+    Evaluate a mathematical expression on query results.
+
+    Expects JSON:
+    {
+        "expression": "A/B",  // Expression to evaluate
+        "queries": {           // Query results for each label
+            "A": [[timestamp1, value1], [timestamp2, value2], ...],
+            "B": [[timestamp1, value1], [timestamp2, value2], ...]
+        }
+    }
+
+    Returns:
+    {
+        "status": "success",
+        "data": {
+            "values": [[timestamp1, result1], [timestamp2, result2], ...]
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "error": "No data provided"}), 400
+
+        expression = data.get("expression")
+        queries = data.get("queries", {})
+
+        if not expression:
+            return jsonify({"status": "error", "error": "Expression is required"}), 400
+
+        if not queries:
+            return jsonify({"status": "error", "error": "Queries are required"}), 400
+
+        # Validate expression
+        is_valid, error_msg = expression_parser.validate_expression(expression)
+        if not is_valid:
+            return jsonify({"status": "error", "error": error_msg}), 400
+
+        # Set query results
+        expression_parser.set_query_results(queries)
+
+        # Evaluate expression
+        results = expression_parser.evaluate_expression_series(expression)
+
+        return jsonify({"status": "success", "data": {"values": results}})
+    except Exception as e:
+        logger.error(f"Expression evaluation failed: {e}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -1550,19 +1608,22 @@ def delete_database():
 # Annotations API
 # ============================================================================
 
+
 @app.route("/api/annotations", methods=["GET"])
 @login_required
 def get_annotations():
     """Get all annotations or filter by dashboard and time range"""
     try:
-        dashboard_id = request.args.get('dashboard_id')
-        start = request.args.get('start', type=int)
-        end = request.args.get('end', type=int)
+        dashboard_id = request.args.get("dashboard_id")
+        start = request.args.get("start", type=int)
+        end = request.args.get("end", type=int)
 
         if dashboard_id:
             annotations = annotation_manager.get_annotations_for_dashboard(dashboard_id)
         elif start and end:
-            annotations = annotation_manager.get_annotations_for_time_range(start, end, dashboard_id)
+            annotations = annotation_manager.get_annotations_for_time_range(
+                start, end, dashboard_id
+            )
         else:
             annotations = annotation_manager.get_all_annotations()
 
@@ -1580,24 +1641,26 @@ def create_annotation():
         data = request.get_json()
 
         # Validate required fields
-        if not data.get('text'):
+        if not data.get("text"):
             return jsonify({"error": "text is required"}), 400
 
         # Convert time to timestamp if provided as string
-        time = data.get('time')
+        time = data.get("time")
         if time and isinstance(time, str):
             from datetime import datetime
-            time = int(datetime.fromisoformat(time.replace('Z', '+00:00')).timestamp())
+
+            time = int(datetime.fromisoformat(time.replace("Z", "+00:00")).timestamp())
         elif not time:
             from datetime import datetime
+
             time = int(datetime.now().timestamp())
 
         annotation = annotation_manager.add_annotation(
             time=time,
-            text=data['text'],
-            tags=data.get('tags', []),
-            color=data.get('color', '#ef4444'),
-            dashboard_id=data.get('dashboard_id')
+            text=data["text"],
+            tags=data.get("tags", []),
+            color=data.get("color", "#ef4444"),
+            dashboard_id=data.get("dashboard_id"),
         )
 
         return jsonify(annotation.to_dict()), 201
@@ -1628,17 +1691,18 @@ def update_annotation(annotation_id):
         data = request.get_json()
 
         # Convert time to timestamp if provided as string
-        time = data.get('time')
+        time = data.get("time")
         if time and isinstance(time, str):
             from datetime import datetime
-            time = int(datetime.fromisoformat(time.replace('Z', '+00:00')).timestamp())
+
+            time = int(datetime.fromisoformat(time.replace("Z", "+00:00")).timestamp())
 
         annotation = annotation_manager.update_annotation(
             annotation_id=annotation_id,
             time=time,
-            text=data.get('text'),
-            tags=data.get('tags'),
-            color=data.get('color')
+            text=data.get("text"),
+            tags=data.get("tags"),
+            color=data.get("color"),
         )
 
         if not annotation:
@@ -1668,17 +1732,22 @@ def delete_annotation(annotation_id):
 # Variables API
 # ============================================================================
 
+
 @app.route("/api/variables", methods=["GET"])
 @login_required
 def get_variables():
     """Get all variables or values for a specific variable"""
     try:
         # Check if we need to fetch values for a specific variable
-        variable_id = request.args.get('fetch_values_for')
+        variable_id = request.args.get("fetch_values_for")
 
         if variable_id:
-            metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
-            return jsonify(variable_manager.get_variable_values(variable_id, metrics_url))
+            metrics_url = config.data.get("metrics", {}).get(
+                "url", "http://victoriametrics:8428/write"
+            )
+            return jsonify(
+                variable_manager.get_variable_values(variable_id, metrics_url)
+            )
         else:
             # Return all variable definitions (without values)
             variables = variable_manager.get_all_variables()
@@ -1696,18 +1765,18 @@ def create_variable():
         data = request.get_json()
 
         # Validate required fields
-        if not data.get('id') or not data.get('name') or not data.get('type'):
+        if not data.get("id") or not data.get("name") or not data.get("type"):
             return jsonify({"error": "id, name, and type are required"}), 400
 
         variable = variable_manager.add_variable(
-            var_id=data['id'],
-            name=data['name'],
-            var_type=data['type'],
-            query=data.get('query'),
-            values=data.get('values'),
-            default=data.get('default'),
-            multi=data.get('multi', False),
-            regex=data.get('regex')
+            var_id=data["id"],
+            name=data["name"],
+            var_type=data["type"],
+            query=data.get("query"),
+            values=data.get("values"),
+            default=data.get("default"),
+            multi=data.get("multi", False),
+            regex=data.get("regex"),
         )
 
         return jsonify(variable.to_dict()), 201
@@ -1722,9 +1791,13 @@ def get_variable(variable_id):
     """Get a specific variable"""
     try:
         # Check if we need to fetch values
-        if request.args.get('fetch_values'):
-            metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
-            return jsonify(variable_manager.get_variable_values(variable_id, metrics_url))
+        if request.args.get("fetch_values"):
+            metrics_url = config.data.get("metrics", {}).get(
+                "url", "http://victoriametrics:8428/write"
+            )
+            return jsonify(
+                variable_manager.get_variable_values(variable_id, metrics_url)
+            )
         else:
             variable = variable_manager.get_variable(variable_id)
             if not variable:
@@ -1744,13 +1817,13 @@ def update_variable(variable_id):
 
         variable = variable_manager.update_variable(
             variable_id=variable_id,
-            name=data.get('name'),
-            type=data.get('type'),
-            query=data.get('query'),
-            values=data.get('values'),
-            default=data.get('default'),
-            multi=data.get('multi'),
-            regex=data.get('regex')
+            name=data.get("name"),
+            type=data.get("type"),
+            query=data.get("query"),
+            values=data.get("values"),
+            default=data.get("default"),
+            multi=data.get("multi"),
+            regex=data.get("regex"),
         )
 
         if not variable:
@@ -1795,11 +1868,11 @@ def substitute_variables():
     """
     try:
         data = request.get_json()
-        query = data.get('query', '')
-        variables = data.get('variables', {})
+        query = data.get("query", "")
+        variables = data.get("variables", {})
 
         result = variable_manager.substitute_variables(query, variables)
-        return jsonify({'result': result})
+        return jsonify({"result": result})
     except Exception as e:
         logger.error(f"Failed to substitute variables: {e}")
         return jsonify({"error": str(e)}), 500

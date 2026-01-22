@@ -29,13 +29,22 @@
             <div>
                 <div class="flex items-center justify-between mb-2">
                     <label class="block text-sm font-medium text-gray-700">Queries</label>
-                    <Button
-                        @click="addQuery"
-                        icon="pi pi-plus"
-                        size="small"
-                        severity="secondary"
-                        label="Hinzufügen"
-                    />
+                    <div class="flex gap-1">
+                        <Button
+                            @click="addQuery"
+                            icon="pi pi-plus"
+                            size="small"
+                            severity="secondary"
+                            label="Query"
+                        />
+                        <Button
+                            @click="addExpression"
+                            icon="pi pi-calculator"
+                            size="small"
+                            severity="info"
+                            label="Expression"
+                        />
+                    </div>
                 </div>
                 <div class="space-y-2">
                     <div
@@ -44,16 +53,43 @@
                         class="flex gap-2 items-center p-2 bg-gray-50 rounded"
                     >
                         <div class="flex-grow space-y-2">
-                            <InputText
-                                v-model="query.label"
-                                placeholder="Label"
-                                class="w-full text-sm"
-                            />
-                            <InputText
-                                v-model="query.query"
-                                placeholder="Metric name (z.B. temp_flow_current_circuit_A)"
-                                class="w-full text-sm"
-                            />
+                            <div class="flex gap-2">
+                                <InputText
+                                    v-model="query.label"
+                                    placeholder="Label"
+                                    class="flex-grow text-sm"
+                                />
+                                <Dropdown
+                                    v-model="query.type"
+                                    :options="queryTypes"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    class="w-32 text-sm"
+                                />
+                            </div>
+                            <div v-if="query.type === 'metric'" class="flex gap-2">
+                                <InputText
+                                    v-model="query.query"
+                                    placeholder="Metric name (z.B. temp_flow_current_circuit_A)"
+                                    class="flex-grow text-sm"
+                                />
+                            </div>
+                            <div v-else-if="query.type === 'expression'" class="flex gap-2">
+                                <InputText
+                                    v-model="query.expression"
+                                    placeholder="Expression (z.B. A/B)"
+                                    class="flex-grow text-sm font-mono"
+                                    readonly
+                                />
+                                <Button
+                                    @click="openExpressionBuilder(index)"
+                                    icon="pi pi-pencil"
+                                    size="small"
+                                    severity="secondary"
+                                    text
+                                    title="Expression bearbeiten"
+                                />
+                            </div>
                         </div>
                         <div class="flex items-center gap-1">
                             <ColorPicker
@@ -139,15 +175,23 @@
             />
         </template>
     </Dialog>
+
+    <ExpressionBuilder
+        v-model:visible="expressionBuilderVisible"
+        :currentExpression="currentExpressionIndex !== null ? localChart.queries[currentExpressionIndex]?.expression : ''"
+        :availableQueries="availableQueries"
+        @save="onExpressionSave"
+    />
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import ColorPicker from 'primevue/colorpicker';
+import ExpressionBuilder from './ExpressionBuilder.vue';
 
 const props = defineProps({
     chart: {
@@ -159,6 +203,9 @@ const props = defineProps({
 const emit = defineEmits(['save']);
 
 const visible = ref(false);
+const expressionBuilderVisible = ref(false);
+const currentExpressionIndex = ref(null);
+
 const localChart = ref({
     title: '',
     queries: [],
@@ -174,13 +221,36 @@ const hourOptions = [
     { label: '7 Tage', value: 168 }
 ];
 
+const queryTypes = [
+    { label: 'Metric', value: 'metric' },
+    { label: 'Expression', value: 'expression' }
+];
+
 const colors = [
     '#f59e0b', '#3b82f6', '#ef4444', '#22c55e',
     '#a855f7', '#ec4899', '#14b8a6', '#f97316'
 ];
 
+// Get available queries for expression builder
+const availableQueries = computed(() => {
+    return localChart.value.queries
+        .filter(q => q.type === 'metric' && q.label)
+        .map(q => ({
+            label: q.label.toUpperCase(),
+            query: q.query
+        }));
+});
+
 const open = () => {
     localChart.value = JSON.parse(JSON.stringify(props.chart));
+
+    // Ensure all queries have a type
+    localChart.value.queries.forEach(q => {
+        if (!q.type) {
+            q.type = 'metric';
+        }
+    });
+
     visible.value = true;
 };
 
@@ -189,12 +259,36 @@ const addQuery = () => {
     localChart.value.queries.push({
         label: `Query ${localChart.value.queries.length + 1}`,
         query: '',
+        type: 'metric',
+        color: color
+    });
+};
+
+const addExpression = () => {
+    const color = colors[localChart.value.queries.length % colors.length];
+    localChart.value.queries.push({
+        label: `Expression ${localChart.value.queries.length + 1}`,
+        expression: '',
+        type: 'expression',
         color: color
     });
 };
 
 const removeQuery = (index) => {
     localChart.value.queries.splice(index, 1);
+};
+
+const openExpressionBuilder = (index) => {
+    currentExpressionIndex.value = index;
+    expressionBuilderVisible.value = true;
+};
+
+const onExpressionSave = (expression) => {
+    if (currentExpressionIndex.value !== null) {
+        localChart.value.queries[currentExpressionIndex.value].expression = expression;
+    }
+    expressionBuilderVisible.value = false;
+    currentExpressionIndex.value = null;
 };
 
 const addThreshold = () => {

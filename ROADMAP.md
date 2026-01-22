@@ -6,7 +6,7 @@
 
 ---
 
-## Aktueller Stand: v0.8.0 (~92% Parität)
+## Aktueller Stand: v0.9.1 (~98% Parität)
 
 ### ✅ Erledigt
 
@@ -23,6 +23,10 @@
 - [x] Dashboard Export PNG/PDF (Roadmap #4) - ✅ NEW
 - [x] Annotations / Markierungen (Roadmap #1) - ✅ NEW
 - [x] Variables / Template Variables (Roadmap #2) - ✅ NEW
+- [x] Custom CSS pro Dashboard (Roadmap #6) - ✅ NEW
+- [x] Table Panel (Roadmap #10) - ✅ NEW
+- [x] State Timeline (Roadmap #11) - ✅ NEW
+- [x] Math Queries / Expressions (Roadmap #5) - ✅ NEW
 
 ---
 
@@ -168,43 +172,41 @@
 
 ### 🟡 Mittlere Priorität (Nice-to-Have)
 
-#### 5. Math Queries / Expressions
+#### ~~5. Math Queries / Expressions~~ ✅ ERLEDIGT
 **Beschreibung**: Mathematische Ausdrücke in Queries, z.B. `A/B`, `A*100`, `(A+B)/2`
 
 **Grafana**: Query Expressions / Transformations
 
-**Umsetzung**:
-- [ ] Expression Parser (sicherer eval)
-- [ ] Supported Operations: +, -, *, /, (), avg, sum, min, max
-- [ ] Query Builder UI
-- [ ] Expression Validation
-
-**Aufwand**: 5-6 Stunden
+**Umsetzung**: ✅ COMPLETED
+- [x] Expression Parser (sicherer eval)
+- [x] Supported Operations: +, -, *, /, (), avg, sum, min, max
+- [x] Query Builder UI
+- [x] Expression Validation
 
 **Files**:
-- `idm_logger/query_parser.py` - Backend Parser
-- `frontend/src/utils/expressionParser.js` - Frontend Parser
-- `frontend/src/components/ExpressionBuilder.vue` - UI
+- `idm_logger/expression_parser.py` - Backend Parser ✅
+- `frontend/src/utils/expressionParser.js` - Frontend Parser ✅
+- `frontend/src/components/ExpressionBuilder.vue` - UI ✅
 
 ---
 
-#### 6. Custom CSS pro Dashboard
+#### ~~6. Custom CSS pro Dashboard~~ ✅ ERLEDIGT
 **Beschreibung**: Benutzerdefiniertes CSS für einzelne Dashboards
 
 **Grafana**: CSS Panel Options
 
-**Umsetzung**:
-- [ ] CSS Editor (Monaco/CodeMirror)
-- [ ] CSS Sandbox (scoped styles)
-- [ ] CSS Validation
-- [ ] Preview Mode
+**Umsetzung**: ✅ COMPLETED
+- [x] CSS Editor (Textarea-based)
+- [x] CSS Sandbox (scoped styles)
+- [x] CSS Validation
+- [x] Preview Mode
 
 **Aufwand**: 3-4 Stunden
 
 **Files**:
-- `frontend/src/components/CssEditor.vue` - UI
-- `idm_logger/dashboard_config.py` - CSS Storage
-- Security: CSP restrictions beachten
+- `frontend/src/components/CssEditor.vue` - UI ✅
+- `idm_logger/dashboard_config.py` - CSS Storage ✅
+- Security: CSP restrictions beachten ✅
 
 ---
 
@@ -267,33 +269,41 @@
 
 ---
 
-#### 10. Table Panel
+#### ~~10. Table Panel~~ ✅ ERLEDIGT
 **Beschreibung**: Tabellarische Darstellung von Daten
 
 **Grafana**: Table Panel
 
-**Umsetzung**:
-- [ ] TableCard Component
-- [ ] Sortierung, Filterung
-- [ ] Pagination
-- [ ] Column Configuration
+**Umsetzung**: ✅ COMPLETED
+- [x] TableCard Component
+- [x] Sortierung, Filterung
+- [x] Pagination
+- [x] Column Configuration
 
 **Aufwand**: 4-5 Stunden
 
+**Files**:
+- `frontend/src/components/TableCard.vue` - Component ✅
+- `frontend/src/components/TableConfigDialog.vue` - Config ✅
+
 ---
 
-#### 11. State Timeline
+#### ~~11. State Timeline~~ ✅ ERLEDIGT
 **Beschreibung**: Zeitstrahl für Status-Verläufe (Heizen/Aus, etc.)
 
 **Grafana**: State Timeline Panel
 
-**Umsetzung**:
-- [ ] StateTimelineCard Component
-- [ ] State Detection (Wertänderungen)
-- [ ] Color Coding (pro Status)
-- [ ] Interactive States
+**Umsetzung**: ✅ COMPLETED
+- [x] StateTimelineCard Component
+- [x] State Detection (Wertänderungen)
+- [x] Color Coding (pro Status)
+- [x] Interactive States
 
 **Aufwand**: 5-6 Stunden
+
+**Files**:
+- `frontend/src/components/StateTimelineCard.vue` - Component ✅
+- `frontend/src/components/StateTimelineConfigDialog.vue` - Config ✅
 
 ---
 
@@ -413,5 +423,5 @@ Jede Hilfe ist willkommen! Schau dir die Issues an oder sprich mich auf Discord 
 ---
 
 **Stand**: 2025-01-22
-**Version**: 0.8.0
-**Nächstes Release**: 0.9.0 (Advanced Features)
+**Version**: 0.9.0
+**Nächstes Release**: 1.0.0 (Feature Complete)
