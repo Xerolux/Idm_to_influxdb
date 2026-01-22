@@ -6,7 +6,6 @@ import os
 sys.path.append(os.getcwd())
 
 from idm_logger.dashboard_config import DashboardManager, get_default_dashboards
-from idm_logger.config import Config
 
 class TestDashboardRepair(unittest.TestCase):
     def setUp(self):
@@ -32,7 +31,7 @@ class TestDashboardRepair(unittest.TestCase):
         mock_config_module.save = MagicMock()
 
         # Initialize manager - this triggers __init__ which calls _repair_broken_dashboards
-        manager = DashboardManager()
+        _ = DashboardManager()
 
         # Verify that save was called (implying a change was made)
         mock_config_module.save.assert_called()
@@ -55,7 +54,7 @@ class TestDashboardRepair(unittest.TestCase):
         mock_config_module.data = {"dashboards": [good_dashboard]}
         mock_config_module.save = MagicMock()
 
-        manager = DashboardManager()
+        _ = DashboardManager()
 
         # Verify that save was NOT called (implying no change needed)
         # Wait, _ensure_dashboards_key calls save if key is missing, but here it is present.
