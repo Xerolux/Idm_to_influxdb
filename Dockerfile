@@ -8,7 +8,7 @@ RUN mkdir -p idm_logger/static
 WORKDIR /app/frontend
 # Install dependencies and build
 ENV CI=true
-RUN npm install -g pnpm && pnpm install && pnpm build
+RUN npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm build
 
 # Stage 2: Runtime
 FROM python:3.12-slim
