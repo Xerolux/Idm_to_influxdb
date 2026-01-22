@@ -399,7 +399,7 @@ const addChart = async () => {
     }
 };
 
-const onSensorDragStart = (metric) => {
+const onSensorDragStart = () => {
     isDraggingSensor.value = true;
 };
 

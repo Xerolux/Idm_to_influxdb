@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -7,18 +6,19 @@ sys.path.append(os.getcwd())
 
 from idm_logger.dashboard_config import get_default_dashboards
 
+
 def test_default_dashboards():
     dashboards = get_default_dashboards()
 
     assert len(dashboards) == 1
     dashboard = dashboards[0]
-    assert dashboard['name'] == "Home Dashboard"
+    assert dashboard["name"] == "Home Dashboard"
 
-    charts = dashboard['charts']
+    charts = dashboard["charts"]
     print(f"Found {len(charts)} charts in default dashboard")
 
     # Verify specific charts
-    titles = [c['title'] for c in charts]
+    titles = [c["title"] for c in charts]
     expected_titles = [
         "Wärmepumpe Temperaturen",
         "Warmwasser Temperaturen",
@@ -27,7 +27,7 @@ def test_default_dashboards():
         "Heizkreis A - Temperaturen",
         "Speicher & Quelltemperaturen",
         "COP Verlauf",
-        "AI Anomalie-Erkennung"
+        "AI Anomalie-Erkennung",
     ]
 
     for title in expected_titles:
@@ -37,12 +37,13 @@ def test_default_dashboards():
 
     # Check chart structure
     for chart in charts:
-        assert 'id' in chart
-        assert 'queries' in chart
-        assert 'hours' in chart
-        assert len(chart['queries']) > 0
+        assert "id" in chart
+        assert "queries" in chart
+        assert "hours" in chart
+        assert len(chart["queries"]) > 0
 
     print("Chart structure verification passed.")
+
 
 if __name__ == "__main__":
     try:

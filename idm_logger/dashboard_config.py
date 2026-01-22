@@ -173,7 +173,7 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                             "label": "Anomalie Flag",
                             "query": "idm_anomaly_flag",
                             "color": "#f59e0b",
-                        }
+                        },
                     ],
                     "hours": 24,
                 },

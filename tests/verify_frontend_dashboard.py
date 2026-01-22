@@ -1,34 +1,43 @@
 from playwright.sync_api import sync_playwright, expect
 import json
 
+
 def verify_dashboard():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         # Grant permissions for clipboard if needed, though not strictly required for this test
-        context = browser.new_context(viewport={'width': 1920, 'height': 1080})
+        context = browser.new_context(viewport={"width": 1920, "height": 1080})
         page = context.new_page()
 
         # Debugging
         page.on("console", lambda msg: print(f"CONSOLE: {msg.text}"))
         page.on("pageerror", lambda err: print(f"PAGE ERROR: {err}"))
-        page.on("requestfailed", lambda req: print(f"REQUEST FAILED: {req.url} {req.failure}"))
-
+        page.on(
+            "requestfailed",
+            lambda req: print(f"REQUEST FAILED: {req.url} {req.failure}"),
+        )
 
         # Mock API responses
 
         # 1. Auth Check - Authenticated
-        page.route("**/api/auth/check", lambda route: route.fulfill(
-            status=200,
-            content_type="application/json",
-            body=json.dumps({"authenticated": True, "must_change_password": False})
-        ))
+        page.route(
+            "**/api/auth/check",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"authenticated": True, "must_change_password": False}),
+            ),
+        )
 
         # 2. Version
-        page.route("**/api/version", lambda route: route.fulfill(
-            status=200,
-            content_type="application/json",
-            body=json.dumps({"version": "verify-test"})
-        ))
+        page.route(
+            "**/api/version",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"version": "verify-test"}),
+            ),
+        )
 
         # 3. Dashboard Configuration (The key part we changed)
         # providing the structure expected by the frontend
@@ -41,28 +50,43 @@ def verify_dashboard():
                         "id": "temp_chart",
                         "title": "Temperaturen",
                         "queries": [
-                            {"label": "Außen", "query": "temp_outside", "color": "#3b82f6"},
-                            {"label": "Vorlauf", "query": "temp_supply", "color": "#ef4444"}
+                            {
+                                "label": "Außen",
+                                "query": "temp_outside",
+                                "color": "#3b82f6",
+                            },
+                            {
+                                "label": "Vorlauf",
+                                "query": "temp_supply",
+                                "color": "#ef4444",
+                            },
                         ],
-                        "hours": 24
+                        "hours": 24,
                     },
                     {
                         "id": "power_chart",
                         "title": "Leistung",
                         "queries": [
-                            {"label": "Aktuell", "query": "power_current", "color": "#10b981"}
+                            {
+                                "label": "Aktuell",
+                                "query": "power_current",
+                                "color": "#10b981",
+                            }
                         ],
-                        "hours": 24
-                    }
-                ]
+                        "hours": 24,
+                    },
+                ],
             }
         ]
 
-        page.route("**/api/dashboards", lambda route: route.fulfill(
-            status=200,
-            content_type="application/json",
-            body=json.dumps(dashboards_response)
-        ))
+        page.route(
+            "**/api/dashboards",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(dashboards_response),
+            ),
+        )
 
         # 4. Mock Metrics Data (Query Range)
         # We need to return data so charts render
@@ -79,16 +103,16 @@ def verify_dashboard():
                                 [1700000000, "10"],
                                 [1700003600, "15"],
                                 [1700007200, "12"],
-                                [1700010800, "20"]
-                            ]
+                                [1700010800, "20"],
+                            ],
                         }
-                    ]
-                }
+                    ],
+                },
             }
             route.fulfill(
                 status=200,
                 content_type="application/json",
-                body=json.dumps(response_data)
+                body=json.dumps(response_data),
             )
 
         page.route("**/api/metrics/query_range*", handle_query_range)
@@ -96,29 +120,39 @@ def verify_dashboard():
         # 5. Mock Sensor Data (Available and Current values for sidebar)
         # The sidebar calls /api/metrics/available and /api/metrics/current
 
-        page.route("**/api/metrics/available", lambda route: route.fulfill(
-            status=200,
-            content_type="application/json",
-            body=json.dumps({
-                "temperature": [
-                    {"name": "temp_outside", "display": "Außentemperatur"},
-                    {"name": "temp_supply", "display": "Vorlauftemperatur"}
-                ],
-                "power": [
-                    {"name": "power_current", "display": "Aktuelle Leistung"}
-                ]
-            })
-        ))
+        page.route(
+            "**/api/metrics/available",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {
+                        "temperature": [
+                            {"name": "temp_outside", "display": "Außentemperatur"},
+                            {"name": "temp_supply", "display": "Vorlauftemperatur"},
+                        ],
+                        "power": [
+                            {"name": "power_current", "display": "Aktuelle Leistung"}
+                        ],
+                    }
+                ),
+            ),
+        )
 
-        page.route("**/api/metrics/current", lambda route: route.fulfill(
-            status=200,
-            content_type="application/json",
-            body=json.dumps({
-                "temp_outside": {"value": 5.5, "timestamp": 1700000000},
-                "temp_supply": {"value": 45.2, "timestamp": 1700000000},
-                "power_current": {"value": 1200, "timestamp": 1700000000}
-            })
-        ))
+        page.route(
+            "**/api/metrics/current",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {
+                        "temp_outside": {"value": 5.5, "timestamp": 1700000000},
+                        "temp_supply": {"value": 45.2, "timestamp": 1700000000},
+                        "power_current": {"value": 1200, "timestamp": 1700000000},
+                    }
+                ),
+            ),
+        )
 
         # Navigate to the app
         # Assuming pnpm dev is running on 5173
@@ -151,6 +185,7 @@ def verify_dashboard():
             raise e
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     verify_dashboard()
