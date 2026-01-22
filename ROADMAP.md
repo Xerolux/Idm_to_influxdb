@@ -6,7 +6,7 @@
 
 ---
 
-## Aktueller Stand: v0.7.0 (~80% Parität)
+## Aktueller Stand: v0.7.1 (~85% Parität)
 
 ### ✅ Erledigt
 
@@ -18,12 +18,67 @@
 - [x] Drag & Drop Dashboard
 - [x] Responsive Design
 - [x] Tooltips mit deutschen Formaten
+- [x] Alert Display im Chart (Roadmap #12) - ✅ NEW
+- [x] Bar Charts (Roadmap #3) - ✅ NEW
+- [x] Dashboard Export PNG/PDF (Roadmap #4) - ✅ NEW
 
 ---
 
 ## Was fehlt zu 100% Grafana-Parität?
 
 ### 🔴 Hohe Priorität (Core Features)
+
+#### ~~3. Bar Charts & Histograms~~ ✅ ERLEDIGT
+**Beschreibung**: Balkendiagramme für Verteilungen
+
+**Grafana**: Bar Chart Panel
+
+**Umsetzung**: ✅ COMPLETED
+- [x] Chart.js Bar Chart Integration
+- [x] BarCard Component
+- [x] Konfiguration (horizontal/vertikal, stacked, grouped)
+- [x] Time-based Bar Charts (z.B. Energie pro Tag)
+
+**Files**:
+- `frontend/src/components/BarCard.vue` - Component ✅
+- `frontend/src/utils/chartTypes.js` - Chart Type Registry (TODO)
+
+---
+
+#### ~~4. Dashboard Export (PNG/PDF)~~ ✅ ERLEDIGT
+**Beschreibung**: Dashboard als Bild oder PDF exportieren
+
+**Grafana**: Share → Export
+
+**Umsetzung**: ✅ COMPLETED
+- [x] html2canvas oder dom-to-image Integration
+- [x] Export Dialog (Format, Qualität, Bereich)
+- [x] PDF Generation mit jsPDF
+- [x] Batch Export (alle Dashboards) - Utility function vorhanden
+
+**Files**:
+- `frontend/src/utils/dashboardExport.js` - Export Logic ✅
+- `frontend/src/components/ExportDialog.vue` - UI ✅
+- `frontend/package.json` - Dependencies ✅
+
+---
+
+#### ~~12. Alert Display im Chart~~ ✅ ERLEDIGT
+**Beschreibung**: Alert-Markierungen direkt im Chart anzeigen
+
+**Grafana**: Alert Thresholds
+
+**Umsetzung**: ✅ COMPLETED
+- [x] Alert Thresholds in Chart Options
+- [x] Rote/Linie Markierungen
+- [x] Alert History Overlay
+- [x] Click-to-Details
+
+**Files**:
+- `frontend/src/components/ChartCard.vue` - Rendering ✅
+- `frontend/src/components/ChartConfigDialog.vue` - UI ✅
+
+---
 
 #### 1. Annotations / Markierungen
 **Beschreibung**: Zeitbasierte Markierungen im Chart (z.B. "Wartung am 15.1.", "Filter gewechselt")
@@ -302,11 +357,11 @@
 
 ## Wie kann ich helfen?
 
-### Quick Wins (2-3 Stunden)
+### ~~Quick Wins (2-3 Stunden)~~ ✅ ALLE ERLEDIGT
 
-1. **Dashboard Export** - Hoher Impact, einfach zu implementieren
-2. **Bar Charts** - Chart.js hat das schon eingebaut
-3. **Alert Display** - Nur visuelle Erweiterung
+1. ~~**Dashboard Export**~~ - ✅ Hoher Impact, einfach zu implementieren
+2. ~~**Bar Charts**~~ - ✅ Chart.js hat das schon eingebaut
+3. ~~**Alert Display**~~ - ✅ Nur visuelle Erweiterung
 
 ### Weekend Projects (6-8 Stunden)
 
@@ -326,9 +381,13 @@
 Jede Hilfe ist willkommen! Schau dir die Issues an oder sprich mich auf Discord an.
 
 **Für Anfänger**:
-- Dashboard Export
-- Bar Charts
-- Alert Display
+- ~~Dashboard Export~~ ✅
+- ~~Bar Charts~~ ✅
+- ~~Alert Display~~ ✅
+
+**Nächste Einfache Tasks**:
+- Heatmap Panel (Chart.js hat Plugins)
+- Table Panel (Standard Vue Component)
 
 **Für Fortgeschrittene**:
 - Variables System
@@ -343,5 +402,5 @@ Jede Hilfe ist willkommen! Schau dir die Issues an oder sprich mich auf Discord 
 ---
 
 **Stand**: 2025-01-22
-**Version**: 0.7.0
+**Version**: 0.7.1
 **Nächstes Release**: 0.8.0 (Core Features Complete)
