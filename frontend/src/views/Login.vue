@@ -62,10 +62,17 @@ const handleLogin = async () => {
                             type="password" 
                             placeholder="Passwort eingeben"
                             :class="{ 'border-error-500': showPasswordError, 'border-gray-600': !showPasswordError }"
+                            :aria-invalid="!!showPasswordError"
+                            aria-describedby="password-error"
                             @blur="touched = true"
                             @keyup.enter="handleLogin"
                         />
-                        <div v-if="showPasswordError" class="text-xs text-error-400 flex items-center gap-1">
+                        <div
+                            id="password-error"
+                            v-if="showPasswordError"
+                            class="text-xs text-error-400 flex items-center gap-1"
+                            role="alert"
+                        >
                             <i class="pi pi-exclamation-circle"></i>
                             {{ passwordError }}
                         </div>
