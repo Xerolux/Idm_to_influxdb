@@ -35,7 +35,9 @@
       "Bash(find:*)",
       "Bash(npm run lint)",
       "Bash(ls:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(ssh:*)",
+      "Bash(gh run list:*)"
     ]
   }
 }
