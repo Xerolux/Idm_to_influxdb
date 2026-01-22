@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 """Dashboard configuration management."""
+
 import uuid
 import logging
 from typing import Dict, List, Any, Optional
@@ -19,10 +20,26 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "Underfloor Heating: Flow & Return Temp",
                     "queries": [
-                        {"label": "Flow Temp", "query": "temp_flow_current_circuit_A", "color": "#f59e0b"},
-                        {"label": "Return Temp", "query": "temp_return_circuit_A", "color": "#3b82f6"},
-                        {"label": "Heat Pump Power", "query": "power_current_draw", "color": "#ef4444"},
-                        {"label": "Outdoor Temp", "query": "temp_outside", "color": "#22c55e"},
+                        {
+                            "label": "Flow Temp",
+                            "query": "temp_flow_current_circuit_A",
+                            "color": "#f59e0b",
+                        },
+                        {
+                            "label": "Return Temp",
+                            "query": "temp_return_circuit_A",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Heat Pump Power",
+                            "query": "power_current_draw",
+                            "color": "#ef4444",
+                        },
+                        {
+                            "label": "Outdoor Temp",
+                            "query": "temp_outside",
+                            "color": "#22c55e",
+                        },
                     ],
                     "hours": 12,
                 },
@@ -30,9 +47,21 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "Tank Heating Sensing",
                     "queries": [
-                        {"label": "Buffer Tank Top", "query": "temp_heat_storage", "color": "#a855f7"},
-                        {"label": "Buffer Tank Bottom", "query": "temp_cold_storage", "color": "#3b82f6"},
-                        {"label": "Heat Pump Power", "query": "power_current_draw", "color": "#ef4444"},
+                        {
+                            "label": "Buffer Tank Top",
+                            "query": "temp_heat_storage",
+                            "color": "#a855f7",
+                        },
+                        {
+                            "label": "Buffer Tank Bottom",
+                            "query": "temp_cold_storage",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Heat Pump Power",
+                            "query": "power_current_draw",
+                            "color": "#ef4444",
+                        },
                     ],
                     "hours": 24,
                 },
@@ -40,10 +69,26 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "Radiators Flow & Return: 1st & 2nd Floor",
                     "queries": [
-                        {"label": "Flow Temp", "query": "temp_flow_current_circuit_B", "color": "#f59e0b"},
-                        {"label": "Return Temp", "query": "temp_return_circuit_B", "color": "#3b82f6"},
-                        {"label": "Heat Pump Power", "query": "power_current_draw", "color": "#ef4444"},
-                        {"label": "Outdoor Temp", "query": "temp_outside", "color": "#22c55e"},
+                        {
+                            "label": "Flow Temp",
+                            "query": "temp_flow_current_circuit_B",
+                            "color": "#f59e0b",
+                        },
+                        {
+                            "label": "Return Temp",
+                            "query": "temp_return_circuit_B",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Heat Pump Power",
+                            "query": "power_current_draw",
+                            "color": "#ef4444",
+                        },
+                        {
+                            "label": "Outdoor Temp",
+                            "query": "temp_outside",
+                            "color": "#22c55e",
+                        },
                     ],
                     "hours": 12,
                 },
@@ -51,10 +96,26 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "3rd Floor: Flow & Return Temperatures",
                     "queries": [
-                        {"label": "Flow Temp", "query": "temp_flow_current_circuit_C", "color": "#f59e0b"},
-                        {"label": "Return Temp", "query": "temp_return_circuit_C", "color": "#3b82f6"},
-                        {"label": "Heat Pump Power", "query": "power_current_draw", "color": "#ef4444"},
-                        {"label": "Outdoor Temp", "query": "temp_outside", "color": "#22c55e"},
+                        {
+                            "label": "Flow Temp",
+                            "query": "temp_flow_current_circuit_C",
+                            "color": "#f59e0b",
+                        },
+                        {
+                            "label": "Return Temp",
+                            "query": "temp_return_circuit_C",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Heat Pump Power",
+                            "query": "power_current_draw",
+                            "color": "#ef4444",
+                        },
+                        {
+                            "label": "Outdoor Temp",
+                            "query": "temp_outside",
+                            "color": "#22c55e",
+                        },
                     ],
                     "hours": 12,
                 },
@@ -62,10 +123,26 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "3rd Floor Deep Dive",
                     "queries": [
-                        {"label": "Flow Temp", "query": "temp_flow_current_circuit_C", "color": "#f59e0b"},
-                        {"label": "Return Temp", "query": "temp_return_circuit_C", "color": "#3b82f6"},
-                        {"label": "Indoor Temp", "query": "temp_room_circuit_C", "color": "#a855f7"},
-                        {"label": "Outdoor Temp", "query": "temp_outside", "color": "#22c55e"},
+                        {
+                            "label": "Flow Temp",
+                            "query": "temp_flow_current_circuit_C",
+                            "color": "#f59e0b",
+                        },
+                        {
+                            "label": "Return Temp",
+                            "query": "temp_return_circuit_C",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Indoor Temp",
+                            "query": "temp_room_circuit_C",
+                            "color": "#a855f7",
+                        },
+                        {
+                            "label": "Outdoor Temp",
+                            "query": "temp_outside",
+                            "color": "#22c55e",
+                        },
                     ],
                     "hours": 12,
                 },
@@ -73,9 +150,21 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                     "id": str(uuid.uuid4()),
                     "title": "Consumption change",
                     "queries": [
-                        {"label": "Building Total", "query": "power_current", "color": "#3b82f6"},
-                        {"label": "Heat Pump Total", "query": "power_current_draw", "color": "#ef4444"},
-                        {"label": "Outdoor Temp", "query": "temp_outside", "color": "#22c55e"},
+                        {
+                            "label": "Building Total",
+                            "query": "power_current",
+                            "color": "#3b82f6",
+                        },
+                        {
+                            "label": "Heat Pump Total",
+                            "query": "power_current_draw",
+                            "color": "#ef4444",
+                        },
+                        {
+                            "label": "Outdoor Temp",
+                            "query": "temp_outside",
+                            "color": "#22c55e",
+                        },
                     ],
                     "hours": 24,
                 },
