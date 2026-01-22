@@ -7,6 +7,7 @@ sys.path.append(os.getcwd())
 
 from idm_logger.dashboard_config import DashboardManager, get_default_dashboards
 
+
 class TestDashboardRepair(unittest.TestCase):
     def setUp(self):
         self.mock_config = MagicMock()
@@ -14,7 +15,7 @@ class TestDashboardRepair(unittest.TestCase):
         self.mock_config.data = {}
         self.mock_config.save = MagicMock()
 
-    @patch('idm_logger.dashboard_config.config', new_callable=MagicMock)
+    @patch("idm_logger.dashboard_config.config", new_callable=MagicMock)
     def test_repair_broken_dashboard(self, mock_config_module):
         # Setup broken dashboard data
         broken_dashboard = {
@@ -23,7 +24,7 @@ class TestDashboardRepair(unittest.TestCase):
             "charts": [
                 {"title": "Underfloor Heating", "id": "1", "queries": [], "hours": 24},
                 {"title": "Some Other Chart", "id": "2", "queries": [], "hours": 24},
-            ]
+            ],
         }
 
         # Configure the mock config to return this data
@@ -46,7 +47,7 @@ class TestDashboardRepair(unittest.TestCase):
         self.assertNotIn("Underfloor Heating", titles)
         self.assertIn("Wärmepumpe Temperaturen", titles)
 
-    @patch('idm_logger.dashboard_config.config', new_callable=MagicMock)
+    @patch("idm_logger.dashboard_config.config", new_callable=MagicMock)
     def test_no_repair_needed(self, mock_config_module):
         # Setup good dashboard data
         good_dashboard = get_default_dashboards()[0]
@@ -64,7 +65,10 @@ class TestDashboardRepair(unittest.TestCase):
 
         dashboards = mock_config_module.data["dashboards"]
         self.assertEqual(dashboards[0]["id"], good_dashboard["id"])
-        self.assertEqual(dashboards[0]["charts"][0]["title"], good_dashboard["charts"][0]["title"])
+        self.assertEqual(
+            dashboards[0]["charts"][0]["title"], good_dashboard["charts"][0]["title"]
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
