@@ -28,6 +28,7 @@ from .update_manager import (
     can_run_updates,
 )
 from .alerts import alert_manager
+from .dashboard_config import dashboard_manager
 from .templates import get_alert_templates
 from shutil import which
 import threading
@@ -330,6 +331,153 @@ def get_data():
     """
     with data_lock:
         return jsonify(current_data)
+
+
+@app.route("/api/dashboards", methods=["GET", "POST"])
+@login_required
+def dashboards_api():
+    """Get all dashboards or create a new one."""
+    if request.method == "GET":
+        return jsonify(dashboard_manager.get_all_dashboards())
+
+    if request.method == "POST":
+        data = request.get_json()
+        name = data.get("name", "New Dashboard")
+        if not name:
+            return jsonify({"error": "Name is required"}), 400
+        dashboard = dashboard_manager.create_dashboard(name)
+        return jsonify(dashboard), 201
+
+
+@app.route("/api/dashboards/<dashboard_id>", methods=["GET", "PUT", "DELETE"])
+@login_required
+def dashboard_api(dashboard_id):
+    """Get, update or delete a specific dashboard."""
+    if request.method == "GET":
+        dashboard = dashboard_manager.get_dashboard(dashboard_id)
+        if not dashboard:
+            return jsonify({"error": "Dashboard not found"}), 404
+        return jsonify(dashboard)
+
+    if request.method == "PUT":
+        updates = request.get_json()
+        dashboard = dashboard_manager.update_dashboard(dashboard_id, updates)
+        if not dashboard:
+            return jsonify({"error": "Dashboard not found"}), 404
+        return jsonify(dashboard)
+
+    if request.method == "DELETE":
+        success = dashboard_manager.delete_dashboard(dashboard_id)
+        if not success:
+            return jsonify({"error": "Cannot delete dashboard"}), 400
+        return jsonify({"success": True})
+
+
+@app.route("/api/dashboards/<dashboard_id>/charts", methods=["POST"])
+@login_required
+def add_chart_api(dashboard_id):
+    """Add a chart to a dashboard."""
+    data = request.get_json()
+    title = data.get("title")
+    queries = data.get("queries", [])
+    hours = data.get("hours", 12)
+
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+    if not queries:
+        return jsonify({"error": "Queries are required"}), 400
+
+    chart = dashboard_manager.add_chart(dashboard_id, title, queries, hours)
+    if not chart:
+        return jsonify({"error": "Dashboard not found"}), 404
+    return jsonify(chart), 201
+
+
+@app.route(
+    "/api/dashboards/<dashboard_id>/charts/<chart_id>",
+    methods=["PUT", "DELETE"],
+)
+@login_required
+def chart_api(dashboard_id, chart_id):
+    """Update or delete a chart."""
+    if request.method == "PUT":
+        updates = request.get_json()
+        chart = dashboard_manager.update_chart(dashboard_id, chart_id, updates)
+        if not chart:
+            return jsonify({"error": "Chart or dashboard not found"}), 404
+        return jsonify(chart)
+
+    if request.method == "DELETE":
+        success = dashboard_manager.delete_chart(dashboard_id, chart_id)
+        if not success:
+            return jsonify({"error": "Chart or dashboard not found"}), 404
+        return jsonify({"success": True})
+
+
+@app.route("/api/metrics/available")
+@login_required
+def get_available_metrics():
+    """
+    Get list of all available metrics from VictoriaMetrics.
+    Groups metrics by type (temp, power, pressure, etc.)
+    """
+    try:
+        metrics_url = config.data.get("metrics", {}).get(
+            "url", "http://victoriametrics:8428/write"
+        )
+        base_url = metrics_url.replace("/write", "")
+        query_url = f"{base_url}/api/v1/label/__name__/values"
+
+        # Query all metric names
+        response = requests.get(
+            query_url,
+            params={"match[]": '{__name__=~"idm_heatpump.*"}'},
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to query metrics"}), 500
+
+        data = response.json()
+        metric_names = data.get("data", [])
+
+        # Group metrics by type
+        grouped = {
+            "temperature": [],
+            "power": [],
+            "pressure": [],
+            "energy": [],
+            "flow": [],
+            "status": [],
+            "mode": [],
+            "other": [],
+        }
+
+        for name in sorted(metric_names):
+            # Remove 'idm_heatpump_' prefix for display
+            display_name = name.replace("idm_heatpump_", "")
+
+            if display_name.startswith("temp_"):
+                grouped["temperature"].append({"name": name, "display": display_name})
+            elif display_name.startswith("power_"):
+                grouped["power"].append({"name": name, "display": display_name})
+            elif display_name.startswith("pressure_"):
+                grouped["pressure"].append({"name": name, "display": display_name})
+            elif display_name.startswith("energy_"):
+                grouped["energy"].append({"name": name, "display": display_name})
+            elif display_name.startswith("flow_"):
+                grouped["flow"].append({"name": name, "display": display_name})
+            elif display_name.startswith("status_"):
+                grouped["status"].append({"name": name, "display": display_name})
+            elif display_name.startswith("mode_"):
+                grouped["mode"].append({"name": name, "display": display_name})
+            else:
+                grouped["other"].append({"name": name, "display": display_name})
+
+        return jsonify(grouped)
+    except Exception as e:
+        logger.error(f"Failed to fetch available metrics: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/ai/status")
