@@ -67,41 +67,50 @@ class Scheduler:
     def run(self):
         logger.info("Scheduler started")
         while self.running:
-            try:
-                now = datetime.datetime.now()
-                current_time = now.strftime("%H:%M")
-                current_day = now.strftime("%a")
-
-                with self.lock:
-                    for job in self.jobs:
-                        if not job.get("enabled"):
-                            continue
-
-                        days = job.get("days", [])
-                        if days and current_day not in days:
-                            continue
-
-                        if job.get("time") == current_time:
-                            last_run = job.get("last_run")
-                            if last_run and (time.time() - last_run) < 65:
-                                continue
-
-                            logger.info(
-                                f"Executing scheduled job: {job.get('sensor')} = {job.get('value')}"
-                            )
-                            try:
-                                self.modbus_client.write_sensor(
-                                    job.get("sensor"), job.get("value")
-                                )
-                                # Update last run in DB and Memory
-                                now_ts = time.time()
-                                job["last_run"] = now_ts
-                                db.update_job(job["id"], {"last_run": now_ts})
-                            except Exception as e:
-                                logger.error(f"Scheduled job failed: {e}")
-
-            except Exception as e:
-                logger.error(f"Scheduler loop error: {e}")
-
+            self.process_jobs()
             sleep_time = 60 - time.time() % 60
             time.sleep(sleep_time)
+
+    def process_jobs(self):
+        try:
+            now = datetime.datetime.now()
+            current_time = now.strftime("%H:%M")
+            current_day = now.strftime("%a")
+
+            updates = []
+
+            with self.lock:
+                for job in self.jobs:
+                    if not job.get("enabled"):
+                        continue
+
+                    days = job.get("days", [])
+                    if days and current_day not in days:
+                        continue
+
+                    if job.get("time") == current_time:
+                        last_run = job.get("last_run")
+                        if last_run and (time.time() - last_run) < 65:
+                            continue
+
+                        logger.info(
+                            f"Executing scheduled job: {job.get('sensor')} = {job.get('value')}"
+                        )
+                        try:
+                            self.modbus_client.write_sensor(
+                                job.get("sensor"), job.get("value")
+                            )
+                            # Update last run in Memory
+                            now_ts = time.time()
+                            job["last_run"] = now_ts
+                            # Collect for batch DB update
+                            updates.append((job["id"], now_ts))
+                        except Exception as e:
+                            logger.error(f"Scheduled job failed: {e}")
+
+            # Batch update DB outside the loop (but still essentially part of the process)
+            if updates:
+                db.update_jobs_last_run(updates)
+
+        except Exception as e:
+            logger.error(f"Scheduler loop error: {e}")
