@@ -271,11 +271,11 @@ const parsedQueries = computed(() => {
 
 const open = () => {
     expression.value = props.currentExpression;
-    validateExpression();
+    validateExpr();
     visible.value = true;
 };
 
-const validateExpression = () => {
+const validateExpr = () => {
     if (!expression.value) {
         validationError.value = '';
         return;
@@ -287,18 +287,18 @@ const validateExpression = () => {
 
 const insertOperator = (op) => {
     expression.value += op;
-    validateExpression();
+    validateExpr();
 };
 
 const insertQuery = (label) => {
     expression.value += label;
-    validateExpression();
+    validateExpr();
 };
 
 const insertFunction = (func) => {
     expression.value += `${func}()`;
     // Move cursor inside parentheses
-    validateExpression();
+    validateExpr();
 };
 
 const isSelected = (label) => {
