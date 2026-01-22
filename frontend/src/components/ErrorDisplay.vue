@@ -80,7 +80,7 @@ const iconClasses = computed(() => {
 </script>
 
 <template>
-  <div :class="['rounded-lg border p-4 animate-slide-up', variantClasses]">
+  <div :class="['rounded-lg border p-4 animate-slide-up', variantClasses]" role="alert">
     <div class="flex items-start gap-3">
       <i :class="[iconClasses, 'text-lg mt-0.5']"></i>
       <div class="flex-1">
@@ -98,6 +98,7 @@ const iconClasses = computed(() => {
         v-if="dismissible"
         @click="$emit('dismiss')"
         class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
+        aria-label="Schließen"
       >
         <i class="pi pi-times"></i>
       </button>
