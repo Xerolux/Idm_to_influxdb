@@ -103,6 +103,7 @@
                                 :chart-id="chart.id"
                                 :dashboard-id="currentDashboardId"
                                 :edit-mode="editMode"
+                                :alert-thresholds="chart.alertThresholds || []"
                                 @deleted="onChartDeleted"
                             />
                         </div>

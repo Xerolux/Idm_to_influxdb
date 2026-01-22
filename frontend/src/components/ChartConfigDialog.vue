@@ -72,6 +72,57 @@
                     </div>
                 </div>
             </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Alert Thresholds</label>
+                    <Button
+                        @click="addThreshold"
+                        icon="pi pi-plus"
+                        size="small"
+                        severity="secondary"
+                        label="Hinzufügen"
+                    />
+                </div>
+                <div class="space-y-2">
+                    <div
+                        v-for="(threshold, index) in localChart.alertThresholds"
+                        :key="index"
+                        class="flex gap-2 items-center p-2 bg-red-50 rounded border border-red-200"
+                    >
+                        <div class="flex-grow space-y-2">
+                            <InputText
+                                v-model.number="threshold.value"
+                                type="number"
+                                placeholder="Wert"
+                                class="w-full text-sm"
+                            />
+                            <InputText
+                                v-model="threshold.label"
+                                placeholder="Label (z.B. Kritisch)"
+                                class="w-full text-sm"
+                            />
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <ColorPicker
+                                v-model="threshold.color"
+                                format="hex"
+                                class="w-10"
+                            />
+                            <Button
+                                @click="removeThreshold(index)"
+                                icon="pi pi-times"
+                                size="small"
+                                severity="danger"
+                                text
+                            />
+                        </div>
+                    </div>
+                    <div v-if="localChart.alertThresholds.length === 0" class="text-xs text-gray-500 text-center py-2">
+                        Keine Alert-Thresholds konfiguriert
+                    </div>
+                </div>
+            </div>
         </div>
 
         <template #footer>
@@ -111,7 +162,8 @@ const visible = ref(false);
 const localChart = ref({
     title: '',
     queries: [],
-    hours: 12
+    hours: 12,
+    alertThresholds: []
 });
 
 const hourOptions = [
@@ -143,6 +195,18 @@ const addQuery = () => {
 
 const removeQuery = (index) => {
     localChart.value.queries.splice(index, 1);
+};
+
+const addThreshold = () => {
+    localChart.value.alertThresholds.push({
+        value: 80,
+        label: 'Warnung',
+        color: '#ef4444'
+    });
+};
+
+const removeThreshold = (index) => {
+    localChart.value.alertThresholds.splice(index, 1);
 };
 
 const save = () => {

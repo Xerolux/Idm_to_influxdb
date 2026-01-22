@@ -112,6 +112,7 @@ import {
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Line } from 'vue-chartjs';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -128,7 +129,8 @@ ChartJS.register(
   Tooltip,
   Legend,
   TimeScale,
-  zoomPlugin
+  zoomPlugin,
+  annotationPlugin
 );
 
 const props = defineProps({
@@ -138,7 +140,8 @@ const props = defineProps({
     chartId: { type: String, required: true },
     dashboardId: { type: String, required: true },
     editMode: { type: Boolean, default: false },
-    yAxisMode: { type: String, default: 'single' } // 'single' or 'dual'
+    yAxisMode: { type: String, default: 'single' }, // 'single' or 'dual'
+    alertThresholds: { type: Array, default: () => [] } // [{value: 80, color: 'red', label: 'Critical'}, ...]
 });
 
 const emit = defineEmits(['deleted']);
@@ -161,7 +164,8 @@ const stats = ref([]);
 const chartConfig = computed(() => ({
     title: props.title,
     queries: props.queries,
-    hours: props.hours
+    hours: props.hours,
+    alertThresholds: props.alertThresholds
 }));
 
 const displayHours = computed(() => {
@@ -249,6 +253,26 @@ const chartOptions = computed(() => {
                 limits: {
                     x: { min: 'original', max: 'original' }
                 }
+            },
+            annotation: {
+                annotations: props.alertThresholds.reduce((acc, threshold, index) => {
+                    acc[`threshold-${index}`] = {
+                        type: 'line',
+                        yMin: threshold.value,
+                        yMax: threshold.value,
+                        borderColor: threshold.color || 'red',
+                        borderWidth: 2,
+                        borderDash: [6, 6],
+                        label: {
+                            display: true,
+                            content: threshold.label || `Threshold: ${threshold.value}`,
+                            position: 'end',
+                            backgroundColor: threshold.color || 'red',
+                            font: { size: 10 }
+                        }
+                    };
+                    return acc;
+                }, {})
             }
         },
         scales: {
