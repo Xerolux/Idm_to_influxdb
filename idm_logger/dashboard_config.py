@@ -219,6 +219,51 @@ class DashboardManager:
                     repaired = True
                     break
 
+                # Check for missing AI chart or update it
+                ai_chart_found = False
+                for chart in dashboard.get("charts", []):
+                    if chart.get("title") == "AI Anomalie-Erkennung":
+                        ai_chart_found = True
+                        # Ensure queries are correct
+                        expected_queries = [
+                            {
+                                "label": "Anomalie Score",
+                                "query": "idm_anomaly_score",
+                                "color": "#ef4444",
+                            },
+                            {
+                                "label": "Anomalie Flag",
+                                "query": "idm_anomaly_flag",
+                                "color": "#f59e0b",
+                            },
+                        ]
+                        # Simply update queries to be sure
+                        chart["queries"] = expected_queries
+                        repaired = True
+                        break
+
+                if not ai_chart_found:
+                    logger.info("Adding missing AI Anomaly chart to dashboard...")
+                    ai_chart = {
+                        "id": str(uuid.uuid4()),
+                        "title": "AI Anomalie-Erkennung",
+                        "queries": [
+                            {
+                                "label": "Anomalie Score",
+                                "query": "idm_anomaly_score",
+                                "color": "#ef4444",
+                            },
+                            {
+                                "label": "Anomalie Flag",
+                                "query": "idm_anomaly_flag",
+                                "color": "#f59e0b",
+                            },
+                        ],
+                        "hours": 24,
+                    }
+                    dashboard["charts"].append(ai_chart)
+                    repaired = True
+
         if repaired:
             config.data["dashboards"] = dashboards
             config.save()

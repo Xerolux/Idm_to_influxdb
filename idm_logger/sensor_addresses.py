@@ -244,7 +244,7 @@ class _FloatSensorAddress(IdmSensorAddress[float]):
         if (self.min_value is not None and value < self.min_value) or (
             self.max_value is not None and value > self.max_value
         ):
-            pass
+            return (False, value)
 
         return (True, value)
 
@@ -918,7 +918,9 @@ COMMON_SENSORS = [
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         min_value=0,
     ),
-    _FloatSensorAddress(address=1790, name="power_current", unit=UnitOfPower.KILO_WATT),
+    _FloatSensorAddress(
+        address=1790, name="power_current", unit=UnitOfPower.KILO_WATT, min_value=0
+    ),
     _FloatSensorAddress(
         address=1792, name="power_current_solar", unit=UnitOfPower.KILO_WATT
     ),
