@@ -22,7 +22,7 @@ class TestDashboardRepair(unittest.TestCase):
             "name": "Broken Dashboard",
             "charts": [
                 {"title": "Underfloor Heating", "id": "1", "queries": [], "hours": 24},
-                {"title": "Some Other Chart", "id": "2", "queries": [], "hours": 24}
+                {"title": "Some Other Chart", "id": "2", "queries": [], "hours": 24},
             ]
         }
 
@@ -39,7 +39,7 @@ class TestDashboardRepair(unittest.TestCase):
         # Verify that the dashboard was replaced
         dashboards = mock_config_module.data["dashboards"]
         self.assertEqual(len(dashboards), 1)
-        self.assertEqual(dashboards[0]["name"], "Home Dashboard") # Default name
+        self.assertEqual(dashboards[0]["name"], "Home Dashboard")  # Default name
 
         # Check that broken titles are gone
         titles = [c["title"] for c in dashboards[0]["charts"]]
