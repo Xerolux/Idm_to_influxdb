@@ -18,48 +18,48 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
             "charts": [
                 {
                     "id": str(uuid.uuid4()),
-                    "title": "Underfloor Heating: Flow & Return Temp",
+                    "title": "Vorlauf & Rücklauf Heizkreis A",
                     "queries": [
                         {
-                            "label": "Flow Temp",
-                            "query": "temp_flow_current_circuit_A",
+                            "label": "Vorlauf",
+                            "query": "idm_heatpump_temp_flow_current_circuit_A",
                             "color": "#f59e0b",
                         },
                         {
-                            "label": "Return Temp",
-                            "query": "temp_return_circuit_A",
+                            "label": "Rücklauf",
+                            "query": "idm_heatpump_temp_return_circuit_A",
                             "color": "#3b82f6",
                         },
                         {
-                            "label": "Heat Pump Power",
-                            "query": "power_current_draw",
+                            "label": "Leistung",
+                            "query": "idm_heatpump_power_current_draw",
                             "color": "#ef4444",
                         },
                         {
-                            "label": "Outdoor Temp",
-                            "query": "temp_outside",
+                            "label": "Außentemp.",
+                            "query": "idm_heatpump_temp_outside",
                             "color": "#22c55e",
                         },
                     ],
-                    "hours": 12,
+                    "hours": 24,
                 },
                 {
                     "id": str(uuid.uuid4()),
-                    "title": "Tank Heating Sensing",
+                    "title": "Speichertemperaturen",
                     "queries": [
                         {
-                            "label": "Buffer Tank Top",
-                            "query": "temp_heat_storage",
+                            "label": "Speicher oben",
+                            "query": "idm_heatpump_temp_heat_storage",
                             "color": "#a855f7",
                         },
                         {
-                            "label": "Buffer Tank Bottom",
-                            "query": "temp_cold_storage",
+                            "label": "Speicher unten",
+                            "query": "idm_heatpump_temp_cold_storage",
                             "color": "#3b82f6",
                         },
                         {
-                            "label": "Heat Pump Power",
-                            "query": "power_current_draw",
+                            "label": "Leistung",
+                            "query": "idm_heatpump_power_current_draw",
                             "color": "#ef4444",
                         },
                     ],
@@ -67,103 +67,39 @@ def get_default_dashboards() -> List[Dict[str, Any]]:
                 },
                 {
                     "id": str(uuid.uuid4()),
-                    "title": "Radiators Flow & Return: 1st & 2nd Floor",
+                    "title": "Heizkreis B & C",
                     "queries": [
                         {
-                            "label": "Flow Temp",
-                            "query": "temp_flow_current_circuit_B",
+                            "label": "Vorlauf B",
+                            "query": "idm_heatpump_temp_flow_current_circuit_B",
                             "color": "#f59e0b",
                         },
                         {
-                            "label": "Return Temp",
-                            "query": "temp_return_circuit_B",
+                            "label": "Rücklauf B",
+                            "query": "idm_heatpump_temp_return_circuit_B",
                             "color": "#3b82f6",
                         },
                         {
-                            "label": "Heat Pump Power",
-                            "query": "power_current_draw",
+                            "label": "Leistung",
+                            "query": "idm_heatpump_power_current_draw",
                             "color": "#ef4444",
                         },
-                        {
-                            "label": "Outdoor Temp",
-                            "query": "temp_outside",
-                            "color": "#22c55e",
-                        },
                     ],
-                    "hours": 12,
+                    "hours": 24,
                 },
                 {
                     "id": str(uuid.uuid4()),
-                    "title": "3rd Floor: Flow & Return Temperatures",
+                    "title": "Leistung & Verbrauch",
                     "queries": [
                         {
-                            "label": "Flow Temp",
-                            "query": "temp_flow_current_circuit_C",
-                            "color": "#f59e0b",
-                        },
-                        {
-                            "label": "Return Temp",
-                            "query": "temp_return_circuit_C",
-                            "color": "#3b82f6",
-                        },
-                        {
-                            "label": "Heat Pump Power",
-                            "query": "power_current_draw",
+                            "label": "Wärmepumpe",
+                            "query": "idm_heatpump_power_current_draw",
                             "color": "#ef4444",
                         },
                         {
-                            "label": "Outdoor Temp",
-                            "query": "temp_outside",
-                            "color": "#22c55e",
-                        },
-                    ],
-                    "hours": 12,
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "3rd Floor Deep Dive",
-                    "queries": [
-                        {
-                            "label": "Flow Temp",
-                            "query": "temp_flow_current_circuit_C",
-                            "color": "#f59e0b",
-                        },
-                        {
-                            "label": "Return Temp",
-                            "query": "temp_return_circuit_C",
+                            "label": "Gesamt",
+                            "query": "idm_heatpump_power_current",
                             "color": "#3b82f6",
-                        },
-                        {
-                            "label": "Indoor Temp",
-                            "query": "temp_room_circuit_C",
-                            "color": "#a855f7",
-                        },
-                        {
-                            "label": "Outdoor Temp",
-                            "query": "temp_outside",
-                            "color": "#22c55e",
-                        },
-                    ],
-                    "hours": 12,
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "Consumption change",
-                    "queries": [
-                        {
-                            "label": "Building Total",
-                            "query": "power_current",
-                            "color": "#3b82f6",
-                        },
-                        {
-                            "label": "Heat Pump Total",
-                            "query": "power_current_draw",
-                            "color": "#ef4444",
-                        },
-                        {
-                            "label": "Outdoor Temp",
-                            "query": "temp_outside",
-                            "color": "#22c55e",
                         },
                     ],
                     "hours": 24,

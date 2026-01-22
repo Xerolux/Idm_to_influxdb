@@ -26,6 +26,15 @@
                 />
             </div>
             <div class="flex items-center gap-2">
+                <!-- Time Range Selector -->
+                <Dropdown
+                    v-model="timeRange"
+                    :options="timeRangeOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="w-40"
+                    @change="onTimeRangeChange"
+                />
                 <Button
                     @click="editMode = !editMode"
                     :icon="editMode ? 'pi pi-lock-open' : 'pi pi-lock'"
@@ -36,12 +45,9 @@
         </div>
 
         <div class="flex flex-col lg:flex-row gap-3 overflow-hidden">
-            <!-- Sidebar with Sensors -->
-            <div
-                class="w-full lg:w-72 flex-shrink-0 overflow-y-auto"
-                :class="{ 'hidden': !editMode }"
-            >
-                <SensorSidebar @add-to-chart="onAddSensorsToChart" />
+            <!-- Left Sidebar: Current Values -->
+            <div class="w-full lg:w-72 flex-shrink-0 overflow-y-auto">
+                <SensorValues />
             </div>
 
             <!-- Main Grid -->
@@ -54,7 +60,7 @@
                     <ChartCard
                         :title="chart.title"
                         :queries="chart.queries"
-                        :hours="chart.hours"
+                        :hours="effectiveHours"
                         :chart-id="chart.id"
                         :dashboard-id="currentDashboardId"
                         :edit-mode="editMode"
@@ -130,7 +136,7 @@ import axios from 'axios';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import ChartCard from './ChartCard.vue';
-import SensorSidebar from './SensorSidebar.vue';
+import SensorValues from './SensorValues.vue';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
@@ -147,9 +153,23 @@ const editMode = ref(false);
 const showAddChartDialog = ref(false);
 const pendingSensors = ref([]);
 
+// Time range selector
+const timeRange = ref('24h');
+const timeRangeOptions = [
+    { label: '6 Stunden', value: '6h' },
+    { label: '12 Stunden', value: '12h' },
+    { label: '24 Stunden', value: '24h' },
+    { label: '48 Stunden', value: '48h' },
+    { label: '7 Tage', value: '168h' }
+];
+
+const effectiveHours = computed(() => {
+    return parseInt(timeRange.value);
+});
+
 const newChart = ref({
     title: '',
-    hours: 12
+    hours: 24
 });
 
 const hourOptions = [
@@ -242,9 +262,9 @@ const deleteDashboard = async () => {
     }
 };
 
-const onAddSensorsToChart = (sensors) => {
-    pendingSensors.value = sensors;
-    showAddChartDialog.value = true;
+const onTimeRangeChange = () => {
+    // Time range changed - charts will react to effectiveHours computed property
+    console.log('Time range changed to:', timeRange.value);
 };
 
 const addChart = async () => {
@@ -264,14 +284,13 @@ const addChart = async () => {
             hours: newChart.value.hours
         });
 
-        // Add to local state
         const dashboard = dashboards.value.find(d => d.id === currentDashboardId.value);
         if (dashboard) {
             dashboard.charts.push(res.data);
         }
 
         showAddChartDialog.value = false;
-        newChart.value = { title: '', hours: 12 };
+        newChart.value = { title: '', hours: 24 };
         pendingSensors.value = [];
 
         toast.add({
@@ -291,11 +310,7 @@ const addChart = async () => {
 };
 
 const onChartDeleted = () => {
-    const dashboard = dashboards.value.find(d => d.id === currentDashboardId.value);
-    if (dashboard) {
-        // Reload charts from server
-        loadDashboards();
-    }
+    loadDashboards();
 };
 
 onMounted(() => {

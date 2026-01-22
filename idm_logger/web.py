@@ -333,6 +333,58 @@ def get_data():
         return jsonify(current_data)
 
 
+@app.route("/api/metrics/current")
+@login_required
+def get_current_metrics():
+    """
+    Get current values for all metrics from VictoriaMetrics.
+    Returns the latest value for each metric.
+    """
+    try:
+        metrics_url = config.data.get("metrics", {}).get(
+            "url", "http://victoriametrics:8428/write"
+        )
+        base_url = metrics_url.replace("/write", "").replace("/api/v1/write", "")
+        query_url = f"{base_url}/api/v1/query"
+
+        # Query for latest values of all idm_heatpump metrics
+        query = '{__name__=~"idm_heatpump.*"}'
+        response = requests.get(query_url, params={"query": query}, timeout=10)
+
+        if response.status_code != 200:
+            logger.error(f"VictoriaMetrics query failed: {response.status_code}")
+            return jsonify({"error": "Failed to query current values"}), 500
+
+        data = response.json()
+        if data.get("status") != "success":
+            return jsonify({})
+
+        result = data.get("data", {}).get("result", [])
+
+        # Format: {metric_name: {value: 123, timestamp: 1234567890}}
+        metrics = {}
+        for item in result:
+            metric = item.get("metric", {})
+            name = metric.get("__name__", "")
+            value = item.get("value", [None, None])[1]
+
+            if name and value is not None:
+                # Remove labels for display, keep value
+                try:
+                    num_value = float(value)
+                    metrics[name] = {
+                        "value": num_value,
+                        "timestamp": item.get("value", [None, None])[0],
+                    }
+                except (ValueError, TypeError):
+                    pass
+
+        return jsonify(metrics)
+    except Exception as e:
+        logger.error(f"Failed to fetch current metrics: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/dashboards", methods=["GET", "POST"])
 @login_required
 def dashboards_api():
@@ -425,21 +477,40 @@ def get_available_metrics():
         metrics_url = config.data.get("metrics", {}).get(
             "url", "http://victoriametrics:8428/write"
         )
-        base_url = metrics_url.replace("/write", "")
-        query_url = f"{base_url}/api/v1/label/__name__/values"
+        # Build base URL correctly
+        base_url = metrics_url.replace("/write", "").replace("/api/v1/write", "")
 
-        # Query all metric names
-        response = requests.get(
-            query_url,
-            params={"match[]": '{__name__=~"idm_heatpump.*"}'},
-            timeout=10,
-        )
+        # Use series endpoint to get all metrics with idm_heatpump_ prefix
+        query_url = f"{base_url}/api/v1/series"
+        params = {"match[]": '{__name__=~"idm_heatpump.*"}', "limit": "1000"}
+
+        logger.debug(f"Fetching metrics from: {query_url} with params: {params}")
+
+        response = requests.get(query_url, params=params, timeout=10)
 
         if response.status_code != 200:
-            return jsonify({"error": "Failed to query metrics"}), 500
+            logger.error(
+                f"VictoriaMetrics returned {response.status_code}: {response.text}"
+            )
+            return jsonify(
+                {"error": f"Failed to query metrics: {response.status_code}"}
+            ), 500
 
         data = response.json()
-        metric_names = data.get("data", [])
+        # series endpoint returns array of objects with __name__ field
+        if isinstance(data, dict):
+            series_data = data.get("data", [])
+        else:
+            series_data = data
+
+        # Extract unique metric names
+        metric_names = set()
+        for series in series_data:
+            if isinstance(series, dict) and "__name__" in series:
+                metric_names.add(series["__name__"])
+
+        metric_names = sorted(metric_names)
+        logger.debug(f"Found {len(metric_names)} unique metrics")
 
         # Group metrics by type
         grouped = {
@@ -450,10 +521,12 @@ def get_available_metrics():
             "flow": [],
             "status": [],
             "mode": [],
+            "control": [],
+            "state": [],
             "other": [],
         }
 
-        for name in sorted(metric_names):
+        for name in metric_names:
             # Remove 'idm_heatpump_' prefix for display
             display_name = name.replace("idm_heatpump_", "")
 
@@ -471,12 +544,16 @@ def get_available_metrics():
                 grouped["status"].append({"name": name, "display": display_name})
             elif display_name.startswith("mode_"):
                 grouped["mode"].append({"name": name, "display": display_name})
+            elif display_name.startswith("control_"):
+                grouped["control"].append({"name": name, "display": display_name})
+            elif display_name.startswith("state_"):
+                grouped["state"].append({"name": name, "display": display_name})
             else:
                 grouped["other"].append({"name": name, "display": display_name})
 
         return jsonify(grouped)
     except Exception as e:
-        logger.error(f"Failed to fetch available metrics: {e}")
+        logger.error(f"Failed to fetch available metrics: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
