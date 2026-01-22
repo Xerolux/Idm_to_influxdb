@@ -133,7 +133,9 @@
                                 <i class="pi pi-bars"></i>
                             </div>
 
+                            <!-- Dynamic Chart Component -->
                             <ChartCard
+                                v-if="!chart.type || chart.type === 'line'"
                                 :title="chart.title"
                                 :queries="chart.queries"
                                 :hours="effectiveHours"
@@ -141,6 +143,73 @@
                                 :dashboard-id="currentDashboardId"
                                 :edit-mode="editMode"
                                 :alert-thresholds="chart.alertThresholds || []"
+                                @deleted="onChartDeleted"
+                            />
+                            <BarCard
+                                v-else-if="chart.type === 'bar'"
+                                :title="chart.title"
+                                :queries="chart.queries"
+                                :hours="effectiveHours"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
+                                @deleted="onChartDeleted"
+                            />
+                            <StatCard
+                                v-else-if="chart.type === 'stat'"
+                                :title="chart.title"
+                                :query="chart.queries[0]?.query || ''"
+                                :unit="chart.queries[0]?.unit || ''"
+                                :decimals="chart.decimals || 1"
+                                :show-trend="chart.showTrend !== false"
+                                :show-target="chart.showTarget || false"
+                                :target-query="chart.targetQuery"
+                                :color-thresholds="chart.colorThresholds"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
+                                @deleted="onChartDeleted"
+                            />
+                            <GaugeCard
+                                v-else-if="chart.type === 'gauge'"
+                                :title="chart.title"
+                                :query="chart.queries[0]?.query || ''"
+                                :min="chart.min || 0"
+                                :max="chart.max || 100"
+                                :thresholds="chart.thresholds"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
+                                @deleted="onChartDeleted"
+                            />
+                            <HeatmapCard
+                                v-else-if="chart.type === 'heatmap'"
+                                :title="chart.title"
+                                :queries="chart.queries"
+                                :hours="effectiveHours"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
+                                @deleted="onChartDeleted"
+                            />
+                            <TableCard
+                                v-else-if="chart.type === 'table'"
+                                :title="chart.title"
+                                :queries="chart.queries"
+                                :hours="effectiveHours"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
+                                @deleted="onChartDeleted"
+                            />
+                            <StateTimelineCard
+                                v-else-if="chart.type === 'state_timeline'"
+                                :title="chart.title"
+                                :query="chart.queries[0]?.query || ''"
+                                :hours="effectiveHours"
+                                :chart-id="chart.id"
+                                :dashboard-id="currentDashboardId"
+                                :edit-mode="editMode"
                                 @deleted="onChartDeleted"
                             />
                         </div>
@@ -166,9 +235,37 @@
             v-model:visible="showAddChartDialog"
             modal
             header="Neuer Chart"
-            :style="{ width: '90vw', maxWidth: '500px' }"
+            :style="{ width: '90vw', maxWidth: '600px' }"
         >
             <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Chart-Typ</label>
+                    <Dropdown
+                        v-model="newChart.type"
+                        :options="chartTypeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                        placeholder="Chart-Typ wählen"
+                    >
+                        <template #value="slotProps">
+                            <div v-if="slotProps.value" class="flex items-center gap-2">
+                                <i :class="slotProps.option.icon" class="text-lg"></i>
+                                <span>{{ slotProps.option.label }}</span>
+                            </div>
+                            <span v-else>{{ slotProps.placeholder }}</span>
+                        </template>
+                        <template #option="slotProps">
+                            <div class="flex items-center gap-2">
+                                <i :class="slotProps.option.icon" class="text-lg"></i>
+                                <div>
+                                    <div class="font-medium">{{ slotProps.option.label }}</div>
+                                    <div class="text-xs text-gray-500">{{ slotProps.option.description }}</div>
+                                </div>
+                            </div>
+                        </template>
+                    </Dropdown>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
                     <InputText
@@ -187,6 +284,13 @@
                         class="w-full"
                     />
                 </div>
+                <!-- Query selector for Line/Bar charts -->
+                <div v-if="newChart.type === 'line' || newChart.type === 'bar'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datenquelle</label>
+                    <div class="text-xs text-gray-500 mb-2">
+                        Ziehe Sensoren aus der linken Sidebar in den Chart
+                    </div>
+                </div>
             </div>
             <template #footer>
                 <Button
@@ -199,7 +303,7 @@
                     @click="addChart"
                     label="Hinzufügen"
                     severity="primary"
-                    :disabled="!newChart.title"
+                    :disabled="!newChart.title || !newChart.type"
                 />
             </template>
         </Dialog>
@@ -309,7 +413,14 @@ import axios from 'axios';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import draggable from 'vuedraggable';
+import { getSupportedChartTypes } from '../utils/chartTypes';
 import ChartCard from './ChartCard.vue';
+import BarCard from './BarCard.vue';
+import StatCard from './StatCard.vue';
+import GaugeCard from './GaugeCard.vue';
+import HeatmapCard from './HeatmapCard.vue';
+import TableCard from './TableCard.vue';
+import StateTimelineCard from './StateTimelineCard.vue';
 import SensorValues from './SensorValues.vue';
 import OverviewHeader from './OverviewHeader.vue';
 import Dropdown from 'primevue/dropdown';
@@ -367,8 +478,19 @@ const effectiveHours = computed(() => {
 });
 
 const newChart = ref({
+    type: 'line',
     title: '',
     hours: '24h'
+});
+
+// Chart type options for the dropdown
+const chartTypeOptions = computed(() => {
+    return getSupportedChartTypes().map(config => ({
+        value: config.type,
+        label: config.name,
+        icon: config.icon,
+        description: config.description
+    }));
 });
 
 const currentDashboard = computed(() => {
@@ -619,6 +741,7 @@ const addChart = async () => {
 
     try {
         const res = await axios.post(`/api/dashboards/${currentDashboardId.value}/charts`, {
+            type: newChart.value.type,
             title: newChart.value.title,
             queries,
             hours: hoursVal
@@ -631,7 +754,7 @@ const addChart = async () => {
         }
 
         showAddChartDialog.value = false;
-        newChart.value = { title: '', hours: '24h' };
+        newChart.value = { type: 'line', title: '', hours: '24h' };
         pendingSensors.value = [];
 
         toast.add({
