@@ -193,6 +193,25 @@ class Database:
             logger.error(f"Failed to update job {job_id}: {e}", exc_info=True)
             raise
 
+    def update_jobs_last_run(self, updates):
+        """
+        Batch update last_run for multiple jobs.
+        updates: list of (job_id, last_run_timestamp)
+        """
+        if not updates:
+            return
+        try:
+            with self._get_locked_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany(
+                    "UPDATE jobs SET last_run=? WHERE id=?",
+                    [(ts, jid) for jid, ts in updates]
+                )
+            logger.debug(f"Updated last_run for {len(updates)} jobs")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to batch update jobs: {e}", exc_info=True)
+            raise
+
     # Helpers for alerts
     def get_alerts(self):
         """Get all alerts from database."""
