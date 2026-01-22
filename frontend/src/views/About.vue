@@ -28,7 +28,7 @@ import Button from 'primevue/button';
 
                             <h3 class="text-lg font-semibold mb-2">Hauptfunktionen</h3>
                             <ul class="list-disc list-inside text-gray-700 dark:text-gray-300 mb-4 space-y-1">
-                                <li>Detailliertes Logging & Visualisierung (VictoriaMetrics + Grafana)</li>
+                                <li>Detailliertes Logging & Visualisierung (VictoriaMetrics + integriertes Dashboard)</li>
                                 <li>Intelligente Steuerung via Modbus TCP</li>
                                 <li>AI Anomalie-Erkennung (Echtzeit-Überwachung mit River)</li>
                                 <li>Techniker-Tools (Code Generator)</li>

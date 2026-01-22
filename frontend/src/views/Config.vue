@@ -304,10 +304,6 @@
                                      <div v-else class="text-center py-4 text-gray-500">
                                          <i class="pi pi-spin pi-spinner mr-2"></i> Lade Status...
                                      </div>
-
-                                     <div class="mt-4 text-xs text-gray-500 text-center">
-                                         Hinweis: Alarme können über Grafana konfiguriert werden (Metrik: <code>idm_anomaly_flag</code>).
-                                     </div>
                                  </div>
                              </div>
                         </Fieldset>

@@ -65,15 +65,15 @@ const items = computed(() => [
         icon: 'pi pi-cog',
         command: () => router.push('/config')
     },
-
-    {
-        label: 'Grafana',
-        icon: 'pi pi-chart-line',
-        command: () => {
-            const hostname = window.location.hostname;
-            window.open(`http://${hostname}:3001`, '_blank', 'noopener');
-        }
-    },
+    // Uncomment to enable Grafana link in navigation
+    // {
+    //     label: 'Grafana',
+    //     icon: 'pi pi-chart-line',
+    //     command: () => {
+    //         const hostname = window.location.hostname;
+    //         window.open(`http://${hostname}:3001`, '_blank', 'noopener');
+    //     }
+    // },
     {
         label: t('codegen'),
         icon: 'pi pi-lock',
