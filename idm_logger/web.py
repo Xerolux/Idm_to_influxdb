@@ -57,7 +57,7 @@ if os.environ.get("TRUST_PROXIES") or config.get("web.trust_proxies"):
 app.config["SWAGGER"] = {
     "title": "IDM Metrics Collector API",
     "uiversion": 3,
-    "version": "0.6.0",
+    "version": "0.7.0",
     "description": "API for IDM Heat Pump Monitoring & Control",
 }
 swagger = Swagger(app)

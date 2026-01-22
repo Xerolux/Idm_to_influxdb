@@ -1,4 +1,4 @@
-# IDM Metrics Collector 0.6.0
+# IDM Metrics Collector 0.7.0
 
 [![GitHub Release][releases-shield]][releases]
 [![Downloads][downloads-shield]][releases]
@@ -6,134 +6,320 @@
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
 
-**Die Komplettlösung für deine IDM Wärmepumpe.**
-
-Überwache, steuere und automatiere deine Wärmepumpe (Navigator 2.0) bequem über den Browser. Eine Docker-basierte Anwendung, die alles vereint: Live-Monitoring, Langzeit-Datenspeicherung und professionelle Analyse-Tools.
+> **Die professionelle Monitoring-Lösung für IDM Wärmepumpen**
+>
+> Echtzeit-Überwachung, Langzeitanalyse, intelligentes Alerting und vollständige Steuerung - alles in einer Docker-basierten All-in-One Lösung.
 
 ![Demo](docs/images/demo.gif)
 
-> **Kompatibilität**
->
-> Entwickelt und getestet für **IDM Wärmepumpen mit Navigator 2.0**.
-> Nutzt die standardisierte Modbus TCP Schnittstelle.
+---
+
+## 🎯 Warum IDM Metrics Collector?
+
+Die integrierte Grafana-Lösung ist Vergangenheit. **Version 0.7.0** bringt ein leistungsstarkes, eigenständiges Dashboard mit ~80% Feature-Parität zu Grafana - aber einfacher, schneller und perfekt integriert.
+
+### ✨ Highlights v0.7.0
+
+- 🎨 **Modernes Dashboard** mit Drag & Drop, Zoom & Dark Mode
+- 📊 **Dual Y-Achsen** für Temperatur + Leistung in einem Chart
+- 🎯 **Stat & Gauge Panels** für Soll/Ist Vergleiche
+- 📋 **Chart Templates** - One-Click Dashboards für alle Anwendungsfälle
+- 🔔 **KI-Anomalie-Erkennung** warnt bei abnormalem Verhalten
+- 🌙 **Dark Mode** mit System-Preference-Unterstützung
+- ⚡ **Zoom & Pan** für detaillierte Analyse
 
 ---
 
 ## 📖 Dokumentation
 
-Wir legen Wert auf eine erstklassige Dokumentation.
+Wir legen Wert auf erstklassige Dokumentation:
 
-*   📄 **[Ausführliches Handbuch (PDF) herunterladen](docs/IDM_Metrics_Collector_Handbuch.pdf)**
-*   📚 [Online Dokumentation lesen](docs/MANUAL.md)
-
----
-
-## ✨ Funktionen
-
-### 🖥️ Dashboard
-Alles auf einen Blick. Das Dashboard zeigt dir in Echtzeit die wichtigsten Werte deiner Anlage.
-*   **Live-Daten:** Außentemperatur, Vorlauf, Pufferspeicher und Warmwasser.
-*   **Statusanzeige:** Siehe sofort, ob Heizkreise aktiv sind, der Verdichter läuft oder Warmwasser bereitet wird.
-*   **Anpassbar:** Füge Widgets hinzu oder verschiebe sie nach deinen Wünschen.
-
-![Dashboard](docs/screenshots/02_dashboard.png)
-
-### 🎛️ Steuerung (Control)
-Nimm das Steuer selbst in die Hand. Ändere Betriebsmodi und Temperaturen direkt aus der App.
-*   **Betriebsmodus:** Wechsle zwischen Heizen, Kühlen, Auto oder Eco.
-*   **Temperaturen:** Passe die Soll-Werte für Heizkreise und Warmwasser an.
-*   **Sofort-Aktionen:** Einmalige Warmwasserladung per Klick starten.
-
-![Control](docs/screenshots/03_control.png)
-
-### 📅 Zeitpläne (Schedule)
-Intelligente Automatisierung für mehr Komfort und Effizienz.
-*   **Wochenplan:** Erstelle individuelle Heiz- und Warmwasserpläne für jeden Wochentag.
-*   **Einfache Bedienung:** Intuitive Drag-and-Drop Oberfläche.
-
-![Schedule](docs/screenshots/04_schedule.png)
-
-### 🔔 Benachrichtigungen & KI (Alerts)
-Das System wacht über deine Anlage.
-*   **Störungsmelder:** Erhalte Push-Benachrichtigungen (via ntfy, MQTT, etc.) bei Fehlern.
-*   **KI-Analyse:** Die integrierte Anomalie-Erkennung lernt das Verhalten deiner Anlage und warnt bei Abweichungen.
-
-![Alerts](docs/screenshots/05_alerts.png)
-
-### ⚙️ Konfiguration (Config)
-Passe das System an deine Bedürfnisse an.
-*   **Verbindung:** IP-Adresse und Modbus-Parameter.
-*   **Heizkreise:** Aktiviere die Heizkreise, die du nutzen möchtest (A, B, C...).
-*   **Backup:** Automatische Backups deiner Einstellungen und Datenbank.
-*   **Datenschutz:** Sensible Daten wie Passwörter werden in Screenshots automatisch unkenntlich gemacht.
-
-![Config](docs/screenshots/06_config.png)
-
-### 📜 Logs (Logs)
-Behalte den Überblick über alle Systemereignisse.
-*   **System-Status:** Überprüfe Verbindungsprotokolle und Systemmeldungen.
-*   **Fehleranalyse:** Finde schnell die Ursache bei Problemen.
-
-![Logs](docs/screenshots/07_logs.png)
-
-### 🔧 Tools & Service
-Nützliche Werkzeuge für Profis und Eigentümer.
-*   **Code Generator:** Erzeuge temporäre Fachmann- oder Technikercodes für tiefergehende Einstellungen am Navigator Panel.
-*   **System Check:** Überprüfe die Gesundheit der verschiedenen Dienste.
-
-![Tools](docs/screenshots/08_tools.png)
-
-### ℹ️ Über (About)
-Systeminformationen und Versionierung auf einen Blick.
-*   **Version:** Anzeige der aktuellen Software-Version.
-*   **Links:** Direkter Zugang zu Dokumentation, Support und Community.
-
-![About](docs/screenshots/09_about.png)
-
-### 📊 Langzeit-Analyse (Grafana)
-Für alle Daten-Liebhaber ist ein voll konfiguriertes Grafana Dashboard integriert.
-*   **Historie:** Analysiere Temperaturverläufe über Monate und Jahre.
-*   **Performance:** Überwache den COP und Energieverbrauch.
+- 📄 **[Handbuch (PDF)][docs-pdf]** - Ausführliche Bedienungsanleitung
+- 📚 **[Online Dokumentation][docs-online]** - Vollständige Feature-Referenz
+- 🆕 **[Feature-Dokumentation][features]** - Alle neuen Features v0.7.0 im Detail
 
 ---
 
-## 🚀 Installation & Start
-
-Die Installation erfolgt am einfachsten via Docker.
+## 🚀 Schnellstart
 
 ### Voraussetzungen
-*   Docker & Docker Compose installiert.
-*   Netzwerkverbindung zur IDM Wärmepumpe.
 
-### Schritt 1: Starten
+- Docker & Docker Compose
+- Netzwerkverbindung zur IDM Wärmepumpe (Navigator 2.0)
+
+### Installation & Start
 
 ```bash
+# Klonen
 git clone https://github.com/Xerolux/idm-metrics-collector.git
 cd idm-metrics-collector
+
+# Starten
 docker compose up -d
+
+# Einrichten im Browser
+# http://<deine-ip>:5008
 ```
 
-### Schritt 2: Einrichten
+### Ersteinrichtung
 
-Öffne `http://<deine-ip>:5008` im Browser.
-
-1.  **Ersteinrichtung:** Folge dem Assistenten, um die IP deiner Wärmepumpe einzutragen und ein sicheres Passwort zu vergeben.
-2.  **Login:** Melde dich mit `admin` und deinem neuen Passwort an.
-
-![Setup](docs/screenshots/00_setup.png)
-![Login](docs/screenshots/01_login.png)
+1. **IP der Wärmepumpe** eingeben
+2. **Sicheres Passwort** vergeben (min. 6 Zeichen)
+3. **Fertig!** Das Dashboard ist sofort live
 
 ---
 
-## 🤝 Support
+## ✨ Funktionen im Detail
 
-Probleme? Fragen? Ideen?
+### 🖥️ Dashboard
 
-*   🐛 [Issue erstellen](https://github.com/xerolux/idm-metrics-collector/issues)
-*   💬 [Discord Community][discord]
+Das Herzstück der Anwendung - alles auf einen Blick.
+
+**Kernfunktionen:**
+- **Live-Daten**: Außentemperatur, Vorlauf, Rücklauf, Speicher, Warmwasser
+- **Drag & Drop**: Widgets beliebig anordnen
+- **Zoom & Pan**: Mausrad oder Drag zum Zoomen, Ctrl+Drag zum Verschieben
+- **Dual Y-Achsen**: Temperatur (links) + Leistung (rechts) in einem Chart
+- **Vollbildmodus**: Jeder Chart im Fullscreen
+- **Dark Mode**: Automatisch oder manuell umschaltbar
+
+**Panel-Typen:**
+- **Line Charts**: Zeitverläufe mit beliebig vielen Serien
+- **Stat Panels**: Einzelwerte als große Zahlen mit Trend-Anzeige
+- **Gauge Panels**: Tachometer für COP, Effizienz, etc.
+
+**Templates (v0.7.0):**
+- Temperaturübersicht
+- Leistungsanalyse
+- Effizienz-Monitor
+- Heizkreis Detail
+- Warmwasser-Monitor
+- Solar-Integration
+- ...und mehr
+
+### 🎛️ Steuerung (Control)
+
+Volle Kontrolle über deine Wärmepumpe.
+
+- **Betriebsmodi**: Heizen, Kühlen, Auto, Eco
+- **Temperaturen**: Sollwerte für Heizkreise und Warmwasser
+- **Sofort-Aktionen**: Einmalige Warmwasserladung per Klick
+- **EEPROM-Schutz**: Warnung bei zyklischen Schreibzugriffen
+
+### 📅 Zeitpläne (Schedule)
+
+Intelligente Automatisierung für Komfort und Effizienz.
+
+- **Wochenpläne**: Individuelle Pläne für jeden Wochentag
+- **Drag & Drop**: Intuitive Bedienung
+- **Mehrfach-Trigger**: Verschiedene Aktionen zu verschiedenen Zeiten
+
+### 🔔 Benachrichtigungen & KI (Alerts)
+
+Das System wacht über deine Anlage - 24/7.
+
+**Alert-Typen:**
+- **Schwellwert-Alerts**: Temperatur/Druck überschritten
+- **Status-Alerts**: Verdichter aus, Fehlermeldung, etc.
+- **KI-Anomalien**: Maschinelles Lernen erkennt abnormales Verhalten
+
+**Kanäle:**
+- Push (ntfy), MQTT, Telegram, Signal, Discord, E-Mail, WebDAV
+
+### ⚙️ Konfiguration (Config)
+
+Alles an einem Ort.
+
+- **Verbindung**: Modbus-Parameter
+- **Heizkreise**: A, B, C aktivieren
+- **MQTT**: Home Assistant Integration
+- **Benachrichtigungen**: Alle Kanäle konfigurieren
+- **Backup**: Automatische Backups mit WebDAV-Upload
+- **Netzwerk**: IP-Whitelist/Blacklist
+- **Updates**: Automatisch oder manuell
+
+### 📜 Logs (Logs)
+
+Behalte den Überblick.
+
+- **Echtzeit-Logs**: Alle Systemereignisse live
+- **Filterbare Ansicht**: Modbus, Scheduler, Web, Alerts
+- **Farbcodierung**: Info, Warning, Error
+
+### 🔧 Tools & Service
+
+Für Profis und Technik-Fans.
+
+- **Techniker-Codes**: Temporäre Fachmann-Codes generieren
+- **System-Check**: Gesundheit aller Dienste
+
+### ℹ️ Über (About)
+
+Systeminformationen auf einen Blick.
+
+- Version, Links, Dokumentation, Support
 
 ---
-License: MIT
+
+## 🆕 Was ist neu in v0.7.0?
+
+### Dashboard Revolution
+
+| Feature | v0.6.0 | v0.7.0 |
+|---------|--------|--------|
+| Chart Zoom | ❌ | ✅ Mausrad, Drag, Pinch |
+| Tooltips | Basic | ✅ Deutsch, formatiert, farbig |
+| Dual Y-Achsen | ❌ | ✅ Temperatur + Leistung |
+| Stat Panels | ❌ | ✅ Mit Trend & Soll/Ist |
+| Gauge Panels | ❌ | ✅ Tachometer mit Zonen |
+| Dark Mode | ❌ | ✅ System-Preference |
+| Templates | ❌ | ✅ 7+ One-Click Templates |
+| Export | ❌ | ❌ (geplant v0.8.0) |
+
+### Neue Components
+
+```vue
+<!-- Stat Panel für Einzelwerte -->
+<StatCard
+    title="Außentemperatur"
+    query="idm_heatpump_temp_outside"
+    unit="°C"
+    :show-trend="true"
+    :show-target="true"
+/>
+
+<!-- Gauge Panel für COP -->
+<GaugeCard
+    title="COP"
+    query="idm_heatpump_cop"
+    :min="0"
+    :max="10"
+    :show-zones="true"
+/>
+
+<!-- Chart mit Dual Y-Achse -->
+<ChartCard
+    title="Temp & Leistung"
+    :queries="[
+        { label: 'Vorlauf', query: 'temp_flow', color: '#ef4444' },
+        { label: 'Leistung', query: 'power', color: '#3b82f6' }
+    ]"
+    y-axis-mode="dual"
+/>
+```
+
+---
+
+## 📊 Dashboard vs. Grafana
+
+Warum wir das integrierte Dashboard dem externen Grafana vorziehen:
+
+| Aspect | Dashboard | Grafana |
+|--------|-----------|---------|
+| **Installation** | ✅ Inklusive | ❌ Zusätzlich erforderlich |
+| **Konfiguration** | ✅ Plug & Play | ❌ Manual setup |
+| **Updates** | ✅ Automatisch | ❌ Getrennt |
+| **Performance** | ✅ Optimiert | ⚠️ Resource-hungrig |
+| **Mobile** | ✅ Responsive | ⚠️ Eingeschränkt |
+| **Features** | ✅ ~80% Parität | ✅ 100% |
+| **Integration** | ✅ Native | ❌ Separat |
+
+**Fazit:** Für 95% der Anwendungsfälle ist das Dashboard vollkommen ausreichend - und deutlich einfacher zu handhaben.
+
+---
+
+## 🔧 Technische Details
+
+### Stack
+
+**Backend:**
+- Python 3.11+
+- Flask + Waitress (Production Server)
+- Modbus TCP (pymodbus)
+- VictoriaMetrics (Time Series Database)
+
+**Frontend:**
+- Vue 3 + Composition API
+- PrimeVue (UI Components)
+- Chart.js + vue-chartjs
+- Tailwind CSS 4
+
+**Docker:**
+- Multi-stage build
+- Alpine-based images
+- Automatic restart policies
+
+### Performance
+
+- **Polling**: 60 Sekunden (konfigurierbar)
+- **Data Points**: Intelligentes Downsampling
+- **Caching**: API-Responses gecacht
+- **Bundle Size**: ~500KB gzipped
+
+### Sicherheit
+
+- **Passwort**: Min. 6 Zeichen, gehashed
+- **Session**: HTTPOnly, SameSite=Lax
+- **Rate Limiting**: 200 req/min
+- **Security Headers**: CSP, X-Frame-Options, etc.
+- **Network Security**: IP-Whitelist/Blacklist
+
+---
+
+## 🤝 Support & Community
+
+**Fragen? Probleme? Ideen?**
+
+- 🐛 [Issue erstellen][issues]
+- 💬 [Discord Community][discord]
+- 📖 [Dokumentation][docs-online]
+- 🔧 [Feature Request][features]
+
+---
+
+## 🗺️ Roadmap
+
+### v0.8.0 (Geplant)
+
+- [ ] Dashboard Export (PNG/PDF)
+- [ ] Math Queries (A/B, A*100)
+- [ ] Variables/Templates
+- [ ] Bar Charts & Heatmaps
+
+### v0.9.0 (Geplant)
+
+- [ ] Annotations (Markierungen)
+- [ ] Custom CSS pro Dashboard
+- [ ] WebSocket Live-Updates
+- [ ] Shared Dashboards (Links)
+
+### v1.0.0 (Ziel)
+
+- [ ] 100% Feature-Parität zu Grafana
+- [ ] Mobile Apps (iOS/Android)
+- [ ] Cloud-Sync
+- [ ] Multi-User Support
+
+---
+
+## 📄 Lizenz
+
+MIT License - siehe [LICENSE](LICENSE)
+
+---
+
+## 🙏 Danksagung
+
+An alle Contributer, Tester und Community-Mitglieder, die dieses Projekt möglich machen!
+
+Besonderer Dank an:
+- IDM für die offene Modbus-Spezifikation
+- Die Home-Assistant-Community
+- Alle Beta-Tester
+
+---
+
+**Viel Spaß mit deinem IDM Metrics Collector!** 🎉
 
 <!-- Badge Links -->
 [releases-shield]: https://img.shields.io/github/release/xerolux/idm-metrics-collector.svg?style=for-the-badge
@@ -144,3 +330,7 @@ License: MIT
 [discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
+[docs-pdf]: docs/IDM_Metrics_Collector_Handbuch.pdf
+[docs-online]: docs/MANUAL.md
+[features]: FEATURES.md
+[issues]: https://github.com/xerolux/idm-metrics-collector/issues

@@ -27,7 +27,11 @@
       "Bash(git stash:*)",
       "Bash(findstr:*)",
       "Bash(echo:*)",
-      "Bash(docker-compose stop:*)"
+      "Bash(docker-compose stop:*)",
+      "Bash(python3:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(done)"
     ]
   }
 }

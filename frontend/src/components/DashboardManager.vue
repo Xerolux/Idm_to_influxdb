@@ -1,5 +1,5 @@
 <template>
-    <div class="h-full flex flex-col gap-3">
+    <div ref="dashboardElement" class="h-full flex flex-col gap-3">
         <!-- Top Bar -->
         <div class="flex items-center justify-between gap-3 flex-shrink-0">
             <div class="flex items-center gap-2 flex-grow">
@@ -18,6 +18,12 @@
                     title="Neues Dashboard"
                 />
                 <Button
+                    @click="showTemplateDialog = true"
+                    icon="pi pi-copy"
+                    severity="secondary"
+                    title="Aus Vorlage erstellen"
+                />
+                <Button
                     @click="confirmDeleteDashboard"
                     icon="pi pi-trash"
                     severity="danger"
@@ -34,6 +40,12 @@
                     optionValue="value"
                     class="w-48"
                     @change="onTimeRangeChange"
+                />
+                <Button
+                    @click="showExportDialog = true"
+                    icon="pi pi-download"
+                    severity="secondary"
+                    title="Exportieren"
                 />
                 <Button
                     @click="editMode = !editMode"
@@ -154,6 +166,14 @@
             </template>
         </Dialog>
 
+        <ChartTemplateDialog v-model="showTemplateDialog" @apply="applyTemplate" />
+
+        <ExportDialog
+            v-model="showExportDialog"
+            :dashboard-name="currentDashboard?.name || 'Dashboard'"
+            :dashboard-element="dashboardElement"
+        />
+
         <ConfirmDialog />
         <Toast />
     </div>
@@ -174,6 +194,8 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Toast from 'primevue/toast';
+import ChartTemplateDialog from './ChartTemplateDialog.vue';
+import ExportDialog from './ExportDialog.vue';
 
 const confirm = useConfirm();
 const toast = useToast();
@@ -182,8 +204,11 @@ const dashboards = ref([]);
 const currentDashboardId = ref('');
 const editMode = ref(false);
 const showAddChartDialog = ref(false);
+const showTemplateDialog = ref(false);
+const showExportDialog = ref(false);
 const pendingSensors = ref([]);
 const isDraggingSensor = ref(false);
+const dashboardElement = ref(null);
 
 // Time range selector
 const timeRange = ref('24h');
@@ -465,6 +490,43 @@ onUnmounted(() => {
 
 const onChartDeleted = () => {
     loadDashboards();
+};
+
+const applyTemplate = async (template) => {
+    try {
+        // Create new dashboard
+        const dashRes = await axios.post('/api/dashboards', { name: template.name });
+        const newDashboard = dashRes.data;
+
+        // Add all charts from template
+        for (const chartConfig of template.charts) {
+            await axios.post(`/api/dashboards/${newDashboard.id}/charts`, {
+                title: chartConfig.title,
+                queries: chartConfig.queries,
+                hours: chartConfig.hours,
+                yAxisMode: chartConfig.yAxisMode || 'single'
+            });
+        }
+
+        // Reload dashboards and switch to new one
+        await loadDashboards();
+        currentDashboardId.value = newDashboard.id;
+
+        toast.add({
+            severity: 'success',
+            summary: 'Erstellt',
+            detail: `Dashboard "${template.name}" aus Vorlage erstellt`,
+            life: 3000
+        });
+    } catch (e) {
+        console.error('Template apply error:', e);
+        toast.add({
+            severity: 'error',
+            summary: 'Fehler',
+            detail: 'Vorlage konnte nicht angewendet werden',
+            life: 5000
+        });
+    }
 };
 </script>
 

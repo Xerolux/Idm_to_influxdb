@@ -28,10 +28,10 @@ watch(currentLang, (newLang) => {
     locale.value = newLang;
 });
 
-const isDark = ref(document.documentElement.classList.contains('my-app-dark'));
+const isDark = computed(() => ui.darkMode);
+
 const toggleTheme = () => {
-    document.documentElement.classList.toggle('my-app-dark');
-    isDark.value = !isDark.value;
+    ui.toggleDarkMode();
 };
 
 const items = computed(() => [
@@ -106,6 +106,10 @@ const resetTimer = () => {
 
 onMounted(() => {
     ui.init();
+    // Apply dark mode on mount
+    if (ui.darkMode) {
+        document.documentElement.classList.add('my-app-dark');
+    }
     const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, resetTimer));
     resetTimer();

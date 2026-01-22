@@ -25,12 +25,22 @@
                 <h3 class="text-gray-900 font-bold text-sm leading-tight pr-16">{{ title }}</h3>
                 <span class="text-xs text-gray-500">Verlauf - letzte {{ displayHours }}</span>
             </div>
-            <button
-                @click="toggleFullscreen"
-                class="text-gray-400 hover:text-gray-600"
-            >
-                <i :class="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-expand'" class="text-xs"></i>
-            </button>
+            <div class="flex items-center gap-1">
+                <button
+                    @click="resetZoom"
+                    class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                    title="Zoom zurücksetzen"
+                    v-if="isZoomed"
+                >
+                    <i class="pi pi-times text-xs"></i>
+                </button>
+                <button
+                    @click="toggleFullscreen"
+                    class="text-gray-400 hover:text-gray-600"
+                >
+                    <i :class="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-expand'" class="text-xs"></i>
+                </button>
+            </div>
         </div>
 
         <div
@@ -49,7 +59,7 @@
 
             <!-- Chart Wrapper -->
             <div class="flex-grow relative min-h-0 w-full">
-                <Line :data="chartData" :options="chartOptions" />
+                <Line ref="chartRef" :data="chartData" :options="chartOptions" @zoom="onZoom" @zoomComplete="onZoomComplete" />
             </div>
 
             <!-- Stats Table (embedded below chart) -->
@@ -127,7 +137,8 @@ const props = defineProps({
     hours: { type: [Number, String], default: 12 },
     chartId: { type: String, required: true },
     dashboardId: { type: String, required: true },
-    editMode: { type: Boolean, default: false }
+    editMode: { type: Boolean, default: false },
+    yAxisMode: { type: String, default: 'single' } // 'single' or 'dual'
 });
 
 const emit = defineEmits(['deleted']);
@@ -141,7 +152,9 @@ const chartData = ref({
 });
 
 const isFullscreen = ref(false);
+const isZoomed = ref(false);
 const chartContainer = ref(null);
+const chartRef = ref(null);
 const configDialog = ref(null);
 const stats = ref([]);
 
@@ -158,78 +171,146 @@ const displayHours = computed(() => {
 
 const hasData = computed(() => chartData.value.datasets.length > 0);
 
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            display: false
-        },
-        tooltip: {
+const chartOptions = computed(() => {
+    const isDual = props.yAxisMode === 'dual' && props.queries.length > 1;
+    const isDark = document.documentElement.classList.contains('my-app-dark');
+
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
             mode: 'index',
             intersect: false,
         },
-        zoom: {
-            zoom: {
-                wheel: {
-                    enabled: true,
-                },
-                pinch: {
-                    enabled: true
-                },
-                mode: 'x',
+        plugins: {
+            legend: {
+                display: false
             },
-            pan: {
-                enabled: true,
-                mode: 'x',
-            }
-        }
-    },
-    scales: {
-        x: {
-            display: true,
-            type: 'time',
-             time: {
-                tooltipFormat: 'dd.MM.yyyy HH:mm',
-                displayFormats: {
-                    hour: 'HH:mm',
-                    day: 'dd.MM'
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                titleColor: isDark ? '#f3f4f6' : '#1f2937',
+                bodyColor: isDark ? '#d1d5db' : '#4b5563',
+                borderColor: isDark ? '#374151' : '#e5e7eb',
+                borderWidth: 1,
+                padding: 12,
+                displayColors: true,
+                boxPadding: 4,
+                usePointStyle: true,
+                callbacks: {
+                    title: function(context) {
+                        if (context[0] && context[0].parsed.x) {
+                            const date = new Date(context[0].parsed.x);
+                            return date.toLocaleString('de-DE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                        return '';
+                    },
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(2);
+                        }
+                        return label;
+                    }
                 }
             },
-            grid: {
+            zoom: {
+                zoom: {
+                    wheel: {
+                        enabled: true,
+                        speed: 0.1
+                    },
+                    pinch: {
+                        enabled: true
+                    },
+                    drag: {
+                        enabled: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: 'rgba(59, 130, 246, 0.3)',
+                        borderWidth: 1,
+                    },
+                    mode: 'x',
+                },
+                pan: {
+                    enabled: true,
+                    mode: 'x',
+                    modifierKey: 'ctrl'
+                },
+                limits: {
+                    x: { min: 'original', max: 'original' }
+                }
+            }
+        },
+        scales: {
+            x: {
                 display: true,
-                color: '#f0f0f0'
+                type: 'time',
+                 time: {
+                    tooltipFormat: 'dd.MM.yyyy HH:mm',
+                    displayFormats: {
+                        hour: 'HH:mm',
+                        day: 'dd.MM'
+                    }
+                },
+                grid: {
+                    display: true,
+                    color: isDark ? '#374151' : '#f0f0f0'
+                },
+                ticks: {
+                    maxTicksLimit: 8,
+                    maxRotation: 0,
+                    color: isDark ? '#9ca3af' : '#666',
+                    font: { size: 10 }
+                }
             },
-            ticks: {
-                maxTicksLimit: 8,
-                maxRotation: 0,
-                color: '#666',
-                font: { size: 10 }
-            }
+            y: {
+                display: true,
+                position: 'left',
+                grid: {
+                    color: isDark ? '#374151' : '#f0f0f0'
+                },
+                ticks: {
+                    color: isDark ? '#9ca3af' : '#666',
+                    font: { size: 10 }
+                }
+            },
+            ...(isDual ? {
+                y1: {
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        color: isDark ? '#9ca3af' : '#666',
+                        font: { size: 10 }
+                    }
+                }
+            } : {})
         },
-        y: {
-            display: true,
-            grid: {
-                color: '#f0f0f0'
+        elements: {
+            point: {
+                radius: 0,
+                hitRadius: 10,
+                hoverRadius: 4
             },
-            ticks: {
-                color: '#666',
-                font: { size: 10 }
+            line: {
+                tension: 0.4,
+                borderWidth: 2
             }
         }
-    },
-    elements: {
-        point: {
-            radius: 0,
-            hitRadius: 10,
-            hoverRadius: 4
-        },
-        line: {
-            tension: 0.4,
-            borderWidth: 2
-        }
-    }
-};
+    };
+});
 
 const calculateStats = (datasets) => {
     const calculatedStats = [];
@@ -302,13 +383,20 @@ const fetchData = async () => {
                     y: parseFloat(v[1])
                 }));
 
-                datasets.push({
+                const dataset = {
                     label: q.label,
                     data: dataPoints,
                     borderColor: q.color,
                     backgroundColor: q.color,
                     fill: false
-                });
+                };
+
+                // Assign to second Y-axis if in dual mode and this is the second query
+                if (props.yAxisMode === 'dual' && datasets.length >= 1) {
+                    dataset.yAxisID = 'y1';
+                }
+
+                datasets.push(dataset);
             }
         }
     }
@@ -321,6 +409,31 @@ const fetchData = async () => {
 
 const toggleFullscreen = () => {
     isFullscreen.value = !isFullscreen.value;
+};
+
+const resetZoom = () => {
+    if (chartRef.value) {
+        const chart = chartRef.value.chart;
+        chart.resetZoom();
+        isZoomed.value = false;
+    }
+};
+
+const onZoom = () => {
+    isZoomed.value = true;
+};
+
+const onZoomComplete = () => {
+    // Check if zoom is actually applied
+    if (chartRef.value) {
+        const chart = chartRef.value.chart;
+        const xScale = chart.scales.x;
+        if (xScale.min > xScale.options.min || xScale.max < xScale.options.max) {
+            isZoomed.value = true;
+        } else {
+            isZoomed.value = false;
+        }
+    }
 };
 
 const openConfig = () => {
