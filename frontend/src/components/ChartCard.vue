@@ -59,6 +59,26 @@
 
             <!-- Chart Wrapper -->
             <div class="flex-grow relative min-h-0 w-full">
+                <!-- No Data Message -->
+                <div
+                    v-if="!hasData && !isLoading"
+                    class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm"
+                >
+                    <div class="text-center">
+                        <i class="pi pi-info-circle text-2xl mb-2"></i>
+                        <p>Keine Daten verfügbar</p>
+                        <p class="text-xs mt-1" v-if="queries && queries.length === 0">
+                            Ziehe Sensoren aus der linken Sidebar in diesen Chart
+                        </p>
+                    </div>
+                </div>
+                <!-- Loading State -->
+                <div
+                    v-if="isLoading"
+                    class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm"
+                >
+                    <i class="pi pi-spin pi-spinner text-2xl"></i>
+                </div>
                 <Line ref="chartRef" :data="chartData" :options="chartOptions" @zoom="onZoom" @zoomComplete="onZoomComplete" />
             </div>
 
@@ -157,6 +177,7 @@ const chartData = ref({
 
 const isFullscreen = ref(false);
 const isZoomed = ref(false);
+const isLoading = ref(true);
 const chartContainer = ref(null);
 const chartRef = ref(null);
 const configDialog = ref(null);
@@ -389,6 +410,9 @@ const calculateStats = (datasets) => {
 };
 
 const fetchData = async () => {
+    console.log('[ChartCard] fetchData called for:', props.title, 'with', props.queries?.length || 0, 'queries');
+    isLoading.value = true;
+
     const end = Math.floor(Date.now() / 1000);
     let start;
 
@@ -405,6 +429,13 @@ const fetchData = async () => {
     const step = Math.max(60, Math.floor(duration / 500));
 
     const datasets = [];
+
+    // Check if we have any queries
+    if (!props.queries || props.queries.length === 0) {
+        console.warn('[ChartCard] No queries configured for chart:', props.title);
+        isLoading.value = false;
+        return;
+    }
 
     // Separate metric and expression queries
     const metricQueries = props.queries.filter(q => !q.type || q.type === 'metric');
@@ -437,6 +468,12 @@ const fetchData = async () => {
     for (const { q, res } of metricResults) {
         if (res && res.data && res.data.status === 'success') {
             const result = res.data.data.result;
+
+            console.log(`[ChartCard] Data for ${q.label}:`, {
+                resultCount: result.length,
+                hasValues: result.length > 0 && result[0].values
+            });
+
             if (result.length > 0) {
                 const values = result[0].values; // [[timestamp, "value"], ...]
                 const dataPoints = values.map(v => ({
@@ -508,6 +545,9 @@ const fetchData = async () => {
         datasets
     };
     calculateStats(datasets);
+    isLoading.value = false;
+
+    console.log('[ChartCard] fetchData complete for:', props.title, 'with', datasets.length, 'datasets');
 };
 
 const toggleFullscreen = () => {
@@ -612,6 +652,16 @@ const loadAnnotations = async () => {
 };
 
 onMounted(() => {
+    // Debug: Log props
+    console.log('[ChartCard] Mounted with props:', {
+        title: props.title,
+        queriesCount: props.queries?.length || 0,
+        queries: props.queries,
+        hours: props.hours,
+        chartId: props.chartId,
+        dashboardId: props.dashboardId
+    });
+
     fetchData();
     loadAnnotations();
     const interval = setInterval(fetchData, 60000);
@@ -628,6 +678,8 @@ onMounted(() => {
 
     if (metrics.length > 0) {
         wsClient.subscribe(metrics, props.dashboardId);
+    } else {
+        console.warn('[ChartCard] No metrics to subscribe to for chart:', props.title);
     }
 
     // Handle metric updates
