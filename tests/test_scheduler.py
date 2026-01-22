@@ -1,9 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import time
 import datetime
 from idm_logger.scheduler import Scheduler
-from idm_logger import db
 
 class TestScheduler(unittest.TestCase):
     def setUp(self):
