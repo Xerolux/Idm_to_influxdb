@@ -54,6 +54,12 @@
                     title="Annotations"
                 />
                 <Button
+                    @click="showVariablesDialog = true"
+                    icon="pi pi-sliders-h"
+                    severity="secondary"
+                    title="Variables"
+                />
+                <Button
                     @click="editMode = !editMode"
                     :icon="editMode ? 'pi pi-lock-open' : 'pi pi-lock'"
                     :severity="editMode ? 'success' : 'secondary'"
@@ -64,6 +70,12 @@
 
         <!-- Overview Header -->
         <OverviewHeader />
+
+        <!-- Variable Selector -->
+        <VariableSelector
+            v-if="variables.length > 0 && !editMode"
+            @change="onVariableChange"
+        />
 
         <div class="flex flex-col lg:flex-row gap-3 overflow-hidden">
             <!-- Left Sidebar: Current Values -->
@@ -195,6 +207,72 @@
             />
         </Dialog>
 
+        <Dialog
+            v-model:visible="showVariablesDialog"
+            modal
+            header="Template Variables verwalten"
+            :style="{ width: '90vw', maxWidth: '800px' }"
+        >
+            <div class="space-y-4">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-sm text-gray-600">
+                        Variables können in Queries als ${{ '{variable_id}' }} verwendet werden
+                    </p>
+                    <Button
+                        @click="showAddVariableDialog = true"
+                        icon="pi pi-plus"
+                        size="small"
+                        severity="primary"
+                        label="Neu"
+                    />
+                </div>
+
+                <div
+                    v-if="variables.length === 0"
+                    class="text-center py-8 text-gray-500 text-sm"
+                >
+                    Keine Variables vorhanden
+                </div>
+
+                <div
+                    v-for="variable in variables"
+                    :key="variable.id"
+                    class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                >
+                    <div class="flex-grow">
+                        <div class="font-medium text-sm">{{ variable.name }}</div>
+                        <div class="text-xs text-gray-500">
+                            ID: ${{ '{' + variable.id + '}' }} |
+                            Typ: {{ variable.type }} |
+                            {{ variable.multi ? 'Mehrfach' : 'Einfach' }}auswahl
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Button
+                            @click="editVariable(variable)"
+                            icon="pi pi-pencil"
+                            size="small"
+                            text
+                            severity="secondary"
+                        />
+                        <Button
+                            @click="confirmDeleteVariable(variable)"
+                            icon="pi pi-times"
+                            size="small"
+                            text
+                            severity="danger"
+                        />
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <VariableDialog
+            v-model="showAddVariableDialog"
+            :variable="editingVariable"
+            @saved="loadVariables"
+        />
+
         <ConfirmDialog />
         <Toast />
     </div>
@@ -210,6 +288,7 @@ import ChartCard from './ChartCard.vue';
 import SensorValues from './SensorValues.vue';
 import OverviewHeader from './OverviewHeader.vue';
 import Dropdown from 'primevue/dropdown';
+import MultiSelect from 'primevue/multiselect';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
@@ -218,6 +297,8 @@ import Toast from 'primevue/toast';
 import ChartTemplateDialog from './ChartTemplateDialog.vue';
 import ExportDialog from './ExportDialog.vue';
 import AnnotationList from './AnnotationList.vue';
+import VariableDialog from './VariableDialog.vue';
+import VariableSelector from './VariableSelector.vue';
 
 const confirm = useConfirm();
 const toast = useToast();
@@ -229,9 +310,14 @@ const showAddChartDialog = ref(false);
 const showTemplateDialog = ref(false);
 const showExportDialog = ref(false);
 const showAnnotationsDialog = ref(false);
+const showVariablesDialog = ref(false);
+const showAddVariableDialog = ref(false);
 const pendingSensors = ref([]);
 const isDraggingSensor = ref(false);
 const dashboardElement = ref(null);
+const variables = ref([]);
+const editingVariable = ref(null);
+const variableValues = ref({});
 
 // Time range selector
 const timeRange = ref('24h');
@@ -417,6 +503,48 @@ const onTimeRangeChange = () => {
     // console.log('Time range changed to:', timeRange.value);
 };
 
+// Variables management
+const loadVariables = async () => {
+    try {
+        const response = await axios.get('/api/variables');
+        variables.value = response.data;
+    } catch (error) {
+        console.error('Failed to load variables:', error);
+    }
+};
+
+const editVariable = (variable) => {
+    editingVariable.value = variable;
+    showAddVariableDialog.value = true;
+};
+
+const confirmDeleteVariable = (variable) => {
+    confirm.require({
+        message: `Variable "${variable.name}" wirklich löschen?`,
+        header: 'Löschen bestätigen',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Ja',
+        rejectLabel: 'Nein',
+        accept: async () => {
+            try {
+                await axios.delete(`/api/variables/${variable.id}`);
+                await loadVariables();
+            } catch (error) {
+                console.error('Failed to delete variable:', error);
+            }
+        }
+    });
+};
+
+// Handle variable value changes - trigger refresh of all charts
+const onVariableChange = (newValues) => {
+    variableValues.value = newValues;
+    // Force all ChartCard components to refresh by re-rendering
+    // The key is to trigger the computed properties in ChartCard
+    // This is done by changing the currentDashboardId, which forces a re-fetch
+    loadDashboards();
+};
+
 const addChart = async () => {
     const queries = pendingSensors.value.length > 0 ? pendingSensors.value.map((s, i) => {
         const colors = ['#f59e0b', '#3b82f6', '#ef4444', '#22c55e', '#a855f7', '#ec4899'];
@@ -515,6 +643,7 @@ const onGlobalDragEnd = () => {
 
 onMounted(() => {
     loadDashboards();
+    loadVariables();
     document.addEventListener('dragend', onGlobalDragEnd);
 });
 

@@ -31,6 +31,7 @@ from .alerts import alert_manager
 from .dashboard_config import dashboard_manager
 from .templates import get_alert_templates
 from .annotations import AnnotationManager
+from .variables import VariableManager
 from shutil import which
 import threading
 import logging
@@ -73,6 +74,9 @@ limiter = Limiter(
 
 # Annotation Manager
 annotation_manager = AnnotationManager(config)
+
+# Variable Manager
+variable_manager = VariableManager(config)
 
 # Shared state
 current_data = {}
@@ -1657,6 +1661,147 @@ def delete_annotation(annotation_id):
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Failed to delete annotation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# Variables API
+# ============================================================================
+
+@app.route("/api/variables", methods=["GET"])
+@login_required
+def get_variables():
+    """Get all variables or values for a specific variable"""
+    try:
+        # Check if we need to fetch values for a specific variable
+        variable_id = request.args.get('fetch_values_for')
+
+        if variable_id:
+            metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
+            return jsonify(variable_manager.get_variable_values(variable_id, metrics_url))
+        else:
+            # Return all variable definitions (without values)
+            variables = variable_manager.get_all_variables()
+            return jsonify([v.to_dict() for v in variables])
+    except Exception as e:
+        logger.error(f"Failed to get variables: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/variables", methods=["POST"])
+@login_required
+def create_variable():
+    """Create a new variable"""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not data.get('id') or not data.get('name') or not data.get('type'):
+            return jsonify({"error": "id, name, and type are required"}), 400
+
+        variable = variable_manager.add_variable(
+            var_id=data['id'],
+            name=data['name'],
+            var_type=data['type'],
+            query=data.get('query'),
+            values=data.get('values'),
+            default=data.get('default'),
+            multi=data.get('multi', False),
+            regex=data.get('regex')
+        )
+
+        return jsonify(variable.to_dict()), 201
+    except Exception as e:
+        logger.error(f"Failed to create variable: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/variables/<variable_id>", methods=["GET"])
+@login_required
+def get_variable(variable_id):
+    """Get a specific variable"""
+    try:
+        # Check if we need to fetch values
+        if request.args.get('fetch_values'):
+            metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
+            return jsonify(variable_manager.get_variable_values(variable_id, metrics_url))
+        else:
+            variable = variable_manager.get_variable(variable_id)
+            if not variable:
+                return jsonify({"error": "Variable not found"}), 404
+            return jsonify(variable.to_dict())
+    except Exception as e:
+        logger.error(f"Failed to get variable: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/variables/<variable_id>", methods=["PUT"])
+@login_required
+def update_variable(variable_id):
+    """Update a variable"""
+    try:
+        data = request.get_json()
+
+        variable = variable_manager.update_variable(
+            variable_id=variable_id,
+            name=data.get('name'),
+            type=data.get('type'),
+            query=data.get('query'),
+            values=data.get('values'),
+            default=data.get('default'),
+            multi=data.get('multi'),
+            regex=data.get('regex')
+        )
+
+        if not variable:
+            return jsonify({"error": "Variable not found"}), 404
+
+        return jsonify(variable.to_dict())
+    except Exception as e:
+        logger.error(f"Failed to update variable: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/variables/<variable_id>", methods=["DELETE"])
+@login_required
+def delete_variable(variable_id):
+    """Delete a variable"""
+    try:
+        success = variable_manager.delete_variable(variable_id)
+        if not success:
+            return jsonify({"error": "Variable not found"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to delete variable: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/variables/substitute", methods=["POST"])
+@login_required
+def substitute_variables():
+    """
+    Substitute variables in a query string.
+
+    Request body:
+    {
+        "query": "temp_{circuit}_current",
+        "variables": {"circuit": "A"}
+    }
+
+    Returns:
+    {
+        "result": "temp_A_current"
+    }
+    """
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        variables = data.get('variables', {})
+
+        result = variable_manager.substitute_variables(query, variables)
+        return jsonify({'result': result})
+    except Exception as e:
+        logger.error(f"Failed to substitute variables: {e}")
         return jsonify({"error": str(e)}), 500
 
 
