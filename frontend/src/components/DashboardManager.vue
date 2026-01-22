@@ -44,6 +44,9 @@
             </div>
         </div>
 
+        <!-- Overview Header -->
+        <OverviewHeader />
+
         <div class="flex flex-col lg:flex-row gap-3 overflow-hidden">
             <!-- Left Sidebar: Current Values -->
             <div class="w-full lg:w-72 flex-shrink-0 overflow-y-auto">
@@ -164,6 +167,7 @@ import { useToast } from 'primevue/usetoast';
 import draggable from 'vuedraggable';
 import ChartCard from './ChartCard.vue';
 import SensorValues from './SensorValues.vue';
+import OverviewHeader from './OverviewHeader.vue';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
