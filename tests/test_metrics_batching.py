@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from idm_logger.metrics import MetricsWriter
 import queue
 
+
 class TestMetricsBatching:
     @pytest.fixture
     def mock_requests(self):
@@ -17,11 +18,7 @@ class TestMetricsBatching:
         writer = MetricsWriter()
 
         # Manually invoke _send_data with a list
-        batch = [
-            {"sensor1": 10},
-            {"sensor2": 20},
-            {"sensor3": 30.5}
-        ]
+        batch = [{"sensor1": 10}, {"sensor2": 20}, {"sensor3": 30.5}]
 
         writer._send_data(batch)
 
@@ -92,9 +89,9 @@ class TestMetricsBatching:
         # Simulate timeout check
         # if batch and (now - last_send > BATCH_TIMEOUT)...
         # Since we set last_send long ago, it should trigger
-        if batch: # Assume timeout logic triggered in real worker
-             mock_send(batch)
-             batch = []
+        if batch:  # Assume timeout logic triggered in real worker
+            mock_send(batch)
+            batch = []
 
         assert mock_send.call_count == 1
         mock_send.assert_called_with([{"v": 99}])

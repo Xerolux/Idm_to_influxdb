@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest.mock import patch
 from idm_logger.technician_auth import calculate_codes
 
+
 def test_technician_code_generation():
     # Test case 1: 2023-10-27 14:30
     # Day: 27
@@ -13,7 +14,7 @@ def test_technician_code_generation():
 
     fixed_date = datetime(2023, 10, 27, 14, 30)
 
-    with patch('idm_logger.technician_auth.datetime') as mock_datetime:
+    with patch("idm_logger.technician_auth.datetime") as mock_datetime:
         mock_datetime.now.return_value = fixed_date
 
         codes = calculate_codes()
@@ -30,6 +31,7 @@ def test_technician_code_generation():
 
         assert codes["level_2"] == "41307"
 
+
 def test_technician_code_single_digit_hour():
     # Test case 2: 2024-05-05 09:15
     # Day: 05
@@ -39,7 +41,7 @@ def test_technician_code_single_digit_hour():
 
     fixed_date = datetime(2024, 5, 5, 9, 15)
 
-    with patch('idm_logger.technician_auth.datetime') as mock_datetime:
+    with patch("idm_logger.technician_auth.datetime") as mock_datetime:
         mock_datetime.now.return_value = fixed_date
 
         codes = calculate_codes()

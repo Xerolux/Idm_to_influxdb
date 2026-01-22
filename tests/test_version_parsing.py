@@ -2,6 +2,7 @@
 import unittest
 from idm_logger.update_manager import _parse_version
 
+
 class TestVersionParsing(unittest.TestCase):
     def test_standard_version(self):
         # (major, minor, patch, type, prerelease_num)
@@ -50,5 +51,6 @@ class TestVersionParsing(unittest.TestCase):
         v_beta2 = _parse_version("0.6.0-beta2")
         self.assertTrue(v_beta2 > v_beta)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,9 @@ class Database:
     def get_connection(self):
         """Get the persistent database connection."""
         if self._conn is None:
-            self._conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=10.0)
+            self._conn = sqlite3.connect(
+                self.db_path, check_same_thread=False, timeout=10.0
+            )
             self._conn.row_factory = sqlite3.Row
         return self._conn
 
@@ -205,7 +207,7 @@ class Database:
                 cursor = conn.cursor()
                 cursor.executemany(
                     "UPDATE jobs SET last_run=? WHERE id=?",
-                    [(ts, jid) for jid, ts in updates]
+                    [(ts, jid) for jid, ts in updates],
                 )
             logger.debug(f"Updated last_run for {len(updates)} jobs")
         except sqlite3.Error as e:

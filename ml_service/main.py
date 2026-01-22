@@ -14,7 +14,7 @@ from flask import Flask, jsonify
 import sys
 
 # Add parent directory to path to import idm_logger modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from idm_logger.sensor_addresses import (
     COMMON_SENSORS,
@@ -35,7 +35,9 @@ MIN_DATA_RATIO = float(os.environ.get("MIN_DATA_RATIO", "0.8"))
 MODEL_N_TREES = int(os.environ.get("MODEL_N_TREES", "25"))
 MODEL_HEIGHT = int(os.environ.get("MODEL_HEIGHT", "15"))
 MODEL_WINDOW_SIZE = int(os.environ.get("MODEL_WINDOW_SIZE", "250"))
-MODEL_SAVE_INTERVAL = int(os.environ.get("MODEL_SAVE_INTERVAL", "300"))  # Save every 5 minutes
+MODEL_SAVE_INTERVAL = int(
+    os.environ.get("MODEL_SAVE_INTERVAL", "300")
+)  # Save every 5 minutes
 MODEL_PATH = os.environ.get("MODEL_PATH", "/app/data/model_state.pkl")
 ENABLE_ALERTS = os.environ.get("ENABLE_ALERTS", "true").lower() == "true"
 ALERT_COOLDOWN = int(os.environ.get("ALERT_COOLDOWN", "3600"))  # 1 hour between alerts
@@ -44,12 +46,13 @@ INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
 
 # Circuit and Zone configuration
 ML_CIRCUITS = os.environ.get("ML_CIRCUITS", "A").split(",")
-ML_ZONES = [int(z.strip()) for z in os.environ.get("ML_ZONES", "").split(",") if z.strip()]
+ML_ZONES = [
+    int(z.strip()) for z in os.environ.get("ML_ZONES", "").split(",") if z.strip()
+]
 
 # Logging setup
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("ml-service")
 
@@ -64,19 +67,23 @@ last_model_save = time.time()
 # Flask health check app
 health_app = Flask(__name__)
 
-@health_app.route('/health')
+
+@health_app.route("/health")
 def health():
     """Health check endpoint for monitoring."""
-    return jsonify({
-        "status": "healthy",
-        "model_state": "trained" if model_trained else "learning",
-        "last_score": last_score,
-        "features_count": len(get_all_readable_sensors()),
-        "uptime_seconds": int(time.time() - start_time),
-        "update_interval": UPDATE_INTERVAL,
-        "anomaly_threshold": ANOMALY_THRESHOLD,
-        "updates_processed": update_counter
-    }), 200
+    return jsonify(
+        {
+            "status": "healthy",
+            "model_state": "trained" if model_trained else "learning",
+            "last_score": last_score,
+            "features_count": len(get_all_readable_sensors()),
+            "uptime_seconds": int(time.time() - start_time),
+            "update_interval": UPDATE_INTERVAL,
+            "anomaly_threshold": ANOMALY_THRESHOLD,
+            "updates_processed": update_counter,
+        }
+    ), 200
+
 
 def get_all_readable_sensors():
     """Get all sensors that are readable (read_supported=True)."""
@@ -123,25 +130,29 @@ def get_all_readable_sensors():
 
     return unique_sensors
 
+
 SENSORS = get_all_readable_sensors()
 
 # Initialize River Model
-logger.info(f"Initializing model with: n_trees={MODEL_N_TREES}, height={MODEL_HEIGHT}, window_size={MODEL_WINDOW_SIZE}")
+logger.info(
+    f"Initializing model with: n_trees={MODEL_N_TREES}, height={MODEL_HEIGHT}, window_size={MODEL_WINDOW_SIZE}"
+)
 model = compose.Pipeline(
     preprocessing.StandardScaler(),
     anomaly.HalfSpaceTrees(
         n_trees=MODEL_N_TREES,
         height=MODEL_HEIGHT,
         window_size=MODEL_WINDOW_SIZE,
-        seed=42
-    )
+        seed=42,
+    ),
 )
+
 
 def save_model_state():
     """Save model state to disk for persistence across restarts."""
     try:
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        with open(MODEL_PATH, 'wb') as f:
+        with open(MODEL_PATH, "wb") as f:
             pickle.dump(model, f)
         logger.info(f"Model state saved to {MODEL_PATH}")
         return True
@@ -149,12 +160,13 @@ def save_model_state():
         logger.error(f"Failed to save model state: {e}")
         return False
 
+
 def load_model_state():
     """Load model state from disk if available."""
     global model, model_trained
     try:
         if os.path.exists(MODEL_PATH):
-            with open(MODEL_PATH, 'rb') as f:
+            with open(MODEL_PATH, "rb") as f:
                 model = pickle.load(f)
             model_trained = True
             logger.info(f"Model state loaded from {MODEL_PATH}")
@@ -166,29 +178,31 @@ def load_model_state():
         logger.error(f"Failed to load model state: {e}")
         return False
 
+
 def enrich_features(data: dict) -> dict:
     """Add temporal and computed features for better anomaly detection."""
     now = datetime.now()
 
     # Temporal features
-    data['hour_of_day'] = now.hour
-    data['day_of_week'] = now.weekday()
-    data['is_weekend'] = 1 if now.weekday() >= 5 else 0
+    data["hour_of_day"] = now.hour
+    data["day_of_week"] = now.weekday()
+    data["is_weekend"] = 1 if now.weekday() >= 5 else 0
 
     # Computed features (if sensors available)
     try:
         # Temperature difference (common in heat pumps)
-        if 'flow_temp' in data and 'return_temp' in data:
-            data['temp_diff'] = data['flow_temp'] - data['return_temp']
+        if "flow_temp" in data and "return_temp" in data:
+            data["temp_diff"] = data["flow_temp"] - data["return_temp"]
 
         # Efficiency approximation
-        if 'power_consumption' in data and 'heating_power' in data:
-            if data['power_consumption'] > 0:
-                data['efficiency'] = data['heating_power'] / data['power_consumption']
+        if "power_consumption" in data and "heating_power" in data:
+            if data["power_consumption"] > 0:
+                data["efficiency"] = data["heating_power"] / data["power_consumption"]
     except Exception as e:
         logger.debug(f"Feature engineering error: {e}")
 
     return data
+
 
 def fetch_latest_data():
     """
@@ -199,12 +213,14 @@ def fetch_latest_data():
 
     # Query regex to match all relevant metrics
     regex = "|".join([f"{MEASUREMENT_NAME}_{s}" for s in SENSORS])
-    query = f"{{__name__=~\"{regex}\"}}"
+    query = f'{{__name__=~"{regex}"}}'
 
     try:
         response = requests.get(query_url, params={"query": query}, timeout=10)
         if response.status_code != 200:
-            logger.error(f"Failed to fetch data from {query_url}: {response.status_code} {response.text}")
+            logger.error(
+                f"Failed to fetch data from {query_url}: {response.status_code} {response.text}"
+            )
             return None
 
         json_data = response.json()
@@ -236,7 +252,10 @@ def fetch_latest_data():
         logger.error(f"Exception fetching data: {e}")
         return None
 
-def write_metrics(score: float, is_anomaly: bool, features_count: int, processing_time: float):
+
+def write_metrics(
+    score: float, is_anomaly: bool, features_count: int, processing_time: float
+):
     """
     Write anomaly and ML performance metrics to VictoriaMetrics.
     """
@@ -247,7 +266,7 @@ def write_metrics(score: float, is_anomaly: bool, features_count: int, processin
         f"idm_anomaly_flag value={1 if is_anomaly else 0}",
         f"idm_ml_features_count value={features_count}",
         f"idm_ml_processing_time_ms value={processing_time * 1000}",
-        "idm_ml_model_updates value=1"  # Counter
+        "idm_ml_model_updates value=1",  # Counter
     ]
 
     data = "\n".join(lines)
@@ -255,9 +274,12 @@ def write_metrics(score: float, is_anomaly: bool, features_count: int, processin
     try:
         response = requests.post(write_url, data=data, timeout=5)
         if response.status_code not in (200, 204):
-            logger.error(f"Failed to write metrics to {write_url}: {response.status_code} {response.text}")
+            logger.error(
+                f"Failed to write metrics to {write_url}: {response.status_code} {response.text}"
+            )
     except Exception as e:
         logger.error(f"Exception writing metrics: {e}")
+
 
 def send_anomaly_alert(score: float, data: dict):
     """Send anomaly alert to IDM Logger notification system."""
@@ -279,7 +301,7 @@ def send_anomaly_alert(score: float, data: dict):
             "threshold": ANOMALY_THRESHOLD,
             "sensor_count": len(data),
             "timestamp": int(time.time()),
-            "message": f"⚠️ Anomalie erkannt! Score: {score:.2f} (Schwellwert: {ANOMALY_THRESHOLD})"
+            "message": f"⚠️ Anomalie erkannt! Score: {score:.2f} (Schwellwert: {ANOMALY_THRESHOLD})",
         }
 
         headers = {}
@@ -294,6 +316,7 @@ def send_anomaly_alert(score: float, data: dict):
             logger.warning(f"Alert endpoint returned {response.status_code}")
     except Exception as e:
         logger.error(f"Failed to send anomaly alert: {e}")
+
 
 def job():
     """
@@ -312,7 +335,9 @@ def job():
 
         min_features = int(len(SENSORS) * MIN_DATA_RATIO)
         if len(data) < min_features:
-            logger.warning(f"Insufficient data fetched ({len(data)}/{len(SENSORS)} sensors, need {min_features}). Skipping.")
+            logger.warning(
+                f"Insufficient data fetched ({len(data)}/{len(SENSORS)} sensors, need {min_features}). Skipping."
+            )
             return
 
         # Enrich with temporal and computed features
@@ -331,7 +356,9 @@ def job():
 
         processing_time = time.time() - start
 
-        logger.info(f"Score: {score:.4f} | Anomaly: {is_anomaly} | Features: {len(data)} | Time: {processing_time*1000:.1f}ms")
+        logger.info(
+            f"Score: {score:.4f} | Anomaly: {is_anomaly} | Features: {len(data)} | Time: {processing_time * 1000:.1f}ms"
+        )
 
         # Write metrics
         write_metrics(score, is_anomaly, len(data), processing_time)
@@ -351,6 +378,7 @@ def job():
     except Exception as e:
         logger.error(f"Job failed: {e}", exc_info=True)
 
+
 def wait_for_connection():
     """
     Wait for VictoriaMetrics to be reachable.
@@ -366,13 +394,20 @@ def wait_for_connection():
                 logger.info("Successfully connected to VictoriaMetrics.")
                 return
             else:
-                logger.warning(f"VictoriaMetrics reachable but returned {response.status_code}. Retrying in 5s...")
+                logger.warning(
+                    f"VictoriaMetrics reachable but returned {response.status_code}. Retrying in 5s..."
+                )
         except requests.exceptions.ConnectionError:
-            logger.warning(f"Connection refused to {METRICS_URL}. VictoriaMetrics might be starting up. Retrying in 5s...")
+            logger.warning(
+                f"Connection refused to {METRICS_URL}. VictoriaMetrics might be starting up. Retrying in 5s..."
+            )
         except Exception as e:
-            logger.error(f"Unexpected error connecting to {METRICS_URL}: {e}. Retrying in 5s...")
+            logger.error(
+                f"Unexpected error connecting to {METRICS_URL}: {e}. Retrying in 5s..."
+            )
 
         time.sleep(5)
+
 
 def main():
     logger.info("=" * 60)
@@ -387,7 +422,9 @@ def main():
     logger.info(f"Circuits: {', '.join(ML_CIRCUITS)}")
     if ML_ZONES:
         logger.info(f"Zones: {', '.join(map(str, ML_ZONES))}")
-    logger.info(f"Model: n_trees={MODEL_N_TREES}, height={MODEL_HEIGHT}, window={MODEL_WINDOW_SIZE}")
+    logger.info(
+        f"Model: n_trees={MODEL_N_TREES}, height={MODEL_HEIGHT}, window={MODEL_WINDOW_SIZE}"
+    )
     logger.info(f"Alerts: {'Enabled' if ENABLE_ALERTS else 'Disabled'}")
     logger.info("=" * 60)
 
@@ -399,7 +436,10 @@ def main():
 
     # Start health check server in background thread
     logger.info("Starting health check server on port 8080...")
-    threading.Thread(target=lambda: health_app.run(host='0.0.0.0', port=8080, debug=False), daemon=True).start()
+    threading.Thread(
+        target=lambda: health_app.run(host="0.0.0.0", port=8080, debug=False),
+        daemon=True,
+    ).start()
 
     # Run once immediately
     logger.info("Running initial processing...")
@@ -422,6 +462,7 @@ def main():
         # Save model on exit
         save_model_state()
         logger.info("ML Service stopped")
+
 
 if __name__ == "__main__":
     main()

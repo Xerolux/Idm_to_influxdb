@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 from playwright.sync_api import sync_playwright, expect
 
+
 def verify_login_ux():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -15,28 +16,28 @@ def verify_login_ux():
         # 1. Verify error message is NOT visible initially
         error_locator = page.locator(".text-error-400")
         if error_locator.count() > 0:
-             print("Error locator found, checking visibility")
-             # It might be in DOM but hidden or not in DOM.
-             # In Vue v-if removes it from DOM.
-             # Wait, my change uses v-if="showPasswordError"
-             # So expect(error_locator).not_to_be_visible() should pass or to_have_count(0)
-             if error_locator.is_visible():
-                 print("FAIL: Error message is visible initially!")
-                 page.screenshot(path="verification/fail_initial.png")
-                 browser.close()
-                 return
-             else:
-                 print("PASS: Error message not visible initially.")
+            print("Error locator found, checking visibility")
+            # It might be in DOM but hidden or not in DOM.
+            # In Vue v-if removes it from DOM.
+            # Wait, my change uses v-if="showPasswordError"
+            # So expect(error_locator).not_to_be_visible() should pass or to_have_count(0)
+            if error_locator.is_visible():
+                print("FAIL: Error message is visible initially!")
+                page.screenshot(path="verification/fail_initial.png")
+                browser.close()
+                return
+            else:
+                print("PASS: Error message not visible initially.")
         else:
-             print("PASS: Error message not in DOM initially.")
+            print("PASS: Error message not in DOM initially.")
 
         page.screenshot(path="verification/1_initial_state.png")
 
         # 2. Focus and Blur (touch)
         print("Interacting with password field...")
         password_input = page.locator("#password")
-        password_input.click() # Focus
-        page.locator("body").click() # Blur
+        password_input.click()  # Focus
+        page.locator("body").click()  # Blur
 
         # Now error should be visible
         print("Checking error after blur...")
@@ -71,9 +72,11 @@ def verify_login_ux():
 
         login_button = page.locator("button", has_text="Login")
         if login_button.is_disabled():
-            print("Login button is disabled initially. This is expected behavior for empty form.")
+            print(
+                "Login button is disabled initially. This is expected behavior for empty form."
+            )
         else:
-             print("FAIL: Login button is enabled initially?")
+            print("FAIL: Login button is enabled initially?")
 
         # But I wanted to test that submitting shows error?
         # If button is disabled, I can't click it.
@@ -94,6 +97,7 @@ def verify_login_ux():
         page.screenshot(path="verification/3_after_enter.png")
 
         browser.close()
+
 
 if __name__ == "__main__":
     verify_login_ux()

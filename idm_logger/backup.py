@@ -15,8 +15,10 @@ import threading
 
 from .config import config, DATA_DIR
 from .db import db
+
 try:
     from webdav4.client import Client as WebDavClient
+
     WEBDAV_AVAILABLE = True
 except ImportError:
     WEBDAV_AVAILABLE = False
@@ -44,10 +46,7 @@ class BackupManager:
 
             # Create snapshot via API
             logger.info("Creating VictoriaMetrics snapshot...")
-            response = requests.post(
-                f"{vm_url}/snapshot/create",
-                timeout=60
-            )
+            response = requests.post(f"{vm_url}/snapshot/create", timeout=60)
 
             if response.status_code != 200:
                 logger.error(f"Failed to create VM snapshot: {response.status_code}")
@@ -72,9 +71,10 @@ class BackupManager:
             snapshot_path = f"/storage/snapshots/{snapshot_name}"
 
             cmd = [
-                "docker", "cp",
+                "docker",
+                "cp",
                 f"{container_name}:{snapshot_path}",
-                str(vm_backup_dir / snapshot_name)
+                str(vm_backup_dir / snapshot_name),
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -89,7 +89,7 @@ class BackupManager:
             delete_response = requests.post(
                 f"{vm_url}/snapshot/delete",
                 params={"snapshot": snapshot_name},
-                timeout=30
+                timeout=30,
             )
 
             if delete_response.status_code == 200:
@@ -126,7 +126,7 @@ class BackupManager:
                 search_response = requests.get(
                     f"{grafana_url}/api/search",
                     auth=(grafana_user, grafana_password),
-                    timeout=10
+                    timeout=10,
                 )
 
                 if search_response.status_code == 200:
@@ -143,7 +143,7 @@ class BackupManager:
                                 dash_response = requests.get(
                                     f"{grafana_url}/api/dashboards/uid/{uid}",
                                     auth=(grafana_user, grafana_password),
-                                    timeout=10
+                                    timeout=10,
                                 )
 
                                 if dash_response.status_code == 200:
@@ -151,11 +151,15 @@ class BackupManager:
                                     dash_file = dashboards_dir / f"{uid}.json"
                                     with open(dash_file, "w") as f:
                                         json.dump(dash_data, f, indent=2)
-                                    logger.info(f"Exported dashboard: {dashboard.get('title')}")
+                                    logger.info(
+                                        f"Exported dashboard: {dashboard.get('title')}"
+                                    )
 
                     logger.info(f"Exported {len(dashboards)} Grafana dashboards")
                 else:
-                    logger.warning(f"Could not export Grafana dashboards: {search_response.status_code}")
+                    logger.warning(
+                        f"Could not export Grafana dashboards: {search_response.status_code}"
+                    )
 
             except Exception as e:
                 logger.warning(f"Grafana API backup failed (may be unavailable): {e}")
@@ -166,8 +170,8 @@ class BackupManager:
             container_name = "idm-grafana"
             grafana_data_paths = [
                 "/var/lib/grafana/grafana.db",  # SQLite database
-                "/var/lib/grafana/alerting",    # Alerting rules
-                "/var/lib/grafana/plugins",     # Plugins
+                "/var/lib/grafana/alerting",  # Alerting rules
+                "/var/lib/grafana/plugins",  # Plugins
             ]
 
             volume_dir = grafana_backup_dir / "volume"
@@ -176,13 +180,11 @@ class BackupManager:
             for path in grafana_data_paths:
                 try:
                     dest = volume_dir / Path(path).name
-                    cmd = [
-                        "docker", "cp",
-                        f"{container_name}:{path}",
-                        str(dest)
-                    ]
+                    cmd = ["docker", "cp", f"{container_name}:{path}", str(dest)]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=30
+                    )
 
                     if result.returncode == 0:
                         logger.info(f"Copied Grafana data: {path}")
@@ -206,7 +208,7 @@ class BackupManager:
                     shutil.copytree(
                         grafana_host_dir / "provisioning",
                         provisioning_dir,
-                        dirs_exist_ok=True
+                        dirs_exist_ok=True,
                     )
 
                 # Copy dashboards directory
@@ -214,7 +216,7 @@ class BackupManager:
                     shutil.copytree(
                         grafana_host_dir / "dashboards",
                         grafana_backup_dir / "host_dashboards",
-                        dirs_exist_ok=True
+                        dirs_exist_ok=True,
                     )
 
                 logger.info("Grafana provisioning files copied")
@@ -241,7 +243,10 @@ class BackupManager:
                 continue
 
             # Check if file is a symlink (security risk)
-            if member.create_system == 3 and (member.external_attr >> 16) & 0xA000 == 0xA000:
+            if (
+                member.create_system == 3
+                and (member.external_attr >> 16) & 0xA000 == 0xA000
+            ):
                 logger.warning(f"Blocked symlink extraction: {member.filename}")
                 continue
 
@@ -452,7 +457,9 @@ class BackupManager:
 
             # Upload to WebDAV if enabled
             webdav_result = None
-            if config.get("webdav.enabled", False) and config.get("backup.auto_upload", False):
+            if config.get("webdav.enabled", False) and config.get(
+                "backup.auto_upload", False
+            ):
                 logger.info("Auto-uploading backup to WebDAV...")
                 webdav_result = BackupManager.upload_to_webdav(str(backup_path))
 
@@ -462,7 +469,7 @@ class BackupManager:
                 "path": str(backup_path),
                 "size": file_size,
                 "created_at": backup_data["metadata"]["created_at"],
-                "webdav_upload": webdav_result
+                "webdav_upload": webdav_result,
             }
 
         except Exception as e:
@@ -497,9 +504,10 @@ class BackupManager:
 
             # First, copy to container's snapshots directory
             cmd = [
-                "docker", "cp",
+                "docker",
+                "cp",
                 str(snapshot_dir),
-                f"{container_name}:/storage/snapshots/"
+                f"{container_name}:/storage/snapshots/",
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -514,14 +522,16 @@ class BackupManager:
             response = requests.post(
                 f"{vm_url}/snapshot/restore",
                 params={"snapshot": snapshot_dir.name},
-                timeout=120
+                timeout=120,
             )
 
             if response.status_code == 200:
                 logger.info("VictoriaMetrics snapshot restored successfully")
                 return True
             else:
-                logger.error(f"Failed to restore VM snapshot via API: {response.status_code}")
+                logger.error(
+                    f"Failed to restore VM snapshot via API: {response.status_code}"
+                )
                 return False
 
         except Exception as e:
@@ -559,25 +569,31 @@ class BackupManager:
 
                         # Import dashboard
                         import_data = {
-                            "dashboard": dashboard_data.get("dashboard", dashboard_data),
+                            "dashboard": dashboard_data.get(
+                                "dashboard", dashboard_data
+                            ),
                             "overwrite": True,
-                            "message": "Restored from backup"
+                            "message": "Restored from backup",
                         }
 
                         response = requests.post(
                             f"{grafana_url}/api/dashboards/db",
                             auth=(grafana_user, grafana_password),
                             json=import_data,
-                            timeout=10
+                            timeout=10,
                         )
 
                         if response.status_code in (200, 201):
                             logger.info(f"Restored dashboard: {dashboard_file.name}")
                         else:
-                            logger.warning(f"Failed to restore dashboard {dashboard_file.name}: {response.status_code}")
+                            logger.warning(
+                                f"Failed to restore dashboard {dashboard_file.name}: {response.status_code}"
+                            )
 
                     except Exception as e:
-                        logger.warning(f"Could not restore dashboard {dashboard_file.name}: {e}")
+                        logger.warning(
+                            f"Could not restore dashboard {dashboard_file.name}: {e}"
+                        )
 
             # 2. Restore Grafana volume data
             volume_dir = grafana_backup_dir / "volume"
@@ -590,20 +606,27 @@ class BackupManager:
                     try:
                         # Copy back to container
                         cmd = [
-                            "docker", "cp",
+                            "docker",
+                            "cp",
                             str(item),
-                            f"{container_name}:/var/lib/grafana/"
+                            f"{container_name}:/var/lib/grafana/",
                         ]
 
-                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                        result = subprocess.run(
+                            cmd, capture_output=True, text=True, timeout=30
+                        )
 
                         if result.returncode == 0:
                             logger.info(f"Restored Grafana data: {item.name}")
                         else:
-                            logger.warning(f"Could not restore {item.name}: {result.stderr}")
+                            logger.warning(
+                                f"Could not restore {item.name}: {result.stderr}"
+                            )
 
                     except Exception as e:
-                        logger.warning(f"Could not restore Grafana item {item.name}: {e}")
+                        logger.warning(
+                            f"Could not restore Grafana item {item.name}: {e}"
+                        )
 
                 # Restart Grafana to apply changes
                 try:
@@ -611,7 +634,7 @@ class BackupManager:
                         ["docker", "restart", container_name],
                         capture_output=True,
                         text=True,
-                        timeout=30
+                        timeout=30,
                     )
                     logger.info("Grafana restarted to apply restored data")
                 except Exception as e:
@@ -674,7 +697,9 @@ class BackupManager:
             return {"success": False, "error": "Backup file not found"}
 
         # Create temporary extraction directory
-        temp_extract_dir = BACKUP_DIR / f"temp_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        temp_extract_dir = (
+            BACKUP_DIR / f"temp_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
         temp_extract_dir.mkdir(exist_ok=True)
 
         try:

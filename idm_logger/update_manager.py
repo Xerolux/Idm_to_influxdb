@@ -73,7 +73,7 @@ def get_current_version() -> str:
     # Fallback to VERSION file (usually at /app/VERSION or repo_path/VERSION)
     version_file = Path("/app/VERSION")
     if not version_file.exists():
-         version_file = Path(get_repo_path()) / "VERSION"
+        version_file = Path(get_repo_path()) / "VERSION"
 
     if version_file.exists():
         return version_file.read_text().strip()
@@ -144,14 +144,15 @@ def _parse_version(version: str) -> Optional[Tuple[int, int, int, int, int]]:
             # Handle beta/rc/alpha
             # e.g. beta1
             import re
+
             match = re.match(r"([a-zA-Z]+)(\d+)?", suffix)
             if match:
                 # _type_str = match.group(1) # e.g. beta
                 num = int(match.group(2)) if match.group(2) else 0
                 return (major, minor, patch, 0, num)
             else:
-                 # Unknown suffix
-                 return (major, minor, patch, 0, 0)
+                # Unknown suffix
+                return (major, minor, patch, 0, 0)
         else:
             # Stable
             return (major, minor, patch, 1, 0)
@@ -180,8 +181,8 @@ def get_update_type(current_version: str, latest_version: str) -> str:
 
     # If release type diff (beta vs stable) or prerelease num diff
     if latest[3:] != current[3:]:
-         # Consider this a patch level update for simplicity
-         return "patch"
+        # Consider this a patch level update for simplicity
+        return "patch"
 
     return "none"
 
@@ -222,18 +223,18 @@ def check_for_update() -> Dict[str, Any]:
             # Simple string comparison isn't enough (v0.6.0-beta vs v0.6.0)
             # But typically 'latest' endpoint only returns stable.
             if latest_version != current_version:
-                 # Ensure we don't downgrade or reinstall same
-                 # But parsing is hard. Let's assume if strings differ, it's an update
-                 # unless current is 'newer'.
-                 # Actually, if I am on 0.6.0-beta1 and latest is 0.6.0, I want update.
-                 # If I am on 0.6.1 and latest is 0.6.0, I don't.
+                # Ensure we don't downgrade or reinstall same
+                # But parsing is hard. Let's assume if strings differ, it's an update
+                # unless current is 'newer'.
+                # Actually, if I am on 0.6.0-beta1 and latest is 0.6.0, I want update.
+                # If I am on 0.6.1 and latest is 0.6.0, I don't.
 
-                 # Basic check:
-                 curr_p = _parse_version(current_version)
-                 lat_p = _parse_version(latest_version)
+                # Basic check:
+                curr_p = _parse_version(current_version)
+                lat_p = _parse_version(latest_version)
 
-                 if lat_p and curr_p and lat_p > curr_p:
-                     update_available = True
+                if lat_p and curr_p and lat_p > curr_p:
+                    update_available = True
 
         elif channel == "beta":
             # Check for latest release (including prereleases)
@@ -255,22 +256,37 @@ def check_for_update() -> Dict[str, Any]:
                 lat_p = _parse_version(latest_version)
 
                 if lat_p and curr_p and lat_p > curr_p:
-                     update_available = True
+                    update_available = True
                 elif lat_p and not curr_p:
                     # If current is unknown, assume update
                     update_available = True
 
-        else: # channel == 'latest' (formerly dev)
+        else:  # channel == 'latest' (formerly dev)
             # Checks against main branch
 
             git_worked = False
             try:
                 # Check git availability
-                subprocess.run(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                subprocess.run(
+                    ["git", "--version"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True,
+                )
 
-                subprocess.run(["git", "fetch", "origin", "main"], timeout=10, cwd=repo_path, capture_output=True, check=True)
-                head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_path, text=True).strip()
-                remote = subprocess.check_output(["git", "rev-parse", "origin/main"], cwd=repo_path, text=True).strip()
+                subprocess.run(
+                    ["git", "fetch", "origin", "main"],
+                    timeout=10,
+                    cwd=repo_path,
+                    capture_output=True,
+                    check=True,
+                )
+                head = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=repo_path, text=True
+                ).strip()
+                remote = subprocess.check_output(
+                    ["git", "rev-parse", "origin/main"], cwd=repo_path, text=True
+                ).strip()
 
                 latest_version = f"dev-{remote[:7]}"
                 if head != remote:
@@ -291,7 +307,7 @@ def check_for_update() -> Dict[str, Any]:
                     if len(parts) >= 3:
                         current_hash = parts[-1]
                         if ".at" in current_hash:
-                             current_hash = current_hash.split(".at")[-1]
+                            current_hash = current_hash.split(".at")[-1]
 
                     resp = requests.get(f"{GITHUB_API_BASE}/commits/main", timeout=10)
                     resp.raise_for_status()
@@ -304,14 +320,14 @@ def check_for_update() -> Dict[str, Any]:
                         update_available = True
                         release_notes = f"Update: {remote_data.get('commit', {}).get('message', '').splitlines()[0]}"
                     elif not current_hash:
-                         # Can't determine current hash, assume update if version looks wrong
-                         update_available = True
+                        # Can't determine current hash, assume update if version looks wrong
+                        update_available = True
                     else:
                         release_notes = "System ist aktuell (latest)"
 
                 except Exception as e:
-                     logger.warning(f"API check failed: {e}")
-                     latest_version = "unknown"
+                    logger.warning(f"API check failed: {e}")
+                    latest_version = "unknown"
 
     except Exception as e:
         logger.error(f"Update check failed: {e}")
@@ -339,7 +355,9 @@ def perform_update(repo_path: Optional[str] = None) -> None:
     git_dir = Path(repo_path) / ".git"
     if not git_dir.exists():
         logger.error(f"Cannot update: {repo_path} is not a git repository.")
-        raise RuntimeError(f"Update fehlgeschlagen: {repo_path} ist kein Git-Repository.")
+        raise RuntimeError(
+            f"Update fehlgeschlagen: {repo_path} ist kein Git-Repository."
+        )
 
     channel = config.get("updates.channel", "latest")
     logger.info(f"Performing update (Channel: {channel}) in {repo_path}...")
@@ -347,29 +365,29 @@ def perform_update(repo_path: Optional[str] = None) -> None:
     if channel in ["release", "beta"]:
         # Fetch tags
         try:
-             # Logic is similar for beta and release: find the tag we want
-             check_res = check_for_update()
-             if not check_res.get("update_available"):
-                 logger.info("No update available according to check.")
-                 # Force pull anyway if user requested?
-                 # But we need a target tag.
-                 # If check_for_update fails or says no update, we might stick to current or latest available.
-                 pass
+            # Logic is similar for beta and release: find the tag we want
+            check_res = check_for_update()
+            if not check_res.get("update_available"):
+                logger.info("No update available according to check.")
+                # Force pull anyway if user requested?
+                # But we need a target tag.
+                # If check_for_update fails or says no update, we might stick to current or latest available.
+                pass
 
-             target_tag = check_res.get("latest_version")
-             if not target_tag or target_tag == "unknown":
-                 # Fallback: fetch tags and checkout based on logic again?
-                 # Or just fail
-                 raise RuntimeError("Konnte Ziel-Version nicht ermitteln.")
+            target_tag = check_res.get("latest_version")
+            if not target_tag or target_tag == "unknown":
+                # Fallback: fetch tags and checkout based on logic again?
+                # Or just fail
+                raise RuntimeError("Konnte Ziel-Version nicht ermitteln.")
 
-             logger.info(f"Fetching tags and checking out {target_tag}...")
-             subprocess.run(["git", "fetch", "--tags"], check=True, cwd=repo_path)
-             subprocess.run(["git", "checkout", target_tag], check=True, cwd=repo_path)
+            logger.info(f"Fetching tags and checking out {target_tag}...")
+            subprocess.run(["git", "fetch", "--tags"], check=True, cwd=repo_path)
+            subprocess.run(["git", "checkout", target_tag], check=True, cwd=repo_path)
 
         except Exception as e:
             raise RuntimeError(f"Update failed: {e}")
 
-    else: # latest (main branch)
+    else:  # latest (main branch)
         logger.info("Pulling latest changes from git (main)...")
         subprocess.run(["git", "checkout", "main"], check=False, cwd=repo_path)
         result = subprocess.run(

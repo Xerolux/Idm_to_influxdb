@@ -27,7 +27,9 @@ class NotificationManager:
                 provider.send(message, **kwargs)
             except Exception as e:
                 # Log unexpected exceptions that weren't caught by providers
-                logger.error(f"Unexpected error in {provider.name} provider: {e}", exc_info=True)
+                logger.error(
+                    f"Unexpected error in {provider.name} provider: {e}", exc_info=True
+                )
 
 
 notification_manager = NotificationManager()

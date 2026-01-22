@@ -146,7 +146,7 @@ class MetricsWriter:
             "connected": self._connected,
             "type": "VictoriaMetrics",
             "url": self.url,
-            "queue_size": self.queue.qsize()
+            "queue_size": self.queue.qsize(),
         }
 
     def stop(self):

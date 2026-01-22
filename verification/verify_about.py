@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 from playwright.sync_api import sync_playwright, expect
 
+
 def test_about_page_content(page):
     # Navigate to the About page
     # It seems the vite server is serving at /static/
@@ -13,7 +14,9 @@ def test_about_page_content(page):
     expect(page.get_by_role("heading", name="Hauptfunktionen")).to_be_visible()
 
     # Check for the new list items
-    expect(page.get_by_text("AI Anomalie-Erkennung (Echtzeit-Überwachung mit River)")).to_be_visible()
+    expect(
+        page.get_by_text("AI Anomalie-Erkennung (Echtzeit-Überwachung mit River)")
+    ).to_be_visible()
     expect(page.get_by_text("Techniker-Tools (Code Generator)")).to_be_visible()
 
     # Check for "River (Online ML)" in Powered By section
@@ -21,6 +24,7 @@ def test_about_page_content(page):
 
     # Take a screenshot
     page.screenshot(path="/home/jules/verification/about_page.png")
+
 
 if __name__ == "__main__":
     with sync_playwright() as p:

@@ -30,7 +30,7 @@ class MemoryLogHandler(logging.Handler):
                     "level": record.levelname,
                     "message": msg,
                     "full_message": full_msg,
-                    "asctime": timestamp, # For frontend compatibility
+                    "asctime": timestamp,  # For frontend compatibility
                 }
                 self.log_records.appendleft(record_entry)
         except Exception as e:
@@ -54,7 +54,7 @@ class MemoryLogHandler(logging.Handler):
                 # Since list is ordered newest first, we iterate and stop when we hit an old one
                 result = []
                 for record in self.log_records:
-                    if record['id'] > since_id:
+                    if record["id"] > since_id:
                         result.append(record)
                     else:
                         break
@@ -69,6 +69,7 @@ class MemoryLogHandler(logging.Handler):
                 # Return the newest 'limit' records
                 # Since they are at the start of the deque:
                 import itertools
+
                 return list(itertools.islice(self.log_records, 0, limit))
 
             return list(self.log_records)

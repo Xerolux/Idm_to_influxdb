@@ -27,14 +27,14 @@ MOCK_CONFIG = {
     "signal": {
         "enabled": False,
         "sender": "+49123456789",
-        "recipients": ["+49987654321"]
+        "recipients": ["+49987654321"],
     },
     "network_security": {
         "enabled": True,
         "whitelist": ["192.168.1.0/24"],
-        "blacklist": []
+        "blacklist": [],
     },
-    "setup_completed": True
+    "setup_completed": True,
 }
 
 MOCK_DATA = {
@@ -50,28 +50,44 @@ MOCK_DATA = {
     "cop": 3.75,
     "operating_mode_str": "Heizen",
     "status_code": 0,
-    "error_code": 0
+    "error_code": 0,
 }
 
 MOCK_LOGS = [
     {"timestamp": "2023-10-27 10:00:00", "level": "INFO", "message": "System started"},
-    {"timestamp": "2023-10-27 10:05:00", "level": "INFO", "message": "Connected to Modbus"},
-    {"timestamp": "2023-10-27 10:10:00", "level": "WARNING", "message": "High pressure warning (simulated)"},
+    {
+        "timestamp": "2023-10-27 10:05:00",
+        "level": "INFO",
+        "message": "Connected to Modbus",
+    },
+    {
+        "timestamp": "2023-10-27 10:10:00",
+        "level": "WARNING",
+        "message": "High pressure warning (simulated)",
+    },
 ]
 
 MOCK_ALERTS = [
-    {"id": "1", "name": "High Temp", "type": "threshold", "sensor": "flow_temp", "threshold": 50, "operator": ">", "enabled": True},
-    {"id": "2", "name": "Error Status", "type": "status", "enabled": True}
+    {
+        "id": "1",
+        "name": "High Temp",
+        "type": "threshold",
+        "sensor": "flow_temp",
+        "threshold": 50,
+        "operator": ">",
+        "enabled": True,
+    },
+    {"id": "2", "name": "Error Status", "type": "status", "enabled": True},
 ]
 
-MOCK_TECHNICIAN_CODE = {
-    "level_1": "1234",
-    "level_2": "56789"
-}
+MOCK_TECHNICIAN_CODE = {"level_1": "1234", "level_2": "56789"}
+
 
 def mock_api_routes(page):
     # Auth
-    page.route("**/api/auth/check", lambda route: route.fulfill(json={"authenticated": True}))
+    page.route(
+        "**/api/auth/check", lambda route: route.fulfill(json={"authenticated": True})
+    )
     page.route("**/api/auth/login", lambda route: route.fulfill(json={"success": True}))
     page.route("**/api/version", lambda route: route.fulfill(json={"version": "0.6.0"}))
 
@@ -81,33 +97,77 @@ def mock_api_routes(page):
     page.route("**/api/logs", lambda route: route.fulfill(json=MOCK_LOGS))
     page.route("**/api/alerts", lambda route: route.fulfill(json=MOCK_ALERTS))
     page.route("**/api/alerts/templates", lambda route: route.fulfill(json=[]))
-    page.route("**/api/tools/technician-code*", lambda route: route.fulfill(json=MOCK_TECHNICIAN_CODE))
+    page.route(
+        "**/api/tools/technician-code*",
+        lambda route: route.fulfill(json=MOCK_TECHNICIAN_CODE),
+    )
     page.route("**/api/backup/list", lambda route: route.fulfill(json={"backups": []}))
 
     # Control/Schedule
-    page.route("**/api/control", lambda route: route.fulfill(json=[
-        {"name": "operating_mode", "description": "Operating Mode", "enum": [{"name": "Off", "value": 0}, {"name": "Heat", "value": 1}], "features": "WRITE", "unit": ""},
-        {"name": "target_temp", "description": "Target Temp", "min": 10, "max": 30, "features": "WRITE", "unit": "°C"}
-    ]))
-    page.route("**/api/schedule", lambda route: route.fulfill(json={"jobs": [], "sensors": []}))
+    page.route(
+        "**/api/control",
+        lambda route: route.fulfill(
+            json=[
+                {
+                    "name": "operating_mode",
+                    "description": "Operating Mode",
+                    "enum": [{"name": "Off", "value": 0}, {"name": "Heat", "value": 1}],
+                    "features": "WRITE",
+                    "unit": "",
+                },
+                {
+                    "name": "target_temp",
+                    "description": "Target Temp",
+                    "min": 10,
+                    "max": 30,
+                    "features": "WRITE",
+                    "unit": "°C",
+                },
+            ]
+        ),
+    )
+    page.route(
+        "**/api/schedule", lambda route: route.fulfill(json={"jobs": [], "sensors": []})
+    )
 
     # Status
-    page.route("**/api/status", lambda route: route.fulfill(json={
-        "status": "running",
-        "setup_completed": True,
-        "modbus_connected": True,
-        "scheduler_running": True,
-        "mqtt": {"connected": True},
-        "metrics": {"connected": True}
-    }))
+    page.route(
+        "**/api/status",
+        lambda route: route.fulfill(
+            json={
+                "status": "running",
+                "setup_completed": True,
+                "modbus_connected": True,
+                "scheduler_running": True,
+                "mqtt": {"connected": True},
+                "metrics": {"connected": True},
+            }
+        ),
+    )
 
-    page.route("**/api/signal/status", lambda route: route.fulfill(json={
-        "enabled": False, "sender_set": False, "recipients_count": 0, "cli_path": "signal-cli", "cli_available": False
-    }))
+    page.route(
+        "**/api/signal/status",
+        lambda route: route.fulfill(
+            json={
+                "enabled": False,
+                "sender_set": False,
+                "recipients_count": 0,
+                "cli_path": "signal-cli",
+                "cli_available": False,
+            }
+        ),
+    )
 
-    page.route("**/api/check-update", lambda route: route.fulfill(json={
-        "current_version": "v0.6.0", "latest_version": "v0.6.1", "update_available": True
-    }))
+    page.route(
+        "**/api/check-update",
+        lambda route: route.fulfill(
+            json={
+                "current_version": "v0.6.0",
+                "latest_version": "v0.6.1",
+                "update_available": True,
+            }
+        ),
+    )
 
 
 def inject_blur_css(page):
@@ -126,6 +186,7 @@ def inject_blur_css(page):
     """
     page.add_style_tag(content=css)
 
+
 def run():
     if os.path.exists(SCREENSHOT_DIR):
         # We don't want to delete the dir if it exists, just overwrite files
@@ -137,10 +198,7 @@ def run():
         # Launch browser
         browser = p.chromium.launch(headless=True)
         # Device scale factor 2 for "really good quality"
-        context = browser.new_context(
-            viewport=SCREENSHOT_SIZE,
-            device_scale_factor=2
-        )
+        context = browser.new_context(viewport=SCREENSHOT_SIZE, device_scale_factor=2)
         page = context.new_page()
 
         # Setup Mocking
@@ -164,7 +222,7 @@ def run():
 
         # First, go to dashboard to "hydrate" the store
         page.goto(f"{base_url}/#/")
-        page.wait_for_timeout(2000) # Wait for load
+        page.wait_for_timeout(2000)  # Wait for load
 
         # Iterate and capture
         for item in pages:
@@ -173,16 +231,22 @@ def run():
             if item["name"] == "01_login":
                 # Temporarily unroute auth check or return false
                 page.unroute("**/api/auth/check")
-                page.route("**/api/auth/check", lambda route: route.fulfill(json={"authenticated": False}))
+                page.route(
+                    "**/api/auth/check",
+                    lambda route: route.fulfill(json={"authenticated": False}),
+                )
                 page.goto(f"{base_url}{item['path']}")
             else:
                 # Restore auth
                 page.unroute("**/api/auth/check")
-                page.route("**/api/auth/check", lambda route: route.fulfill(json={"authenticated": True}))
+                page.route(
+                    "**/api/auth/check",
+                    lambda route: route.fulfill(json={"authenticated": True}),
+                )
                 page.goto(f"{base_url}{item['path']}")
 
             page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(1000) # Extra wait for animations
+            page.wait_for_timeout(1000)  # Extra wait for animations
 
             # Inject CSS for blurring
             inject_blur_css(page)
@@ -195,6 +259,7 @@ def run():
 
     # Create GIF
     create_gif()
+
 
 def create_gif():
     images = []
@@ -216,13 +281,10 @@ def create_gif():
 
     # duration in ms. 2 seconds per slide.
     images[0].save(
-        FINAL_GIF,
-        save_all=True,
-        append_images=images[1:],
-        duration=2000,
-        loop=0
+        FINAL_GIF, save_all=True, append_images=images[1:], duration=2000, loop=0
     )
     print("GIF created.")
+
 
 if __name__ == "__main__":
     run()

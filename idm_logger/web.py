@@ -339,7 +339,9 @@ def get_ai_status():
     Get current AI service status from VictoriaMetrics.
     """
     try:
-        metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
+        metrics_url = config.data.get("metrics", {}).get(
+            "url", "http://victoriametrics:8428/write"
+        )
         base_url = metrics_url.replace("/write", "")
         query_url = f"{base_url}/api/v1/query"
 
@@ -347,7 +349,9 @@ def get_ai_status():
         # Using `last_over_time` is better if points are sparse, but `query` usually fetches instant vector at "now".
         # We want the LAST point in the last 2 hours.
         # Queries: idm_anomaly_score and idm_anomaly_flag (allowing suffixes like _value)
-        query = 'last_over_time({__name__=~"idm_anomaly_score.*|idm_anomaly_flag.*"}[2h])'
+        query = (
+            'last_over_time({__name__=~"idm_anomaly_score.*|idm_anomaly_flag.*"}[2h])'
+        )
         response = requests.get(query_url, params={"query": query}, timeout=5)
 
         status = {
@@ -355,7 +359,7 @@ def get_ai_status():
             "online": False,
             "score": 0.0,
             "is_anomaly": False,
-            "last_update": None
+            "last_update": None,
         }
 
         if response.status_code == 200:
@@ -387,7 +391,9 @@ def query_metrics_range():
     Proxy request to VictoriaMetrics /api/v1/query_range
     """
     try:
-        metrics_url = config.data.get("metrics", {}).get("url", "http://victoriametrics:8428/write")
+        metrics_url = config.data.get("metrics", {}).get(
+            "url", "http://victoriametrics:8428/write"
+        )
         base_url = metrics_url.replace("/write", "")
         query_url = f"{base_url}/api/v1/query_range"
 
@@ -402,7 +408,9 @@ def query_metrics_range():
         response = requests.get(query_url, params=params, timeout=10)
         if response.status_code != 200:
             logger.error(f"VictoriaMetrics query failed: {response.text}")
-            return jsonify({"status": "error", "error": response.text}), response.status_code
+            return jsonify(
+                {"status": "error", "error": response.text}
+            ), response.status_code
         return jsonify(response.json())
     except Exception as e:
         logger.error(f"Metrics query failed: {e}")
@@ -420,7 +428,9 @@ def ml_alert_endpoint():
     if internal_key:
         auth_header = request.headers.get("X-Internal-Secret")
         if not auth_header or auth_header != internal_key:
-            logger.warning(f"Unauthorized access attempt to ml_alert from {request.remote_addr}")
+            logger.warning(
+                f"Unauthorized access attempt to ml_alert from {request.remote_addr}"
+            )
             return jsonify({"error": "Unauthorized"}), 401
 
     try:
@@ -433,19 +443,18 @@ def ml_alert_endpoint():
         threshold = data.get("threshold", 0.7)
         message = data.get("message", f"ML Alert: Score {score}")
 
-        logger.warning(f"ML Alert received: {message} (Score: {score}, Threshold: {threshold})")
+        logger.warning(
+            f"ML Alert received: {message} (Score: {score}, Threshold: {threshold})"
+        )
 
         # Send notification via notification manager
         notification_manager.send_all(
-            message=message,
-            subject="IDM ML Anomalie-Warnung"
+            message=message, subject="IDM ML Anomalie-Warnung"
         )
 
-        return jsonify({
-            "status": "success",
-            "message": "Alert processed",
-            "notified": True
-        }), 200
+        return jsonify(
+            {"status": "success", "message": "Alert processed", "notified": True}
+        ), 200
 
     except Exception as e:
         logger.error(f"Failed to process ML alert: {e}")
@@ -735,7 +744,9 @@ def config_page():
                 config.data["updates"]["target"] = data["updates_target"]
             if "updates_channel" in data:
                 if data["updates_channel"] not in ["latest", "beta", "release"]:
-                    return jsonify({"error": "Update-Kanal muss latest, beta oder release sein"}), 400
+                    return jsonify(
+                        {"error": "Update-Kanal muss latest, beta oder release sein"}
+                    ), 400
                 config.data["updates"]["channel"] = data["updates_channel"]
 
             # Backup
@@ -764,7 +775,7 @@ def config_page():
                     else:
                         return jsonify({"error": "Backup Anzahl ungültig"}), 400
                 except ValueError:
-                     return jsonify({"error": "Backup Anzahl ungültig"}), 400
+                    return jsonify({"error": "Backup Anzahl ungültig"}), 400
             if "backup_auto_upload" in data:
                 if "backup" not in config.data:
                     config.data["backup"] = {}

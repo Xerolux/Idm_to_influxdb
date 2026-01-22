@@ -131,11 +131,14 @@ def main():
                         backups = backup_manager.list_backups()
                         should_run = True
                         if backups:
-                            last_backup = backups[0] # Sorted by date desc
+                            last_backup = backups[0]  # Sorted by date desc
                             # Parse ISO format from filename or metadata? list_backups returns sorted dicts
                             # last_backup['created_at'] is isoformat
                             from datetime import datetime
-                            last_date = datetime.fromisoformat(last_backup['created_at'])
+
+                            last_date = datetime.fromisoformat(
+                                last_backup["created_at"]
+                            )
                             # Convert to timestamp
                             last_ts = last_date.timestamp()
 

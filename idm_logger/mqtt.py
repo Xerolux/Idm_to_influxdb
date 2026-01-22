@@ -79,7 +79,7 @@ class MQTTPublisher:
                 ca_cert = config.get("mqtt.tls_ca_cert", "")
                 tls_params = {
                     "cert_reqs": ssl.CERT_REQUIRED,
-                    "tls_version": ssl.PROTOCOL_TLSv1_2
+                    "tls_version": ssl.PROTOCOL_TLSv1_2,
                 }
 
                 # Add CA certificate path if provided (for self-signed certs)

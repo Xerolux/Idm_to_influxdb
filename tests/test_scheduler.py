@@ -3,11 +3,12 @@ from unittest.mock import MagicMock, patch
 import datetime
 from idm_logger.scheduler import Scheduler
 
+
 class TestScheduler(unittest.TestCase):
     def setUp(self):
         self.modbus_mock = MagicMock()
         # Patch db.db used in scheduler
-        self.db_patcher = patch('idm_logger.scheduler.db')
+        self.db_patcher = patch("idm_logger.scheduler.db")
         self.mock_db = self.db_patcher.start()
 
         self.scheduler = Scheduler(self.modbus_mock)
@@ -30,7 +31,7 @@ class TestScheduler(unittest.TestCase):
                 "time": current_time,
                 "days": [current_day],
                 "enabled": True,
-                "last_run": 0
+                "last_run": 0,
             }
             self.scheduler.jobs.append(job)
 
@@ -39,10 +40,10 @@ class TestScheduler(unittest.TestCase):
             "id": "job_skip",
             "sensor": "sensor_skip",
             "value": 1,
-            "time": "25:00", # Invalid time, won't match
+            "time": "25:00",  # Invalid time, won't match
             "days": [current_day],
             "enabled": True,
-            "last_run": 0
+            "last_run": 0,
         }
         self.scheduler.jobs.append(wrong_time_job)
 
@@ -72,6 +73,7 @@ class TestScheduler(unittest.TestCase):
         # No jobs
         self.scheduler.process_jobs()
         self.mock_db.update_jobs_last_run.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,13 +6,14 @@ import random
 
 # Mock the imports that might fail or are not needed for this isolated test
 import sys
-sys.modules['idm_logger.config'] = MagicMock()
-sys.modules['idm_logger.config'].DATA_DIR = '.'
+
+sys.modules["idm_logger.config"] = MagicMock()
+sys.modules["idm_logger.config"].DATA_DIR = "."
 
 from idm_logger.ai.models import RollingWindowStats, IsolationForestModel  # noqa: E402
 
-class TestAIModels(unittest.TestCase):
 
+class TestAIModels(unittest.TestCase):
     def test_rolling_window(self):
         print("\nTesting Rolling Window Stats...")
         model = RollingWindowStats(window_size=50)
@@ -54,5 +55,6 @@ class TestAIModels(unittest.TestCase):
         self.assertIn("temp", res)
         self.assertEqual(res["temp"]["model"], "IsolationForest")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
