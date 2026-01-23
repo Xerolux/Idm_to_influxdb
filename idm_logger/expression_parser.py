@@ -14,6 +14,9 @@ Supports operations like:
 import re
 from typing import List, Dict, Union
 import operator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ExpressionParser:
@@ -138,7 +141,7 @@ class ExpressionParser:
         try:
             return self._evaluate_with_values(expression, query_values)
         except Exception as e:
-            print(f"Error evaluating expression '{expression}': {e}")
+            logger.error(f"Error evaluating expression '{expression}': {e}")
             return None
 
     def _evaluate_with_values(self, expression: str, values: Dict[str, float]) -> float:

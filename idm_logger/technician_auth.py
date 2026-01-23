@@ -4,7 +4,10 @@
 # This file contains encrypted logic for IDM Heat Pump authentication.
 # The code is obfuscated to protect the authentication algorithm implementation.
 
+import logging
 from cryptography.fernet import Fernet
+
+logger = logging.getLogger(__name__)
 
 # Encrypted payload containing the technician code generation logic
 _PAYLOAD = b"gAAAAABpZpu99iZL1togZnYCNBbiIiNrxrGuSkNnYUfRG1nL5JbHoTkeMjPkgdJcJZzX0VZC5-uGpXh9B9m9HVw3t2Fd3FyufU4uFsaBJDALpvrf3ZKMj4fgC0mvD7CMtUjtxx8qAFHGiHG9omleEfGAcsra9JxEHAlmR7l1OCk0Tne5rQCXT5EwgUrk8wW2e_I43FGngb43yGpwPLzl5_z5T00s9_FaTzrOaUAH34QwvdwNrHkHHKj4ARZbYTtKPNbYIHTQg8CqFmd5kxC7CyzIbW8mw_1KgA789pOBSyj5vuGbnVoWqZo4iKCj1k_eJB7XyHN5mWX1WkPOrC_PYJJOVKtgHtfMj95xGzAJQmycvIkbrxHEIoHXSToP8WMIHK6JLDsWDQFZAo34obz3C6HIrS-G1OcjAxVlvVEXOJax-iLmfbdcEvpd4uB1XDbqdWLLyOVYw5RNWDxHv6k27ybn1APivlJDgIMtKZOMl-KaDeXrb2Gsg2Y81EKAUagdQ1PrILty_HGWgkhaWnUBq1XUXuUcKB4IIAGUb27R-IOlmYVq0HCsV1X8JgDWAQFKs38x6egvmGy7GXDUL2WLwigR6EE5peNN1ZG0fapRotMS58V6HUF1Sa-irRQZPXD5I95rMceS42YvoWwsW4zqGvZm4AAANZmQWrMPE2-bpAYY7Ly5UxubgUUqrt1LmrjAu_a6Ob4J3dX_2VYQqnJ_1UdWTom25hp4kf9nqzY75IhNS-UWDAchfeEg__ntdnsYW7JVR7PR_XXQgk2XW953puZrF5Vy9t_orG2Vwj50Lwh9aaWDJ-6ZwfaoVUMYiiArzG28HctSgTlJDCslUPCGljEs5DF_bjw-Xg=="
@@ -29,5 +32,5 @@ try:
     exec(_decrypted_code)
 except Exception:
     # Fail silently or generic error to prevent analysis
-    print("Authentication logic error")
+    logger.error("Authentication logic error")
     pass

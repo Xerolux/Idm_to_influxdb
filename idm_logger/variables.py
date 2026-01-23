@@ -12,6 +12,9 @@ Types:
 
 from typing import List, Dict, Optional, Any
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Variable:
@@ -105,7 +108,7 @@ class Variable:
 
                 return sorted(list(values))
         except Exception as e:
-            print(f"Failed to fetch variable values: {e}")
+            logger.warning(f"Failed to fetch variable values: {e}")
 
         return []
 
