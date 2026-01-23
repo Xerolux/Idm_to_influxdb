@@ -231,9 +231,9 @@ class DashboardManager:
                                 logger.info(
                                     "Updating COP query to handle negative values..."
                                 )
-                                query[
-                                    "query"
-                                ] = "clamp_min(idm_heatpump_power_current / idm_heatpump_power_current_draw, 0)"
+                                query["query"] = (
+                                    "clamp_min(idm_heatpump_power_current / idm_heatpump_power_current_draw, 0)"
+                                )
                                 repaired = True
 
                 # Check for missing AI chart or update it
