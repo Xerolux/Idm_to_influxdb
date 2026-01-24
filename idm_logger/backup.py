@@ -4,6 +4,7 @@
 import json
 import logging
 import os
+import re
 import zipfile
 import shutil
 import subprocess
@@ -31,6 +32,46 @@ BACKUP_DIR.mkdir(exist_ok=True)
 
 # Track if default credentials warning was shown
 _default_creds_warned = False
+
+# Pattern for safe filenames (alphanumeric, dash, underscore only)
+_SAFE_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
+
+
+def _sanitize_filename(name: str, max_length: int = 100) -> str:
+    """
+    Sanitize a string to be safe for use as a filename.
+    Prevents path traversal attacks and invalid characters.
+    """
+    if not name:
+        return "unnamed"
+
+    # Remove any path separators and dangerous characters
+    sanitized = name.replace("/", "_").replace("\\", "_").replace("..", "_")
+
+    # Keep only safe characters
+    sanitized = "".join(c if c.isalnum() or c in "-_" else "_" for c in sanitized)
+
+    # Truncate if too long
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length]
+
+    # Ensure it's not empty after sanitization
+    return sanitized if sanitized else "unnamed"
+
+
+def _is_safe_path(base_dir: Path, target_path: Path) -> bool:
+    """
+    Check if target_path is safely within base_dir (no path traversal).
+    """
+    try:
+        # Resolve both paths to absolute paths
+        base_resolved = base_dir.resolve()
+        target_resolved = target_path.resolve()
+
+        # Check if target is within base
+        return str(target_resolved).startswith(str(base_resolved))
+    except (OSError, ValueError):
+        return False
 
 
 def _get_grafana_credentials():
@@ -162,6 +203,9 @@ class BackupManager:
                         if dashboard.get("type") == "dash-db":
                             uid = dashboard.get("uid")
                             if uid:
+                                # Sanitize uid to prevent path traversal
+                                safe_uid = _sanitize_filename(uid)
+
                                 # Get full dashboard
                                 dash_response = requests.get(
                                     f"{grafana_url}/api/dashboards/uid/{uid}",
@@ -171,7 +215,13 @@ class BackupManager:
 
                                 if dash_response.status_code == 200:
                                     dash_data = dash_response.json()
-                                    dash_file = dashboards_dir / f"{uid}.json"
+                                    dash_file = dashboards_dir / f"{safe_uid}.json"
+
+                                    # Verify path is safe before writing
+                                    if not _is_safe_path(dashboards_dir, dash_file):
+                                        logger.warning(f"Skipping unsafe path: {dash_file}")
+                                        continue
+
                                     with open(dash_file, "w") as f:
                                         json.dump(dash_data, f, indent=2)
                                     logger.info(

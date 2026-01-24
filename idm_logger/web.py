@@ -132,6 +132,8 @@ app = Flask(__name__)
 app.secret_key = config.get_flask_secret_key()
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Secure cookie flag - enable for HTTPS deployments (set web.secure_cookies: true)
+app.config["SESSION_COOKIE_SECURE"] = config.get("web.secure_cookies", False)
 
 # Initialize SocketIO with configurable CORS
 # Security: Read allowed origins from config, default to same-origin only

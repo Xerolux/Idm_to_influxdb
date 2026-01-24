@@ -51,6 +51,9 @@ class ModbusClient:
         self._failed_blocks = set()
         self._sensor_config_hash = self._compute_sensor_hash()
 
+        # Connection state tracking to reduce log spam
+        self._connection_was_lost = False
+
     def _compute_sensor_hash(self) -> int:
         """Compute hash of current sensor configuration for cache invalidation."""
         sensor_keys = tuple(sorted(self.sensors.keys()))
@@ -84,8 +87,18 @@ class ModbusClient:
     def _ensure_connection(self):
         """Ensures the client is connected, reconnecting if necessary."""
         if self.client.is_socket_open():
+            if self._connection_was_lost:
+                logger.info("Modbus connection restored")
+                self._connection_was_lost = False
             return True
-        logger.warning("Modbus connection lost. Attempting to reconnect...")
+
+        # Log warning only on first detection of connection loss
+        if not self._connection_was_lost:
+            logger.warning("Modbus connection lost. Attempting to reconnect...")
+            self._connection_was_lost = True
+        else:
+            logger.debug("Modbus reconnect attempt...")
+
         return self.connect()
 
     def _build_read_blocks(self):
