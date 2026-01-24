@@ -105,6 +105,7 @@ import { ref, watch, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
+import { sanitizeCss, validateCss, hasDangerousPatterns } from '@/utils/cssSanitizer';
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -116,18 +117,21 @@ const emit = defineEmits(['update:modelValue', 'save']);
 const visible = ref(props.modelValue);
 const localCss = ref(props.css || '');
 const appliedCss = ref(props.css || '');
+const securityWarnings = ref([]);
 
 const hasErrors = computed(() => {
-    // Basic CSS validation - check for obviously invalid CSS
     if (!localCss.value.trim()) {
         return false;
     }
 
-    // Check for unbalanced braces
-    const openBraces = (localCss.value.match(/{/g) || []).length;
-    const closeBraces = (localCss.value.match(/}/g) || []).length;
+    // Validate CSS syntax
+    const { valid } = validateCss(localCss.value);
+    if (!valid) {
+        return true;
+    }
 
-    if (openBraces !== closeBraces) {
+    // Check for dangerous patterns
+    if (hasDangerousPatterns(localCss.value)) {
         return true;
     }
 
@@ -139,11 +143,15 @@ const errorMessage = computed(() => {
         return '';
     }
 
-    const openBraces = (localCss.value.match(/{/g) || []).length;
-    const closeBraces = (localCss.value.match(/}/g) || []).length;
+    // Check syntax
+    const { errors } = validateCss(localCss.value);
+    if (errors.length > 0) {
+        return errors[0];
+    }
 
-    if (openBraces !== closeBraces) {
-        return 'Unbalancierte geschweifte Klammern';
+    // Check for dangerous patterns
+    if (hasDangerousPatterns(localCss.value)) {
+        return 'CSS enthält nicht erlaubte Muster (z.B. @import, expression, javascript:)';
     }
 
     return '';
@@ -154,8 +162,12 @@ const handleSave = () => {
         return;
     }
 
-    appliedCss.value = localCss.value;
-    emit('save', localCss.value);
+    // Sanitize CSS before saving
+    const { sanitized, warnings, blocked } = sanitizeCss(localCss.value);
+    securityWarnings.value = [...warnings, ...blocked];
+
+    appliedCss.value = sanitized;
+    emit('save', sanitized);
     visible.value = false;
 };
 

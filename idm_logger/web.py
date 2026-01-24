@@ -45,9 +45,88 @@ import os
 import signal
 import ipaddress
 import time
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Input validation patterns and limits
+_MAX_STRING_LENGTH = 255
+_MAX_URL_LENGTH = 2048
+_HOSTNAME_PATTERN = re.compile(
+    r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?'
+    r'(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
+)
+_IP_PATTERN = re.compile(
+    r'^(\d{1,3}\.){3}\d{1,3}$|'  # IPv4
+    r'^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$'  # IPv6 (simplified)
+)
+# Dangerous shell characters to block in string inputs
+_SHELL_DANGEROUS_CHARS = re.compile(r'[;&|`$(){}[\]<>\\\'"]')
+
+
+def _validate_host(value: str) -> tuple[bool, str]:
+    """Validate hostname or IP address."""
+    if not value or not isinstance(value, str):
+        return False, "Host darf nicht leer sein"
+    if len(value) > _MAX_STRING_LENGTH:
+        return False, f"Host darf maximal {_MAX_STRING_LENGTH} Zeichen lang sein"
+    # Check if it's a valid IP
+    if _IP_PATTERN.match(value):
+        try:
+            ipaddress.ip_address(value)
+            return True, ""
+        except ValueError:
+            return False, "Ungültige IP-Adresse"
+    # Check if it's a valid hostname
+    if _HOSTNAME_PATTERN.match(value):
+        return True, ""
+    return False, "Ungültiger Hostname oder IP-Adresse"
+
+
+def _validate_url(value: str) -> tuple[bool, str]:
+    """Validate URL format."""
+    if not value or not isinstance(value, str):
+        return False, "URL darf nicht leer sein"
+    if len(value) > _MAX_URL_LENGTH:
+        return False, f"URL darf maximal {_MAX_URL_LENGTH} Zeichen lang sein"
+    # Basic URL validation
+    if not value.startswith(('http://', 'https://')):
+        return False, "URL muss mit http:// oder https:// beginnen"
+    # Block dangerous characters
+    if _SHELL_DANGEROUS_CHARS.search(value.split('://', 1)[-1].split('/', 1)[0]):
+        return False, "URL enthält ungültige Zeichen"
+    return True, ""
+
+
+def _validate_string(value: str, field_name: str, max_length: int = None,
+                     allow_empty: bool = True) -> tuple[bool, str]:
+    """Validate generic string input."""
+    if value is None:
+        if allow_empty:
+            return True, ""
+        return False, f"{field_name} darf nicht leer sein"
+    if not isinstance(value, str):
+        return False, f"{field_name} muss ein Text sein"
+    max_len = max_length or _MAX_STRING_LENGTH
+    if len(value) > max_len:
+        return False, f"{field_name} darf maximal {max_len} Zeichen lang sein"
+    # Block shell injection characters in most string fields
+    if _SHELL_DANGEROUS_CHARS.search(value):
+        return False, f"{field_name} enthält ungültige Sonderzeichen"
+    return True, ""
+
+
+def _validate_topic(value: str) -> tuple[bool, str]:
+    """Validate MQTT topic format."""
+    if not value or not isinstance(value, str):
+        return True, ""  # Allow empty topics
+    if len(value) > _MAX_STRING_LENGTH:
+        return False, f"Topic darf maximal {_MAX_STRING_LENGTH} Zeichen lang sein"
+    # MQTT topics allow /, +, # but we should be careful
+    if re.search(r'[;&|`$(){}[\]<>\\\'"]', value):
+        return False, "Topic enthält ungültige Zeichen"
+    return True, ""
 
 app = Flask(__name__)
 app.secret_key = config.get_flask_secret_key()
@@ -485,11 +564,13 @@ def login():
 
 
 @app.route("/api/auth/check")
+@limiter.limit("30 per minute")  # Rate limit to prevent auth state enumeration
 def check_auth():
     return jsonify({"authenticated": session.get("logged_in", False)})
 
 
 @app.route("/logout")
+@limiter.limit("10 per minute")  # Rate limit logout to prevent session manipulation attacks
 def logout():
     session.pop("logged_in", None)
     return jsonify({"success": True})
@@ -839,11 +920,13 @@ def evaluate_expression():
 
 
 @app.route("/api/internal/ml_alert", methods=["POST"])
+@limiter.limit("60 per minute")  # Rate limit internal API
 def ml_alert_endpoint():
     """
     Internal endpoint for ML service to send anomaly alerts.
     Protected by shared secret if configured.
     """
+    import hmac
     # Security Check
     internal_key = config.get("internal_api_key")
     if not internal_key:
@@ -851,7 +934,8 @@ def ml_alert_endpoint():
         return jsonify({"error": "Configuration Error: INTERNAL_API_KEY not set"}), 503
 
     auth_header = request.headers.get("X-Internal-Secret")
-    if not auth_header or auth_header != internal_key:
+    # Use constant-time comparison to prevent timing attacks
+    if not auth_header or not hmac.compare_digest(auth_header, internal_key):
         logger.warning(
             f"Unauthorized access attempt to ml_alert from {request.remote_addr}"
         )
@@ -968,8 +1052,11 @@ def config_page():
     if request.method == "POST":
         data = request.get_json()
         try:
-            # IDM Host
+            # IDM Host - validate hostname/IP
             if "idm_host" in data:
+                valid, err = _validate_host(data["idm_host"])
+                if not valid:
+                    return jsonify({"error": f"IDM Host: {err}"}), 400
                 config.data["idm"]["host"] = data["idm_host"]
             if "idm_port" in data:
                 try:
@@ -1005,12 +1092,18 @@ def config_page():
             if "realtime_mode" in data:
                 config.data["logging"]["realtime_mode"] = bool(data["realtime_mode"])
             if "metrics_url" in data:
+                valid, err = _validate_url(data["metrics_url"])
+                if not valid:
+                    return jsonify({"error": f"Metrics URL: {err}"}), 400
                 config.data["metrics"]["url"] = data["metrics_url"]
 
             # MQTT
             if "mqtt_enabled" in data:
                 config.data["mqtt"]["enabled"] = bool(data["mqtt_enabled"])
             if "mqtt_broker" in data:
+                valid, err = _validate_host(data["mqtt_broker"])
+                if not valid:
+                    return jsonify({"error": f"MQTT Broker: {err}"}), 400
                 config.data["mqtt"]["broker"] = data["mqtt_broker"]
             if "mqtt_port" in data:
                 try:
@@ -1024,14 +1117,27 @@ def config_page():
                 except ValueError:
                     return jsonify({"error": "Ungültige MQTT Portnummer"}), 400
             if "mqtt_username" in data:
+                valid, err = _validate_string(data["mqtt_username"], "MQTT Username")
+                if not valid:
+                    return jsonify({"error": err}), 400
                 config.data["mqtt"]["username"] = data["mqtt_username"]
             if "mqtt_password" in data and data["mqtt_password"]:
+                # Passwords can contain special chars, just limit length
+                if len(data["mqtt_password"]) > _MAX_STRING_LENGTH:
+                    return jsonify({"error": "MQTT Passwort zu lang"}), 400
                 config.data["mqtt"]["password"] = data["mqtt_password"]
             if "mqtt_use_tls" in data:
                 config.data["mqtt"]["use_tls"] = bool(data["mqtt_use_tls"])
             if "mqtt_tls_ca_cert" in data:
+                # CA cert path validation
+                valid, err = _validate_string(data["mqtt_tls_ca_cert"], "TLS CA Cert Pfad")
+                if not valid:
+                    return jsonify({"error": err}), 400
                 config.data["mqtt"]["tls_ca_cert"] = data["mqtt_tls_ca_cert"]
             if "mqtt_topic_prefix" in data:
+                valid, err = _validate_topic(data["mqtt_topic_prefix"])
+                if not valid:
+                    return jsonify({"error": f"MQTT Topic: {err}"}), 400
                 config.data["mqtt"]["topic_prefix"] = data["mqtt_topic_prefix"]
             if "mqtt_ha_discovery_enabled" in data:
                 config.data["mqtt"]["ha_discovery_enabled"] = bool(

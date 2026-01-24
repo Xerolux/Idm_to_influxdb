@@ -4,13 +4,13 @@
         class="h-full flex flex-col gap-3"
         :data-dashboard-id="currentDashboardId"
     >
-        <!-- Applied custom CSS (scoped) -->
+        <!-- Applied custom CSS (scoped, sanitized for security) -->
         <component
             :is="'style'"
-            v-if="currentDashboard?.customCss"
+            v-if="sanitizedCustomCss"
             :data-dashboard-id="currentDashboardId"
         >
-            {{ currentDashboard.customCss }}
+            {{ sanitizedCustomCss }}
         </component>
 
         <!-- Top Bar -->
@@ -436,6 +436,7 @@ import AnnotationList from './AnnotationList.vue';
 import VariableDialog from './VariableDialog.vue';
 import VariableSelector from './VariableSelector.vue';
 import CssEditor from './CssEditor.vue';
+import { sanitizeCss } from '@/utils/cssSanitizer';
 
 const confirm = useConfirm();
 const toast = useToast();
@@ -495,6 +496,14 @@ const chartTypeOptions = computed(() => {
 
 const currentDashboard = computed(() => {
     return dashboards.value.find(d => d.id === currentDashboardId.value);
+});
+
+// Sanitize custom CSS to prevent XSS/CSS injection attacks
+const sanitizedCustomCss = computed(() => {
+    const css = currentDashboard.value?.customCss;
+    if (!css) return '';
+    const { sanitized } = sanitizeCss(css);
+    return sanitized;
 });
 
 // Annotations time range
