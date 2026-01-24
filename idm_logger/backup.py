@@ -4,6 +4,7 @@
 import json
 import logging
 import os
+import re
 import zipfile
 import shutil
 import subprocess
@@ -28,6 +29,70 @@ logger = logging.getLogger(__name__)
 # Backup directory
 BACKUP_DIR = Path(DATA_DIR) / "backups"
 BACKUP_DIR.mkdir(exist_ok=True)
+
+# Track if default credentials warning was shown
+_default_creds_warned = False
+
+# Pattern for safe filenames (alphanumeric, dash, underscore only)
+_SAFE_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
+
+
+def _sanitize_filename(name: str, max_length: int = 100) -> str:
+    """
+    Sanitize a string to be safe for use as a filename.
+    Prevents path traversal attacks and invalid characters.
+    """
+    if not name:
+        return "unnamed"
+
+    # Remove any path separators and dangerous characters
+    sanitized = name.replace("/", "_").replace("\\", "_").replace("..", "_")
+
+    # Keep only safe characters
+    sanitized = "".join(c if c.isalnum() or c in "-_" else "_" for c in sanitized)
+
+    # Truncate if too long
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length]
+
+    # Ensure it's not empty after sanitization
+    return sanitized if sanitized else "unnamed"
+
+
+def _is_safe_path(base_dir: Path, target_path: Path) -> bool:
+    """
+    Check if target_path is safely within base_dir (no path traversal).
+    """
+    try:
+        # Resolve both paths to absolute paths
+        base_resolved = base_dir.resolve()
+        target_resolved = target_path.resolve()
+
+        # Check if target is within base
+        return str(target_resolved).startswith(str(base_resolved))
+    except (OSError, ValueError):
+        return False
+
+
+def _get_grafana_credentials():
+    """
+    Get Grafana credentials from environment variables.
+    Warns once if default credentials are being used.
+    """
+    global _default_creds_warned
+    user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
+    password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD")
+
+    if not password:
+        if not _default_creds_warned:
+            logger.warning(
+                "GF_SECURITY_ADMIN_PASSWORD not set, using default. "
+                "Set this environment variable for production!"
+            )
+            _default_creds_warned = True
+        password = "admin"
+
+    return user, password
 
 
 class BackupManager:
@@ -113,10 +178,9 @@ class BackupManager:
             grafana_backup_dir = backup_dir / "grafana"
             grafana_backup_dir.mkdir(exist_ok=True)
 
-            # Grafana API settings
+            # Grafana API settings (uses secure credential helper)
             grafana_url = "http://grafana:3000"
-            grafana_user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
-            grafana_password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD", "admin")
+            grafana_user, grafana_password = _get_grafana_credentials()
 
             # 1. Export all dashboards via API
             logger.info("Exporting Grafana dashboards...")
@@ -139,6 +203,9 @@ class BackupManager:
                         if dashboard.get("type") == "dash-db":
                             uid = dashboard.get("uid")
                             if uid:
+                                # Sanitize uid to prevent path traversal
+                                safe_uid = _sanitize_filename(uid)
+
                                 # Get full dashboard
                                 dash_response = requests.get(
                                     f"{grafana_url}/api/dashboards/uid/{uid}",
@@ -148,7 +215,13 @@ class BackupManager:
 
                                 if dash_response.status_code == 200:
                                     dash_data = dash_response.json()
-                                    dash_file = dashboards_dir / f"{uid}.json"
+                                    dash_file = dashboards_dir / f"{safe_uid}.json"
+
+                                    # Verify path is safe before writing
+                                    if not _is_safe_path(dashboards_dir, dash_file):
+                                        logger.warning(f"Skipping unsafe path: {dash_file}")
+                                        continue
+
                                     with open(dash_file, "w") as f:
                                         json.dump(dash_data, f, indent=2)
                                     logger.info(
@@ -552,10 +625,9 @@ class BackupManager:
                 logger.info("No Grafana backup found in archive")
                 return False
 
-            # Grafana API settings
+            # Grafana API settings (uses secure credential helper)
             grafana_url = "http://grafana:3000"
-            grafana_user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
-            grafana_password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD", "admin")
+            grafana_user, grafana_password = _get_grafana_credentials()
 
             # 1. Restore dashboards via API
             dashboards_dir = grafana_backup_dir / "dashboards"

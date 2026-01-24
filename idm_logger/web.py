@@ -45,19 +45,107 @@ import os
 import signal
 import ipaddress
 import time
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Input validation patterns and limits
+_MAX_STRING_LENGTH = 255
+_MAX_URL_LENGTH = 2048
+_HOSTNAME_PATTERN = re.compile(
+    r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?'
+    r'(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
+)
+_IP_PATTERN = re.compile(
+    r'^(\d{1,3}\.){3}\d{1,3}$|'  # IPv4
+    r'^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$'  # IPv6 (simplified)
+)
+# Dangerous shell characters to block in string inputs
+_SHELL_DANGEROUS_CHARS = re.compile(r'[;&|`$(){}[\]<>\\\'"]')
+
+
+def _validate_host(value: str) -> tuple[bool, str]:
+    """Validate hostname or IP address."""
+    if not value or not isinstance(value, str):
+        return False, "Host darf nicht leer sein"
+    if len(value) > _MAX_STRING_LENGTH:
+        return False, f"Host darf maximal {_MAX_STRING_LENGTH} Zeichen lang sein"
+    # Check if it's a valid IP
+    if _IP_PATTERN.match(value):
+        try:
+            ipaddress.ip_address(value)
+            return True, ""
+        except ValueError:
+            return False, "Ungültige IP-Adresse"
+    # Check if it's a valid hostname
+    if _HOSTNAME_PATTERN.match(value):
+        return True, ""
+    return False, "Ungültiger Hostname oder IP-Adresse"
+
+
+def _validate_url(value: str) -> tuple[bool, str]:
+    """Validate URL format."""
+    if not value or not isinstance(value, str):
+        return False, "URL darf nicht leer sein"
+    if len(value) > _MAX_URL_LENGTH:
+        return False, f"URL darf maximal {_MAX_URL_LENGTH} Zeichen lang sein"
+    # Basic URL validation
+    if not value.startswith(('http://', 'https://')):
+        return False, "URL muss mit http:// oder https:// beginnen"
+    # Block dangerous characters
+    if _SHELL_DANGEROUS_CHARS.search(value.split('://', 1)[-1].split('/', 1)[0]):
+        return False, "URL enthält ungültige Zeichen"
+    return True, ""
+
+
+def _validate_string(value: str, field_name: str, max_length: int = None,
+                     allow_empty: bool = True) -> tuple[bool, str]:
+    """Validate generic string input."""
+    if value is None:
+        if allow_empty:
+            return True, ""
+        return False, f"{field_name} darf nicht leer sein"
+    if not isinstance(value, str):
+        return False, f"{field_name} muss ein Text sein"
+    max_len = max_length or _MAX_STRING_LENGTH
+    if len(value) > max_len:
+        return False, f"{field_name} darf maximal {max_len} Zeichen lang sein"
+    # Block shell injection characters in most string fields
+    if _SHELL_DANGEROUS_CHARS.search(value):
+        return False, f"{field_name} enthält ungültige Sonderzeichen"
+    return True, ""
+
+
+def _validate_topic(value: str) -> tuple[bool, str]:
+    """Validate MQTT topic format."""
+    if not value or not isinstance(value, str):
+        return True, ""  # Allow empty topics
+    if len(value) > _MAX_STRING_LENGTH:
+        return False, f"Topic darf maximal {_MAX_STRING_LENGTH} Zeichen lang sein"
+    # MQTT topics allow /, +, # but we should be careful
+    if re.search(r'[;&|`$(){}[\]<>\\\'"]', value):
+        return False, "Topic enthält ungültige Zeichen"
+    return True, ""
 
 app = Flask(__name__)
 app.secret_key = config.get_flask_secret_key()
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Secure cookie flag - enable for HTTPS deployments (set web.secure_cookies: true)
+app.config["SESSION_COOKIE_SECURE"] = config.get("web.secure_cookies", False)
 
-# Initialize SocketIO
+# Initialize SocketIO with configurable CORS
+# Security: Read allowed origins from config, default to same-origin only
+_cors_origins = config.get("web.cors_allowed_origins", None)
+if _cors_origins == "*":
+    logger.warning(
+        "CORS is set to allow all origins ('*'). "
+        "Consider restricting to specific origins for production."
+    )
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*",
+    cors_allowed_origins=_cors_origins,
     async_mode="threading",
     logger=False,
     engineio_logger=False,
@@ -115,6 +203,8 @@ _net_sec_cache = {
     "whitelist_nets": [],
     "blacklist_ref": None,
     "blacklist_nets": [],
+    "ip_results": {},  # Performance: Cache IP check results {ip_str: (allowed, timestamp)}
+    "ip_cache_ttl": 300,  # Cache results for 5 minutes
 }
 
 # AI Status Cache
@@ -185,11 +275,39 @@ def _update_ai_status_once():
 
 
 def _update_ai_status_loop():
-    """Background thread to update AI status periodically."""
+    """Background thread to update AI status periodically with exponential backoff."""
     logger.info("Starting AI status update loop")
+    base_interval = 60  # Normal interval: 60 seconds
+    max_interval = 600  # Max backoff: 10 minutes
+    current_interval = base_interval
+    consecutive_failures = 0
+
     while True:
-        _update_ai_status_once()
-        time.sleep(60)  # Update every minute
+        try:
+            _update_ai_status_once()
+            # Check if service is online
+            with _ai_status_lock:
+                is_online = _ai_status_cache.get("online", False)
+
+            if is_online:
+                # Reset backoff on success
+                consecutive_failures = 0
+                current_interval = base_interval
+            else:
+                # Exponential backoff on failure
+                consecutive_failures += 1
+                current_interval = min(
+                    base_interval * (2 ** min(consecutive_failures, 5)),
+                    max_interval
+                )
+                if consecutive_failures == 1:
+                    logger.debug(f"AI service offline, backing off to {current_interval}s")
+        except Exception as e:
+            logger.error(f"Error in AI status loop: {e}")
+            consecutive_failures += 1
+            current_interval = min(base_interval * (2 ** min(consecutive_failures, 5)), max_interval)
+
+        time.sleep(current_interval)
 
 
 def _start_ai_status_thread():
@@ -234,9 +352,22 @@ def check_ip_whitelist():
     if not client_ip:
         return
 
+    # Performance: Check IP result cache first (O(1) lookup)
+    now = time.time()
+    cached = _net_sec_cache["ip_results"].get(client_ip)
+    if cached:
+        allowed, cached_time = cached
+        if now - cached_time < _net_sec_cache["ip_cache_ttl"]:
+            if not allowed:
+                abort(403)
+            return
+        # Cache expired, remove entry
+        del _net_sec_cache["ip_results"][client_ip]
+
     ip = get_ip_obj(client_ip)
     if not ip:
         logger.warning(f"Invalid client IP: {client_ip}")
+        _net_sec_cache["ip_results"][client_ip] = (False, now)
         abort(403)
 
     whitelist = config.get("network_security.whitelist", [])
@@ -262,6 +393,7 @@ def check_ip_whitelist():
             logger.warning(
                 f"Blocked IP {client_ip} (matched blacklist {original_block})"
             )
+            _net_sec_cache["ip_results"][client_ip] = (False, now)
             abort(403)
 
     # Update whitelist cache if needed
@@ -278,15 +410,37 @@ def check_ip_whitelist():
 
     # Check whitelist if it exists and is not empty
     if whitelist:
-        allowed = False
+        is_allowed = False
         for net in _net_sec_cache["whitelist_nets"]:
             if ip in net:
-                allowed = True
+                is_allowed = True
                 break
 
-        if not allowed:
+        if not is_allowed:
             logger.warning(f"Blocked IP {client_ip} (not in whitelist)")
+            _net_sec_cache["ip_results"][client_ip] = (False, now)
             abort(403)
+
+    # Cache successful result
+    _net_sec_cache["ip_results"][client_ip] = (True, now)
+
+
+# Default CSP - can be overridden via config
+# Note: 'unsafe-inline' for styles is needed for Vue/PrimeVue dynamic styles
+# 'unsafe-eval' removed - not needed for production Vue builds
+_DEFAULT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "connect-src 'self' ws: wss:; "
+    "font-src 'self' data:; "
+    "frame-src 'self'; "
+    "frame-ancestors 'self'"
+)
 
 
 @app.after_request
@@ -294,24 +448,42 @@ def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob:; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "connect-src 'self' ws: wss:; "
-        "font-src 'self' data:; "
-        "frame-src 'self'"
-    )
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Use configurable CSP or default
+    csp = config.get("web.content_security_policy", _DEFAULT_CSP)
+    response.headers["Content-Security-Policy"] = csp
     return response
+
+
+# Keys that should never be exposed to templates/frontend
+_SENSITIVE_CONFIG_KEYS = frozenset({
+    "password", "secret", "token", "api_key", "private_key",
+    "smtp_password", "bot_token", "webhook_url", "internal_api_key"
+})
+
+
+def _filter_sensitive_config(data: dict, parent_key: str = "") -> dict:
+    """Recursively filter sensitive data from config."""
+    filtered = {}
+    for key, value in data.items():
+        full_key = f"{parent_key}.{key}" if parent_key else key
+        # Check if key contains sensitive patterns
+        key_lower = key.lower()
+        is_sensitive = any(s in key_lower for s in _SENSITIVE_CONFIG_KEYS)
+        if is_sensitive:
+            # Mask sensitive values
+            filtered[key] = "***" if value else None
+        elif isinstance(value, dict):
+            filtered[key] = _filter_sensitive_config(value, full_key)
+        else:
+            filtered[key] = value
+    return filtered
 
 
 @app.context_processor
 def inject_config():
-    safe_config = config.data.copy()
+    safe_config = _filter_sensitive_config(config.data)
     return dict(config=safe_config)
 
 
@@ -422,11 +594,13 @@ def login():
 
 
 @app.route("/api/auth/check")
+@limiter.limit("30 per minute")  # Rate limit to prevent auth state enumeration
 def check_auth():
     return jsonify({"authenticated": session.get("logged_in", False)})
 
 
 @app.route("/logout")
+@limiter.limit("10 per minute")  # Rate limit logout to prevent session manipulation attacks
 def logout():
     session.pop("logged_in", None)
     return jsonify({"success": True})
@@ -776,11 +950,13 @@ def evaluate_expression():
 
 
 @app.route("/api/internal/ml_alert", methods=["POST"])
+@limiter.limit("60 per minute")  # Rate limit internal API
 def ml_alert_endpoint():
     """
     Internal endpoint for ML service to send anomaly alerts.
     Protected by shared secret if configured.
     """
+    import hmac
     # Security Check
     internal_key = config.get("internal_api_key")
     if not internal_key:
@@ -788,7 +964,8 @@ def ml_alert_endpoint():
         return jsonify({"error": "Configuration Error: INTERNAL_API_KEY not set"}), 503
 
     auth_header = request.headers.get("X-Internal-Secret")
-    if not auth_header or auth_header != internal_key:
+    # Use constant-time comparison to prevent timing attacks
+    if not auth_header or not hmac.compare_digest(auth_header, internal_key):
         logger.warning(
             f"Unauthorized access attempt to ml_alert from {request.remote_addr}"
         )
@@ -867,9 +1044,12 @@ def websocket_stats():
 @login_required
 def logs_page():
     since_id = request.args.get("since_id", type=int)
+    # Performance: Add pagination with configurable limit (default 100, max 1000)
+    limit = request.args.get("limit", default=100, type=int)
+    limit = max(1, min(limit, 1000))  # Clamp between 1 and 1000
     logs = memory_handler.get_logs(since_id=since_id)
     # logs are already in [newest, ..., oldest] order
-    return jsonify(logs)
+    return jsonify(logs[:limit])
 
 
 @app.route("/api/tools/technician-code", methods=["GET"])
@@ -888,7 +1068,8 @@ def get_technician_code():
 @login_required
 def config_page():
     if request.method == "GET":
-        safe_config = config.data.copy()
+        # Filter sensitive data before sending to frontend
+        safe_config = _filter_sensitive_config(config.data)
         response = safe_config
         response["_meta"] = {
             "token_synced": True,
@@ -901,8 +1082,11 @@ def config_page():
     if request.method == "POST":
         data = request.get_json()
         try:
-            # IDM Host
+            # IDM Host - validate hostname/IP
             if "idm_host" in data:
+                valid, err = _validate_host(data["idm_host"])
+                if not valid:
+                    return jsonify({"error": f"IDM Host: {err}"}), 400
                 config.data["idm"]["host"] = data["idm_host"]
             if "idm_port" in data:
                 try:
@@ -938,12 +1122,18 @@ def config_page():
             if "realtime_mode" in data:
                 config.data["logging"]["realtime_mode"] = bool(data["realtime_mode"])
             if "metrics_url" in data:
+                valid, err = _validate_url(data["metrics_url"])
+                if not valid:
+                    return jsonify({"error": f"Metrics URL: {err}"}), 400
                 config.data["metrics"]["url"] = data["metrics_url"]
 
             # MQTT
             if "mqtt_enabled" in data:
                 config.data["mqtt"]["enabled"] = bool(data["mqtt_enabled"])
             if "mqtt_broker" in data:
+                valid, err = _validate_host(data["mqtt_broker"])
+                if not valid:
+                    return jsonify({"error": f"MQTT Broker: {err}"}), 400
                 config.data["mqtt"]["broker"] = data["mqtt_broker"]
             if "mqtt_port" in data:
                 try:
@@ -957,14 +1147,27 @@ def config_page():
                 except ValueError:
                     return jsonify({"error": "Ungültige MQTT Portnummer"}), 400
             if "mqtt_username" in data:
+                valid, err = _validate_string(data["mqtt_username"], "MQTT Username")
+                if not valid:
+                    return jsonify({"error": err}), 400
                 config.data["mqtt"]["username"] = data["mqtt_username"]
             if "mqtt_password" in data and data["mqtt_password"]:
+                # Passwords can contain special chars, just limit length
+                if len(data["mqtt_password"]) > _MAX_STRING_LENGTH:
+                    return jsonify({"error": "MQTT Passwort zu lang"}), 400
                 config.data["mqtt"]["password"] = data["mqtt_password"]
             if "mqtt_use_tls" in data:
                 config.data["mqtt"]["use_tls"] = bool(data["mqtt_use_tls"])
             if "mqtt_tls_ca_cert" in data:
+                # CA cert path validation
+                valid, err = _validate_string(data["mqtt_tls_ca_cert"], "TLS CA Cert Pfad")
+                if not valid:
+                    return jsonify({"error": err}), 400
                 config.data["mqtt"]["tls_ca_cert"] = data["mqtt_tls_ca_cert"]
             if "mqtt_topic_prefix" in data:
+                valid, err = _validate_topic(data["mqtt_topic_prefix"])
+                if not valid:
+                    return jsonify({"error": f"MQTT Topic: {err}"}), 400
                 config.data["mqtt"]["topic_prefix"] = data["mqtt_topic_prefix"]
             if "mqtt_ha_discovery_enabled" in data:
                 config.data["mqtt"]["ha_discovery_enabled"] = bool(

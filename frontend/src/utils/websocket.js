@@ -32,6 +32,42 @@ export class WebSocketClient {
         this.listeners = new Map();
         this.subscriptions = new Set();
         this.dashboardId = null;
+
+        // Performance: Batch metric updates to reduce re-renders
+        this._metricUpdateBuffer = {};
+        this._metricUpdateTimer = null;
+        this._metricUpdateDebounceMs = 100; // Batch updates within 100ms
+    }
+
+    /**
+     * Debounced metric update handler to batch rapid updates
+     * @private
+     */
+    _handleMetricUpdate(data) {
+        // Buffer the update
+        if (data && data.metric) {
+            this._metricUpdateBuffer[data.metric] = data;
+        } else if (data) {
+            // Handle batch updates or other formats
+            Object.assign(this._metricUpdateBuffer, data);
+        }
+
+        // Clear existing timer
+        if (this._metricUpdateTimer) {
+            clearTimeout(this._metricUpdateTimer);
+        }
+
+        // Set new timer to flush buffer
+        this._metricUpdateTimer = setTimeout(() => {
+            const bufferedData = this._metricUpdateBuffer;
+            this._metricUpdateBuffer = {};
+            this._metricUpdateTimer = null;
+
+            // Emit batched update
+            if (Object.keys(bufferedData).length > 0) {
+                this._emit('metric_update', bufferedData);
+            }
+        }, this._metricUpdateDebounceMs);
     }
 
     /**
@@ -249,7 +285,8 @@ export class WebSocketClient {
         });
 
         this.socket.on('metric_update', (data) => {
-            this._emit('metric_update', data);
+            // Use debounced handler to batch rapid updates
+            this._handleMetricUpdate(data);
         });
 
         this.socket.on('dashboard_update', (data) => {
@@ -312,14 +349,30 @@ export function useWebSocket(onMetricUpdate = null, onStateChange = null) {
         wsClient.connect();
     }
 
+    // Track registered listeners for cleanup
+    const registeredListeners = [];
+
     // Register listeners
     if (onMetricUpdate) {
         wsClient.on('metric_update', onMetricUpdate);
+        registeredListeners.push(['metric_update', onMetricUpdate]);
     }
 
     if (onStateChange) {
         wsClient.on('state_change', onStateChange);
+        registeredListeners.push(['state_change', onStateChange]);
     }
+
+    /**
+     * Cleanup function to remove all registered listeners.
+     * IMPORTANT: Call this in Vue's onUnmounted() to prevent memory leaks.
+     */
+    const cleanup = () => {
+        registeredListeners.forEach(([event, callback]) => {
+            wsClient.off(event, callback);
+        });
+        registeredListeners.length = 0;
+    };
 
     return {
         client: wsClient,
@@ -327,7 +380,8 @@ export function useWebSocket(onMetricUpdate = null, onStateChange = null) {
         unsubscribe: (metrics, dashboardId) => wsClient.unsubscribe(metrics, dashboardId),
         disconnect: () => wsClient.disconnect(),
         isConnected: () => wsClient.isConnected(),
-        getState: () => wsClient.getState()
+        getState: () => wsClient.getState(),
+        cleanup  // Call this in onUnmounted() to prevent memory leaks
     };
 }
 

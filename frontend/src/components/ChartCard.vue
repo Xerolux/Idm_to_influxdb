@@ -84,7 +84,7 @@
 
             <!-- Stats Table (embedded below chart) -->
             <div v-if="hasData" class="mt-auto pt-2 border-t border-gray-100 flex-shrink-0">
-                 <div v-for="(stat, index) in stats" :key="index + '_' + stat.label" class="flex items-center justify-between text-[10px] text-gray-600 px-1 py-0.5 hover:bg-gray-50 rounded transition-colors">
+                 <div v-for="stat in stats" :key="stat.label" class="flex items-center justify-between text-[10px] text-gray-600 px-1 py-0.5 hover:bg-gray-50 rounded transition-colors">
                      <div class="flex items-center gap-2 min-w-0 overflow-hidden">
                          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm" :style="{ backgroundColor: stat.color }"></span>
                          <span class="font-medium truncate" :title="stat.label">{{ stat.label }}</span>

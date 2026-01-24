@@ -46,6 +46,27 @@ class ModbusClient:
             except Exception as e:
                 logger.warning(f"Invalid zone configured: {zone_id} ({e})")
 
+        # Cache management - store sensor config hash to detect changes
+        self._read_blocks = None
+        self._failed_blocks = set()
+        self._sensor_config_hash = self._compute_sensor_hash()
+
+        # Connection state tracking to reduce log spam
+        self._connection_was_lost = False
+
+    def _compute_sensor_hash(self) -> int:
+        """Compute hash of current sensor configuration for cache invalidation."""
+        sensor_keys = tuple(sorted(self.sensors.keys()))
+        binary_keys = tuple(sorted(self.binary_sensors.keys()))
+        return hash((sensor_keys, binary_keys))
+
+    def invalidate_cache(self):
+        """Invalidate the read blocks cache. Call when sensor config changes."""
+        self._read_blocks = None
+        self._failed_blocks = set()
+        self._sensor_config_hash = self._compute_sensor_hash()
+        logger.debug("Modbus read blocks cache invalidated")
+
     def connect(self):
         """Connects to the Modbus server."""
         if not self.host:
@@ -66,8 +87,18 @@ class ModbusClient:
     def _ensure_connection(self):
         """Ensures the client is connected, reconnecting if necessary."""
         if self.client.is_socket_open():
+            if self._connection_was_lost:
+                logger.info("Modbus connection restored")
+                self._connection_was_lost = False
             return True
-        logger.warning("Modbus connection lost. Attempting to reconnect...")
+
+        # Log warning only on first detection of connection loss
+        if not self._connection_was_lost:
+            logger.warning("Modbus connection lost. Attempting to reconnect...")
+            self._connection_was_lost = True
+        else:
+            logger.debug("Modbus reconnect attempt...")
+
         return self.connect()
 
     def _build_read_blocks(self):
@@ -149,12 +180,16 @@ class ModbusClient:
             return data
 
         try:
-            # Build blocks if not already done (could be cached if sensors don't change)
-            # For now we rebuild since sensors can be added dynamically? No, they are set in __init__
-            # But let's cache it for performance
-            if not hasattr(self, "_read_blocks"):
+            # Check if sensor config changed and invalidate cache if needed
+            current_hash = self._compute_sensor_hash()
+            if current_hash != self._sensor_config_hash:
+                logger.info("Sensor configuration changed, rebuilding read blocks")
+                self.invalidate_cache()
+                self._sensor_config_hash = current_hash
+
+            # Build blocks if not cached
+            if self._read_blocks is None:
                 self._read_blocks = self._build_read_blocks()
-                self._failed_blocks = set()  # Track blocks that consistently fail
                 logger.info(
                     f"Optimized Modbus reading: {len(self._read_blocks)} requests for {len(self.sensors) + len(self.binary_sensors)} sensors"
                 )
