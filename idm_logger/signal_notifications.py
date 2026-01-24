@@ -9,7 +9,7 @@ from .config import config
 logger = logging.getLogger(__name__)
 
 # Valid phone number pattern (international format: +country code + number)
-_PHONE_PATTERN = re.compile(r'^\+[1-9]\d{6,14}$')
+_PHONE_PATTERN = re.compile(r"^\+[1-9]\d{6,14}$")
 
 
 def _validate_phone_number(number: str) -> bool:
@@ -33,7 +33,9 @@ def _normalize_recipients(value) -> List[str]:
         if _validate_phone_number(entry):
             valid_recipients.append(entry)
         else:
-            logger.warning(f"Invalid Signal recipient format (skipped): {entry[:20]}...")
+            logger.warning(
+                f"Invalid Signal recipient format (skipped): {entry[:20]}..."
+            )
 
     return valid_recipients
 
@@ -56,7 +58,7 @@ def send_signal_message(message: str) -> None:
         raise RuntimeError("Keine gültigen Signal-Empfänger konfiguriert.")
 
     # Validate cli_path doesn't contain shell metacharacters
-    if not re.match(r'^[a-zA-Z0-9_\-/\.]+$', cli_path):
+    if not re.match(r"^[a-zA-Z0-9_\-/\.]+$", cli_path):
         raise RuntimeError("Signal CLI Pfad enthält ungültige Zeichen.")
 
     command = [cli_path, "-u", sender, "send", "-m", message] + recipients

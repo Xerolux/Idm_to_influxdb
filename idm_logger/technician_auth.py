@@ -70,7 +70,13 @@ def _validate_code(code_str: str) -> bool:
             # Block dangerous function calls
             if isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name):
-                    if node.func.id in ("exec", "eval", "compile", "__import__", "open"):
+                    if node.func.id in (
+                        "exec",
+                        "eval",
+                        "compile",
+                        "__import__",
+                        "open",
+                    ):
                         logger.error(f"Security: {node.func.id}() not allowed")
                         return False
         return True

@@ -36,7 +36,10 @@ def test_webserver():
     # Setup: Create dummy index.html if not exists
     # This is required because the backend tests might run without a frontend build
     from pathlib import Path
-    static_dir = Path(os.path.join(os.path.dirname(__file__), "..", "idm_logger", "static"))
+
+    static_dir = Path(
+        os.path.join(os.path.dirname(__file__), "..", "idm_logger", "static")
+    )
     index_file = static_dir / "index.html"
     created_dummy = False
 
