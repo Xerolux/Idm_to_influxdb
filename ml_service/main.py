@@ -4,7 +4,7 @@ import time
 import logging
 import requests
 import schedule
-import pickle
+import json
 import threading
 from datetime import datetime
 from river import anomaly
@@ -12,6 +12,15 @@ from river import preprocessing
 from river import compose
 from flask import Flask, jsonify
 import sys
+
+# Use joblib for safer model serialization (no arbitrary code execution)
+try:
+    import joblib
+    USE_JOBLIB = True
+except ImportError:
+    import pickle
+    USE_JOBLIB = False
+    logging.warning("joblib not available, falling back to pickle (less secure)")
 
 # Add parent directory to path to import idm_logger modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -152,8 +161,11 @@ def save_model_state():
     """Save model state to disk for persistence across restarts."""
     try:
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        with open(MODEL_PATH, "wb") as f:
-            pickle.dump(model, f)
+        if USE_JOBLIB:
+            joblib.dump(model, MODEL_PATH)
+        else:
+            with open(MODEL_PATH, "wb") as f:
+                pickle.dump(model, f)
         logger.info(f"Model state saved to {MODEL_PATH}")
         return True
     except Exception as e:
@@ -166,8 +178,11 @@ def load_model_state():
     global model, model_trained
     try:
         if os.path.exists(MODEL_PATH):
-            with open(MODEL_PATH, "rb") as f:
-                model = pickle.load(f)
+            if USE_JOBLIB:
+                model = joblib.load(MODEL_PATH)
+            else:
+                with open(MODEL_PATH, "rb") as f:
+                    model = pickle.load(f)
             model_trained = True
             logger.info(f"Model state loaded from {MODEL_PATH}")
             return True

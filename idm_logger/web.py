@@ -122,6 +122,8 @@ _net_sec_cache = {
     "whitelist_nets": [],
     "blacklist_ref": None,
     "blacklist_nets": [],
+    "ip_results": {},  # Performance: Cache IP check results {ip_str: (allowed, timestamp)}
+    "ip_cache_ttl": 300,  # Cache results for 5 minutes
 }
 
 # AI Status Cache
@@ -241,9 +243,22 @@ def check_ip_whitelist():
     if not client_ip:
         return
 
+    # Performance: Check IP result cache first (O(1) lookup)
+    now = time.time()
+    cached = _net_sec_cache["ip_results"].get(client_ip)
+    if cached:
+        allowed, cached_time = cached
+        if now - cached_time < _net_sec_cache["ip_cache_ttl"]:
+            if not allowed:
+                abort(403)
+            return
+        # Cache expired, remove entry
+        del _net_sec_cache["ip_results"][client_ip]
+
     ip = get_ip_obj(client_ip)
     if not ip:
         logger.warning(f"Invalid client IP: {client_ip}")
+        _net_sec_cache["ip_results"][client_ip] = (False, now)
         abort(403)
 
     whitelist = config.get("network_security.whitelist", [])
@@ -269,6 +284,7 @@ def check_ip_whitelist():
             logger.warning(
                 f"Blocked IP {client_ip} (matched blacklist {original_block})"
             )
+            _net_sec_cache["ip_results"][client_ip] = (False, now)
             abort(403)
 
     # Update whitelist cache if needed
@@ -285,15 +301,19 @@ def check_ip_whitelist():
 
     # Check whitelist if it exists and is not empty
     if whitelist:
-        allowed = False
+        is_allowed = False
         for net in _net_sec_cache["whitelist_nets"]:
             if ip in net:
-                allowed = True
+                is_allowed = True
                 break
 
-        if not allowed:
+        if not is_allowed:
             logger.warning(f"Blocked IP {client_ip} (not in whitelist)")
+            _net_sec_cache["ip_results"][client_ip] = (False, now)
             abort(403)
+
+    # Cache successful result
+    _net_sec_cache["ip_results"][client_ip] = (True, now)
 
 
 # Default CSP - can be overridden via config
