@@ -9,11 +9,22 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 # Whitelisted column names for SQL injection prevention
-ALLOWED_JOB_COLUMNS = frozenset({"sensor", "value", "time", "days", "enabled", "last_run"})
-ALLOWED_ALERT_COLUMNS = frozenset({
-    "name", "type", "sensor", "condition", "threshold",
-    "message", "enabled", "interval_seconds", "last_triggered"
-})
+ALLOWED_JOB_COLUMNS = frozenset(
+    {"sensor", "value", "time", "days", "enabled", "last_run"}
+)
+ALLOWED_ALERT_COLUMNS = frozenset(
+    {
+        "name",
+        "type",
+        "sensor",
+        "condition",
+        "threshold",
+        "message",
+        "enabled",
+        "interval_seconds",
+        "last_triggered",
+    }
+)
 
 # Use DATA_DIR environment variable or current directory for persistence
 DATA_DIR = os.environ.get("DATA_DIR", ".")
@@ -195,7 +206,9 @@ class Database:
                 for k, v in fields.items():
                     # Security: Only allow whitelisted column names
                     if k not in ALLOWED_JOB_COLUMNS:
-                        logger.warning(f"Rejected invalid column name in job update: {k}")
+                        logger.warning(
+                            f"Rejected invalid column name in job update: {k}"
+                        )
                         continue
                     query_parts.append(f"{k}=?")
                     if k == "days":
@@ -299,7 +312,9 @@ class Database:
                 for k, v in fields.items():
                     # Security: Only allow whitelisted column names
                     if k not in ALLOWED_ALERT_COLUMNS:
-                        logger.warning(f"Rejected invalid column name in alert update: {k}")
+                        logger.warning(
+                            f"Rejected invalid column name in alert update: {k}"
+                        )
                         continue
                     query_parts.append(f"{k}=?")
                     if k == "enabled":

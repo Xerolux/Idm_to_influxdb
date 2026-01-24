@@ -15,9 +15,11 @@ import sys
 # Use joblib for safer model serialization (no arbitrary code execution)
 try:
     import joblib
+
     USE_JOBLIB = True
 except ImportError:
     import pickle
+
     USE_JOBLIB = False
     logging.warning("joblib not available, falling back to pickle (less secure)")
 

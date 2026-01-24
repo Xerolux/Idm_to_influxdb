@@ -55,7 +55,7 @@ class SafeExpressionEvaluator(ast.NodeVisitor):
     def evaluate(self, expr: str) -> float:
         """Safely evaluate a mathematical expression."""
         try:
-            tree = ast.parse(expr, mode='eval')
+            tree = ast.parse(expr, mode="eval")
             return self.visit(tree.body)
         except (SyntaxError, ValueError, TypeError) as e:
             raise ValueError(f"Invalid expression: {e}")

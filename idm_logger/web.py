@@ -54,12 +54,12 @@ logger = logging.getLogger(__name__)
 _MAX_STRING_LENGTH = 255
 _MAX_URL_LENGTH = 2048
 _HOSTNAME_PATTERN = re.compile(
-    r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?'
-    r'(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$'
+    r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?"
+    r"(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$"
 )
 _IP_PATTERN = re.compile(
-    r'^(\d{1,3}\.){3}\d{1,3}$|'  # IPv4
-    r'^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$'  # IPv6 (simplified)
+    r"^(\d{1,3}\.){3}\d{1,3}$|"  # IPv4
+    r"^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$"  # IPv6 (simplified)
 )
 # Dangerous shell characters to block in string inputs
 _SHELL_DANGEROUS_CHARS = re.compile(r'[;&|`$(){}[\]<>\\\'"]')
@@ -91,16 +91,17 @@ def _validate_url(value: str) -> tuple[bool, str]:
     if len(value) > _MAX_URL_LENGTH:
         return False, f"URL darf maximal {_MAX_URL_LENGTH} Zeichen lang sein"
     # Basic URL validation
-    if not value.startswith(('http://', 'https://')):
+    if not value.startswith(("http://", "https://")):
         return False, "URL muss mit http:// oder https:// beginnen"
     # Block dangerous characters
-    if _SHELL_DANGEROUS_CHARS.search(value.split('://', 1)[-1].split('/', 1)[0]):
+    if _SHELL_DANGEROUS_CHARS.search(value.split("://", 1)[-1].split("/", 1)[0]):
         return False, "URL enthält ungültige Zeichen"
     return True, ""
 
 
-def _validate_string(value: str, field_name: str, max_length: int = None,
-                     allow_empty: bool = True) -> tuple[bool, str]:
+def _validate_string(
+    value: str, field_name: str, max_length: int = None, allow_empty: bool = True
+) -> tuple[bool, str]:
     """Validate generic string input."""
     if value is None:
         if allow_empty:
@@ -127,6 +128,7 @@ def _validate_topic(value: str) -> tuple[bool, str]:
     if re.search(r'[;&|`$(){}[\]<>\\\'"]', value):
         return False, "Topic enthält ungültige Zeichen"
     return True, ""
+
 
 app = Flask(__name__)
 app.secret_key = config.get_flask_secret_key()
@@ -297,15 +299,18 @@ def _update_ai_status_loop():
                 # Exponential backoff on failure
                 consecutive_failures += 1
                 current_interval = min(
-                    base_interval * (2 ** min(consecutive_failures, 5)),
-                    max_interval
+                    base_interval * (2 ** min(consecutive_failures, 5)), max_interval
                 )
                 if consecutive_failures == 1:
-                    logger.debug(f"AI service offline, backing off to {current_interval}s")
+                    logger.debug(
+                        f"AI service offline, backing off to {current_interval}s"
+                    )
         except Exception as e:
             logger.error(f"Error in AI status loop: {e}")
             consecutive_failures += 1
-            current_interval = min(base_interval * (2 ** min(consecutive_failures, 5)), max_interval)
+            current_interval = min(
+                base_interval * (2 ** min(consecutive_failures, 5)), max_interval
+            )
 
         time.sleep(current_interval)
 
@@ -457,10 +462,19 @@ def add_security_headers(response):
 
 
 # Keys that should never be exposed to templates/frontend
-_SENSITIVE_CONFIG_KEYS = frozenset({
-    "password", "secret", "token", "api_key", "private_key",
-    "smtp_password", "bot_token", "webhook_url", "internal_api_key"
-})
+_SENSITIVE_CONFIG_KEYS = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "private_key",
+        "smtp_password",
+        "bot_token",
+        "webhook_url",
+        "internal_api_key",
+    }
+)
 
 
 def _filter_sensitive_config(data: dict, parent_key: str = "") -> dict:
@@ -600,7 +614,9 @@ def check_auth():
 
 
 @app.route("/logout")
-@limiter.limit("10 per minute")  # Rate limit logout to prevent session manipulation attacks
+@limiter.limit(
+    "10 per minute"
+)  # Rate limit logout to prevent session manipulation attacks
 def logout():
     session.pop("logged_in", None)
     return jsonify({"success": True})
@@ -957,6 +973,7 @@ def ml_alert_endpoint():
     Protected by shared secret if configured.
     """
     import hmac
+
     # Security Check
     internal_key = config.get("internal_api_key")
     if not internal_key:
@@ -1160,7 +1177,9 @@ def config_page():
                 config.data["mqtt"]["use_tls"] = bool(data["mqtt_use_tls"])
             if "mqtt_tls_ca_cert" in data:
                 # CA cert path validation
-                valid, err = _validate_string(data["mqtt_tls_ca_cert"], "TLS CA Cert Pfad")
+                valid, err = _validate_string(
+                    data["mqtt_tls_ca_cert"], "TLS CA Cert Pfad"
+                )
                 if not valid:
                     return jsonify({"error": err}), 400
                 config.data["mqtt"]["tls_ca_cert"] = data["mqtt_tls_ca_cert"]

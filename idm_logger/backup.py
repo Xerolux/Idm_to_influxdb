@@ -34,7 +34,7 @@ BACKUP_DIR.mkdir(exist_ok=True)
 _default_creds_warned = False
 
 # Pattern for safe filenames (alphanumeric, dash, underscore only)
-_SAFE_FILENAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
+_SAFE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
 def _sanitize_filename(name: str, max_length: int = 100) -> str:
@@ -219,7 +219,9 @@ class BackupManager:
 
                                     # Verify path is safe before writing
                                     if not _is_safe_path(dashboards_dir, dash_file):
-                                        logger.warning(f"Skipping unsafe path: {dash_file}")
+                                        logger.warning(
+                                            f"Skipping unsafe path: {dash_file}"
+                                        )
                                         continue
 
                                     with open(dash_file, "w") as f:
