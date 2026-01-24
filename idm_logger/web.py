@@ -273,11 +273,39 @@ def _update_ai_status_once():
 
 
 def _update_ai_status_loop():
-    """Background thread to update AI status periodically."""
+    """Background thread to update AI status periodically with exponential backoff."""
     logger.info("Starting AI status update loop")
+    base_interval = 60  # Normal interval: 60 seconds
+    max_interval = 600  # Max backoff: 10 minutes
+    current_interval = base_interval
+    consecutive_failures = 0
+
     while True:
-        _update_ai_status_once()
-        time.sleep(60)  # Update every minute
+        try:
+            _update_ai_status_once()
+            # Check if service is online
+            with _ai_status_lock:
+                is_online = _ai_status_cache.get("online", False)
+
+            if is_online:
+                # Reset backoff on success
+                consecutive_failures = 0
+                current_interval = base_interval
+            else:
+                # Exponential backoff on failure
+                consecutive_failures += 1
+                current_interval = min(
+                    base_interval * (2 ** min(consecutive_failures, 5)),
+                    max_interval
+                )
+                if consecutive_failures == 1:
+                    logger.debug(f"AI service offline, backing off to {current_interval}s")
+        except Exception as e:
+            logger.error(f"Error in AI status loop: {e}")
+            consecutive_failures += 1
+            current_interval = min(base_interval * (2 ** min(consecutive_failures, 5)), max_interval)
+
+        time.sleep(current_interval)
 
 
 def _start_ai_status_thread():

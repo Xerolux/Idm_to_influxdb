@@ -29,6 +29,30 @@ logger = logging.getLogger(__name__)
 BACKUP_DIR = Path(DATA_DIR) / "backups"
 BACKUP_DIR.mkdir(exist_ok=True)
 
+# Track if default credentials warning was shown
+_default_creds_warned = False
+
+
+def _get_grafana_credentials():
+    """
+    Get Grafana credentials from environment variables.
+    Warns once if default credentials are being used.
+    """
+    global _default_creds_warned
+    user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
+    password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD")
+
+    if not password:
+        if not _default_creds_warned:
+            logger.warning(
+                "GF_SECURITY_ADMIN_PASSWORD not set, using default. "
+                "Set this environment variable for production!"
+            )
+            _default_creds_warned = True
+        password = "admin"
+
+    return user, password
+
 
 class BackupManager:
     """Manages backup and restore operations."""
@@ -113,10 +137,9 @@ class BackupManager:
             grafana_backup_dir = backup_dir / "grafana"
             grafana_backup_dir.mkdir(exist_ok=True)
 
-            # Grafana API settings
+            # Grafana API settings (uses secure credential helper)
             grafana_url = "http://grafana:3000"
-            grafana_user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
-            grafana_password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD", "admin")
+            grafana_user, grafana_password = _get_grafana_credentials()
 
             # 1. Export all dashboards via API
             logger.info("Exporting Grafana dashboards...")
@@ -552,10 +575,9 @@ class BackupManager:
                 logger.info("No Grafana backup found in archive")
                 return False
 
-            # Grafana API settings
+            # Grafana API settings (uses secure credential helper)
             grafana_url = "http://grafana:3000"
-            grafana_user = os.environ.get("GF_SECURITY_ADMIN_USER", "admin")
-            grafana_password = os.environ.get("GF_SECURITY_ADMIN_PASSWORD", "admin")
+            grafana_user, grafana_password = _get_grafana_credentials()
 
             # 1. Restore dashboards via API
             dashboards_dir = grafana_backup_dir / "dashboards"
