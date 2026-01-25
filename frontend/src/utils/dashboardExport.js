@@ -2,10 +2,12 @@
  * Dashboard Export Utility
  *
  * Exports dashboards as PNG or PDF using html2canvas and jsPDF
+ * Also exports metrics data as CSV, Excel, or JSON
  */
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import axios from 'axios';
 
 /**
  * Export a DOM element as PNG image
@@ -223,10 +225,92 @@ export async function exportChartsGrid(elements, options = {}) {
     }
 }
 
+/**
+ * Export metrics data in CSV, Excel, or JSON format
+ * @param {Object} options - Export options
+ * @param {string} options.format - Format: 'csv', 'excel', or 'json'
+ * @param {Array|string} options.metrics - Metrics to export or 'all'
+ * @param {number} options.start - Start timestamp (Unix)
+ * @param {number} options.end - End timestamp (Unix)
+ * @param {string} options.step - Step interval (e.g., '1m')
+ * @param {string} options.dashboard_name - Dashboard name for filename
+ * @returns {Promise<void>}
+ */
+export async function exportMetricsData(options) {
+    const {
+        format = 'csv',
+        metrics = 'all',
+        start,
+        end,
+        step = '1m',
+        dashboard_name = 'metrics'
+    } = options;
+
+    if (!start || !end) {
+        throw new Error('Start and end timestamps are required');
+    }
+
+    try {
+        // Call backend API
+        const response = await axios.post('/api/export/data', {
+            format,
+            metrics,
+            start,
+            end,
+            step,
+            dashboard_name
+        }, {
+            responseType: 'blob', // Important for file download
+            timeout: 120000 // 2 minutes timeout for large exports
+        });
+
+        // Create download link
+        const blob = new Blob([response.data], {
+            type: response.headers['content-type']
+        });
+
+        // Extract filename from Content-Disposition header or generate one
+        let filename = `${dashboard_name}_export.${format}`;
+        const contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1].replace(/['"]/g, '');
+            }
+        }
+
+        // Download file
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+        console.error('Data export failed:', error);
+        if (error.response && error.response.data) {
+            // Try to extract error message from blob
+            try {
+                const text = await error.response.data.text();
+                const errorData = JSON.parse(text);
+                throw new Error(errorData.error || 'Export failed');
+            } catch {
+                throw new Error('Export failed: ' + error.message);
+            }
+        }
+        throw new Error('Export failed: ' + error.message);
+    }
+}
+
 export default {
     exportAsPNG,
     exportAsPDF,
     exportDashboard,
     exportChartsGrid,
     downloadBlob,
+    exportMetricsData,
 };

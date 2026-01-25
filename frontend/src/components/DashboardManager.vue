@@ -318,6 +318,7 @@
             v-model="showExportDialog"
             :dashboard-name="currentDashboard?.name || 'Dashboard'"
             :dashboard-element="dashboardElement"
+            :dashboard-config="currentDashboard"
         />
 
         <Dialog
