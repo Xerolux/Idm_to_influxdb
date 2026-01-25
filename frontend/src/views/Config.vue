@@ -375,12 +375,40 @@
                                  </div>
                              </div>
 
+                             <!-- Docker Image Status -->
+                             <div v-if="updateStatus.docker" class="bg-gray-900/50 p-3 rounded mt-2">
+                                 <div class="flex items-center gap-2 mb-2">
+                                     <i class="pi pi-box text-blue-400"></i>
+                                     <span class="text-sm font-bold">Docker Images</span>
+                                     <span v-if="updateStatus.docker.updates_available" class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Updates verfügbar</span>
+                                 </div>
+                                 <div class="grid grid-cols-1 gap-2 text-xs">
+                                     <div v-for="(img, name) in updateStatus.docker.images" :key="name"
+                                          class="flex items-center justify-between p-2 rounded"
+                                          :class="img.update_available ? 'bg-blue-900/30 border border-blue-600/50' : 'bg-gray-800'">
+                                         <div class="flex items-center gap-2">
+                                             <i :class="img.update_available ? 'pi pi-arrow-up text-blue-400' : 'pi pi-check text-green-400'"></i>
+                                             <span class="font-mono">{{ name }}</span>
+                                         </div>
+                                         <div class="text-right">
+                                             <span v-if="img.update_available" class="text-blue-300">Update verfügbar</span>
+                                             <span v-else class="text-green-400">Aktuell</span>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+
                              <div v-if="updateStatus.update_available" class="bg-blue-900/20 border border-blue-600/50 p-3 rounded mt-2 flex flex-col gap-2">
                                 <div class="flex items-center gap-2 text-blue-300 text-sm">
                                     <i class="pi pi-info-circle"></i>
                                     <span>Neue Version verfügbar!</span>
                                 </div>
-                                <Button label="Jetzt aktualisieren" icon="pi pi-download" severity="info" size="small" @click="confirmUpdate" :loading="updating" />
+                                <div class="flex gap-2">
+                                    <Button label="Jetzt aktualisieren" icon="pi pi-download" severity="info" size="small" @click="confirmUpdate" :loading="updating" />
+                                    <Button v-if="updateStatus.docker?.updates_available && !updateStatus.git_update_available"
+                                            label="Nur Docker Images" icon="pi pi-box" severity="secondary" size="small"
+                                            @click="confirmDockerUpdate" :loading="updating" />
+                                </div>
                              </div>
 
                              <div class="flex flex-col gap-2 mt-2 border-t border-gray-700 pt-2">
@@ -524,6 +552,22 @@
             </template>
         </Dialog>
 
+        <!-- Update Countdown Dialog -->
+        <Dialog v-model:visible="showUpdateDialog" modal header="Update läuft..." :closable="false" :style="{ width: '400px' }">
+            <div class="flex flex-col items-center gap-4 py-4">
+                <i class="pi pi-spin pi-cog text-5xl text-blue-400"></i>
+                <p class="text-center text-gray-300">
+                    Das System wird aktualisiert und neu gestartet.<br/>
+                    Die Seite wird in <span class="font-bold text-blue-400">{{ updateCountdown }}</span> Sekunden neu geladen.
+                </p>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-1000"
+                         :style="{ width: `${(1 - updateCountdown / 30) * 100}%` }"></div>
+                </div>
+                <Button label="Jetzt neu laden" icon="pi pi-refresh" @click="reloadPage" severity="secondary" size="small" />
+            </div>
+        </Dialog>
+
         <Toast />
         <ConfirmDialog />
     </div>
@@ -594,6 +638,7 @@ const passwordMismatch = computed(() => {
 
 onUnmounted(() => {
     if (aiStatusInterval) clearInterval(aiStatusInterval);
+    if (updateCountdownInterval) clearInterval(updateCountdownInterval);
 });
 
 // Backup & Restore state
@@ -609,6 +654,11 @@ const showDeleteDialog = ref(false);
 const deleteConfirmationText = ref('');
 const deletingDatabase = ref(false);
 const updating = ref(false);
+
+// Update Dialog
+const showUpdateDialog = ref(false);
+const updateCountdown = ref(30);
+let updateCountdownInterval = null;
 
 onMounted(async () => {
     try {
@@ -642,7 +692,7 @@ onMounted(async () => {
 
         // Load backups
         loadBackups();
-        loadStatus();
+        loadStatus(true);  // Show notification on initial load
         loadAiStatus();
 
         // Refresh AI status periodically
@@ -669,7 +719,7 @@ const sendSignalTest = async () => {
     }
 };
 
-const loadStatus = async () => {
+const loadStatus = async (showNotification = false) => {
     statusLoading.value = true;
     try {
         const [updateRes, signalRes] = await Promise.all([
@@ -678,6 +728,28 @@ const loadStatus = async () => {
         ]);
         updateStatus.value = updateRes.data;
         signalStatus.value = signalRes.data;
+
+        // Show notification popup if updates are available (on initial load)
+        if (showNotification && updateRes.data.update_available) {
+            const dockerUpdates = updateRes.data.docker?.updates_available;
+            const gitUpdates = updateRes.data.git_update_available;
+
+            let detail = 'Ein Update ist verfügbar!';
+            if (dockerUpdates && gitUpdates) {
+                detail = 'Neue Version und Docker Images verfügbar!';
+            } else if (dockerUpdates) {
+                detail = 'Neue Docker Images verfügbar!';
+            } else if (gitUpdates) {
+                detail = `Version ${updateRes.data.latest_version} verfügbar!`;
+            }
+
+            toast.add({
+                severity: 'info',
+                summary: 'Update verfügbar',
+                detail: detail,
+                life: 10000
+            });
+        }
     } catch (e) {
         // Silent fail for status check
         console.error("Status load failed", e);
@@ -965,29 +1037,64 @@ const confirmDeleteDatabase = async () => {
     }
 };
 
+const startUpdateCountdown = () => {
+    showUpdateDialog.value = true;
+    updateCountdown.value = 30;
+
+    updateCountdownInterval = setInterval(() => {
+        updateCountdown.value--;
+        if (updateCountdown.value <= 0) {
+            clearInterval(updateCountdownInterval);
+            reloadPage();
+        }
+    }, 1000);
+};
+
+const reloadPage = () => {
+    if (updateCountdownInterval) clearInterval(updateCountdownInterval);
+    window.location.reload();
+};
+
+const performUpdate = async (dockerOnly = false) => {
+    updating.value = true;
+    try {
+        const res = await axios.post('/api/perform-update', { docker_only: dockerOnly });
+        if (res.data.success) {
+            toast.add({
+                severity: 'success',
+                summary: 'Update gestartet',
+                detail: `System wird aktualisiert (${res.data.method || 'standard'})...`,
+                life: 3000
+            });
+            // Start countdown dialog
+            startUpdateCountdown();
+        } else {
+            toast.add({ severity: 'error', summary: 'Fehler', detail: res.data.error, life: 5000 });
+        }
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.error || 'Update fehlgeschlagen', life: 5000 });
+    } finally {
+        updating.value = false;
+    }
+};
+
 const confirmUpdate = () => {
     confirm.require({
         message: 'Update wirklich durchführen? Der Dienst wird neu gestartet.',
         header: 'Update Bestätigung',
         icon: 'pi pi-refresh',
         acceptClass: 'p-button-info',
-        accept: async () => {
-            updating.value = true;
-            try {
-                const res = await axios.post('/api/perform-update');
-                if (res.data.success) {
-                    toast.add({ severity: 'success', summary: 'Update gestartet', detail: 'System wird aktualisiert...', life: 5000 });
-                    // Refresh status after a delay
-                    setTimeout(loadStatus, 15000);
-                } else {
-                    toast.add({ severity: 'error', summary: 'Fehler', detail: res.data.error, life: 5000 });
-                }
-            } catch (e) {
-                toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.error || 'Update fehlgeschlagen', life: 5000 });
-            } finally {
-                updating.value = false;
-            }
-        }
+        accept: () => performUpdate(false)
+    });
+};
+
+const confirmDockerUpdate = () => {
+    confirm.require({
+        message: 'Nur Docker Images aktualisieren? Die Container werden neu gestartet.',
+        header: 'Docker Update',
+        icon: 'pi pi-box',
+        acceptClass: 'p-button-info',
+        accept: () => performUpdate(true)
     });
 };
 </script>
