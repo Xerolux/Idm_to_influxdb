@@ -168,7 +168,7 @@ onUnmounted(() => {
              class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 flex items-center justify-between cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all"
              @click="goToUpdate">
             <div class="flex items-center gap-3">
-                <i class="pi pi-download text-lg animate-bounce"></i>
+                <i class="pi pi-sync text-lg"></i>
                 <span class="font-medium">
                     Update verfügbar!
                     <span v-if="updateInfo?.docker?.updates_available" class="hidden sm:inline">
@@ -178,9 +178,11 @@ onUnmounted(() => {
                         ({{ updateInfo.latest_version }})
                     </span>
                 </span>
-                <span class="text-blue-200 text-sm hidden lg:inline">Klicken zum Aktualisieren</span>
+                <span class="text-blue-200 text-sm hidden lg:inline">
+                    <i class="pi pi-clock mr-1"></i>Auto-Update täglich 03:00
+                </span>
             </div>
-            <button @click.stop="dismissUpdateBanner" class="p-1 hover:bg-blue-500 rounded transition-colors">
+            <button @click.stop="dismissUpdateBanner" class="p-1 hover:bg-blue-500 rounded transition-colors" title="Ausblenden">
                 <i class="pi pi-times"></i>
             </button>
         </div>

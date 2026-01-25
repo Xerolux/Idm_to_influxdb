@@ -398,31 +398,31 @@
                                  </div>
                              </div>
 
+                             <!-- Update Available Info -->
                              <div v-if="updateStatus.update_available" class="bg-blue-900/20 border border-blue-600/50 p-3 rounded mt-2 flex flex-col gap-2">
                                 <div class="flex items-center gap-2 text-blue-300 text-sm">
                                     <i class="pi pi-info-circle"></i>
                                     <span>Neue Version verfügbar!</span>
                                 </div>
-                                <div class="flex gap-2">
-                                    <Button label="Jetzt aktualisieren" icon="pi pi-download" severity="info" size="small" @click="confirmUpdate" :loading="updating" />
-                                    <Button v-if="updateStatus.docker?.updates_available && !updateStatus.git_update_available"
-                                            label="Nur Docker Images" icon="pi pi-box" severity="secondary" size="small"
-                                            @click="confirmDockerUpdate" :loading="updating" />
-                                </div>
+                                <p class="text-xs text-gray-400">
+                                    Watchtower aktualisiert automatisch täglich um 3:00 Uhr.
+                                </p>
                              </div>
 
-                             <div class="flex flex-col gap-2 mt-2 border-t border-gray-700 pt-2">
-                                 <label class="text-sm font-bold">Update Kanal</label>
-                                 <div class="flex gap-2">
-                                    <SelectButton v-model="config.updates.channel" :options="['latest', 'beta', 'release']" :allowEmpty="false" class="w-full" />
+                             <!-- Watchtower Info -->
+                             <div class="bg-gray-900/50 p-3 rounded mt-2">
+                                 <div class="flex items-center gap-2 mb-2">
+                                     <i class="pi pi-sync text-green-400"></i>
+                                     <span class="text-sm font-bold">Automatische Updates</span>
                                  </div>
-                                 <div class="flex justify-between items-center mt-1">
-                                    <div class="flex items-center gap-2">
-                                        <Checkbox v-model="config.updates.enabled" binary inputId="auto_updates" />
-                                        <label for="auto_updates" class="text-sm">Auto-Updates</label>
-                                    </div>
-                                    <Button label="Suche Updates" icon="pi pi-search" size="small" @click="checkUpdates" :loading="checkingUpdates" />
-                                 </div>
+                                 <p class="text-xs text-gray-400 mb-2">
+                                     Watchtower prüft täglich um <span class="text-green-400 font-mono">03:00 Uhr</span> auf neue Docker Images und aktualisiert automatisch.
+                                 </p>
+                                 <Button label="Anleitung für manuelles Update" icon="pi pi-question-circle" severity="secondary" size="small" text @click="showUpdateHelpDialog = true" />
+                             </div>
+
+                             <div class="flex justify-end mt-2">
+                                 <Button label="Jetzt prüfen" icon="pi pi-search" size="small" severity="secondary" @click="checkUpdates" :loading="checkingUpdates" />
                              </div>
                         </div>
 
@@ -552,20 +552,43 @@
             </template>
         </Dialog>
 
-        <!-- Update Countdown Dialog -->
-        <Dialog v-model:visible="showUpdateDialog" modal header="Update läuft..." :closable="false" :style="{ width: '400px' }">
-            <div class="flex flex-col items-center gap-4 py-4">
-                <i class="pi pi-spin pi-cog text-5xl text-blue-400"></i>
-                <p class="text-center text-gray-300">
-                    Das System wird aktualisiert und neu gestartet.<br/>
-                    Die Seite wird in <span class="font-bold text-blue-400">{{ updateCountdown }}</span> Sekunden neu geladen.
-                </p>
-                <div class="w-full bg-gray-700 rounded-full h-2">
-                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-1000"
-                         :style="{ width: `${(1 - updateCountdown / 30) * 100}%` }"></div>
+        <!-- Manual Update Help Dialog -->
+        <Dialog v-model:visible="showUpdateHelpDialog" modal header="Manuelles Update" :style="{ width: '500px' }">
+            <div class="flex flex-col gap-4">
+                <div class="bg-blue-900/20 border border-blue-600/50 p-3 rounded">
+                    <div class="flex items-center gap-2 text-blue-300 mb-2">
+                        <i class="pi pi-info-circle"></i>
+                        <span class="font-bold">Automatische Updates</span>
+                    </div>
+                    <p class="text-sm text-gray-300">
+                        Watchtower aktualisiert Docker Images automatisch täglich um 3:00 Uhr.
+                        Manuelle Updates sind nur nötig, wenn Sie nicht warten möchten.
+                    </p>
                 </div>
-                <Button label="Jetzt neu laden" icon="pi pi-refresh" @click="reloadPage" severity="secondary" size="small" />
+
+                <div>
+                    <h4 class="font-bold mb-2 flex items-center gap-2">
+                        <i class="pi pi-terminal text-green-400"></i>
+                        Manuelles Update via Terminal
+                    </h4>
+                    <div class="bg-gray-900 p-3 rounded font-mono text-sm text-green-400 overflow-x-auto">
+                        <div class="text-gray-500"># Zum Installationsverzeichnis wechseln</div>
+                        <div>cd /opt/idm-metrics-collector</div>
+                        <div class="mt-2 text-gray-500"># Neue Images herunterladen</div>
+                        <div>docker compose pull</div>
+                        <div class="mt-2 text-gray-500"># Container neu starten</div>
+                        <div>docker compose up -d</div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-400">
+                    <i class="pi pi-lightbulb mr-1"></i>
+                    Nach dem Update wird die Seite automatisch neu geladen sobald der Container wieder erreichbar ist.
+                </div>
             </div>
+            <template #footer>
+                <Button label="Schließen" @click="showUpdateHelpDialog = false" />
+            </template>
         </Dialog>
 
         <Toast />
@@ -638,7 +661,6 @@ const passwordMismatch = computed(() => {
 
 onUnmounted(() => {
     if (aiStatusInterval) clearInterval(aiStatusInterval);
-    if (updateCountdownInterval) clearInterval(updateCountdownInterval);
 });
 
 // Backup & Restore state
@@ -655,10 +677,8 @@ const deleteConfirmationText = ref('');
 const deletingDatabase = ref(false);
 const updating = ref(false);
 
-// Update Dialog
-const showUpdateDialog = ref(false);
-const updateCountdown = ref(30);
-let updateCountdownInterval = null;
+// Update Help Dialog
+const showUpdateHelpDialog = ref(false);
 
 onMounted(async () => {
     try {
@@ -1037,64 +1057,4 @@ const confirmDeleteDatabase = async () => {
     }
 };
 
-const startUpdateCountdown = () => {
-    showUpdateDialog.value = true;
-    updateCountdown.value = 30;
-
-    updateCountdownInterval = setInterval(() => {
-        updateCountdown.value--;
-        if (updateCountdown.value <= 0) {
-            clearInterval(updateCountdownInterval);
-            reloadPage();
-        }
-    }, 1000);
-};
-
-const reloadPage = () => {
-    if (updateCountdownInterval) clearInterval(updateCountdownInterval);
-    window.location.reload();
-};
-
-const performUpdate = async (dockerOnly = false) => {
-    updating.value = true;
-    try {
-        const res = await axios.post('/api/perform-update', { docker_only: dockerOnly });
-        if (res.data.success) {
-            toast.add({
-                severity: 'success',
-                summary: 'Update gestartet',
-                detail: `System wird aktualisiert (${res.data.method || 'standard'})...`,
-                life: 3000
-            });
-            // Start countdown dialog
-            startUpdateCountdown();
-        } else {
-            toast.add({ severity: 'error', summary: 'Fehler', detail: res.data.error, life: 5000 });
-        }
-    } catch (e) {
-        toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.error || 'Update fehlgeschlagen', life: 5000 });
-    } finally {
-        updating.value = false;
-    }
-};
-
-const confirmUpdate = () => {
-    confirm.require({
-        message: 'Update wirklich durchführen? Der Dienst wird neu gestartet.',
-        header: 'Update Bestätigung',
-        icon: 'pi pi-refresh',
-        acceptClass: 'p-button-info',
-        accept: () => performUpdate(false)
-    });
-};
-
-const confirmDockerUpdate = () => {
-    confirm.require({
-        message: 'Nur Docker Images aktualisieren? Die Container werden neu gestartet.',
-        header: 'Docker Update',
-        icon: 'pi pi-box',
-        acceptClass: 'p-button-info',
-        accept: () => performUpdate(true)
-    });
-};
 </script>
