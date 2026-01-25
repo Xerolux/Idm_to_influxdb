@@ -1,4 +1,3 @@
-
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
@@ -9,6 +8,7 @@ sys.path.insert(0, os.getcwd())
 # Mock requests to avoid network calls during import
 with patch("requests.get"), patch("requests.post"):
     from ml_service import main as ml_main
+
 
 class TestMlRatio(unittest.TestCase):
     def setUp(self):
@@ -71,6 +71,7 @@ class TestMlRatio(unittest.TestCase):
         # Cleanup
         ml_main.SENSORS = original_sensors
         ml_main.MIN_DATA_RATIO = original_ratio
+
 
 if __name__ == "__main__":
     unittest.main()
