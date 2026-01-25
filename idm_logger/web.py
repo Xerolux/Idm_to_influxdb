@@ -27,6 +27,8 @@ from .update_manager import (
     perform_update as run_update,
     get_current_version,
     can_run_updates,
+    can_run_docker_updates,
+    check_docker_updates,
 )
 from .alerts import alert_manager
 from .dashboard_config import dashboard_manager
@@ -1463,29 +1465,52 @@ def check_update():
 def perform_update():
     try:
         logger.info("Update requested by user")
+        data = request.get_json() or {}
+        docker_only = data.get("docker_only", False)
 
-        # Check if updates can run BEFORE spawning thread
-        if not can_run_updates():
-            logger.warning("Update skipped: repo path not found.")
+        # Check if any update method is available
+        can_git = can_run_updates()
+        can_docker = can_run_docker_updates()
+
+        if not can_git and not can_docker:
+            logger.warning("Update skipped: neither git repo nor docker available.")
             return jsonify({
                 "success": False,
-                "error": "Update nicht möglich: Git-Repository nicht gefunden. "
-                         "Bitte stellen Sie sicher, dass das Repository mit .git-Verzeichnis "
-                         "gemountet ist oder setzen Sie REPO_PATH."
+                "error": "Update nicht möglich: Weder Git-Repository noch Docker verfügbar."
             }), 400
+
+        update_method = "docker" if (docker_only or not can_git) else "git+docker"
 
         def do_update():
             try:
                 time.sleep(2)
-                run_update()
+                run_update(docker_only=docker_only or not can_git)
             except Exception as e:
                 logger.error(f"Update failed: {e}")
 
         threading.Thread(target=do_update, daemon=True).start()
-        return jsonify({"success": True, "message": "Update gestartet"})
+        return jsonify({
+            "success": True,
+            "message": "Update gestartet",
+            "method": update_method
+        })
     except Exception as e:
         logger.error(f"Error starting update: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/docker/status", methods=["GET"])
+@login_required
+def get_docker_status():
+    """Get Docker image update status."""
+    try:
+        status = check_docker_updates()
+        status["can_update"] = can_run_docker_updates()
+        status["git_available"] = can_run_updates()
+        return jsonify(status)
+    except Exception as e:
+        logger.error(f"Error checking Docker status: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/signal/test", methods=["POST"])

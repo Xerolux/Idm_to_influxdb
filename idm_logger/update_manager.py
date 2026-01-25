@@ -13,6 +13,12 @@ logger = logging.getLogger(__name__)
 GITHUB_REPO = "Xerolux/idm-metrics-collector"
 GITHUB_API_BASE = f"https://api.github.com/repos/{GITHUB_REPO}"
 
+# Docker images on GHCR
+DOCKER_IMAGES = {
+    "idm-logger": "ghcr.io/xerolux/idm-metrics-collector",
+    "ml-service": "ghcr.io/xerolux/idm-metrics-collector-ml",
+}
+
 # Channels:
 # - latest: rolling updates from main (version: 0.6.<hash>)
 # - beta: pre-releases from GitHub (version: 0.6.x-betaX)
@@ -100,6 +106,233 @@ def get_current_version() -> str:
         return v
 
     return "unknown"
+
+
+def get_local_image_id(image_name: str) -> Optional[str]:
+    """Get the image ID of a locally running container's image."""
+    try:
+        # First try to get the image ID from running container
+        result = subprocess.run(
+            ["docker", "images", "--no-trunc", "-q", f"{image_name}:latest"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip().split("\n")[0]
+    except Exception as e:
+        logger.debug(f"Failed to get local image ID for {image_name}: {e}")
+    return None
+
+
+def get_remote_image_digest(image_name: str, tag: str = "latest") -> Optional[str]:
+    """
+    Get the digest of a remote image from GHCR using the registry API.
+    Returns the manifest digest which can be compared to check for updates.
+    """
+    try:
+        # Parse image name: ghcr.io/xerolux/idm-metrics-collector -> xerolux/idm-metrics-collector
+        if image_name.startswith("ghcr.io/"):
+            repo = image_name[8:]  # Remove "ghcr.io/"
+        else:
+            repo = image_name
+
+        # GHCR uses token auth - get anonymous token first
+        token_url = f"https://ghcr.io/token?scope=repository:{repo}:pull"
+        token_resp = requests.get(token_url, timeout=10)
+        if token_resp.status_code != 200:
+            logger.debug(f"Failed to get GHCR token: {token_resp.status_code}")
+            return None
+
+        token = token_resp.json().get("token")
+        if not token:
+            return None
+
+        # Get manifest digest
+        manifest_url = f"https://ghcr.io/v2/{repo}/manifests/{tag}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.docker.distribution.manifest.v2+json, "
+                      "application/vnd.oci.image.manifest.v1+json",
+        }
+        manifest_resp = requests.head(manifest_url, headers=headers, timeout=10)
+
+        if manifest_resp.status_code == 200:
+            digest = manifest_resp.headers.get("Docker-Content-Digest")
+            return digest
+
+    except Exception as e:
+        logger.debug(f"Failed to get remote digest for {image_name}: {e}")
+    return None
+
+
+def get_local_image_digest(image_name: str) -> Optional[str]:
+    """Get the RepoDigest of a local image (matches remote digest format)."""
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format",
+             "{{index .RepoDigests 0}}", f"{image_name}:latest"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            # Format: ghcr.io/xerolux/image@sha256:abc123
+            full_digest = result.stdout.strip()
+            if "@" in full_digest:
+                return full_digest.split("@")[1]
+    except Exception as e:
+        logger.debug(f"Failed to get local digest for {image_name}: {e}")
+    return None
+
+
+def check_docker_updates() -> Dict[str, Any]:
+    """
+    Check if Docker image updates are available on GHCR.
+    Returns status for each image and whether updates are available.
+    """
+    result = {
+        "docker_available": False,
+        "updates_available": False,
+        "images": {},
+    }
+
+    # Check if docker is available
+    try:
+        docker_check = subprocess.run(
+            ["docker", "--version"],
+            capture_output=True,
+            timeout=5,
+        )
+        result["docker_available"] = docker_check.returncode == 0
+    except Exception:
+        return result
+
+    if not result["docker_available"]:
+        return result
+
+    for name, image in DOCKER_IMAGES.items():
+        image_status = {
+            "image": image,
+            "local_digest": None,
+            "remote_digest": None,
+            "update_available": False,
+            "error": None,
+        }
+
+        try:
+            local_digest = get_local_image_digest(image)
+            remote_digest = get_remote_image_digest(image)
+
+            image_status["local_digest"] = local_digest[:16] if local_digest else None
+            image_status["remote_digest"] = remote_digest[:16] if remote_digest else None
+
+            if local_digest and remote_digest:
+                if local_digest != remote_digest:
+                    image_status["update_available"] = True
+                    result["updates_available"] = True
+            elif remote_digest and not local_digest:
+                # Image not pulled yet or no digest info
+                image_status["update_available"] = True
+                result["updates_available"] = True
+
+        except Exception as e:
+            image_status["error"] = str(e)
+
+        result["images"][name] = image_status
+
+    return result
+
+
+def can_run_docker_updates() -> bool:
+    """Check if Docker-based updates can be performed."""
+    try:
+        # Check docker availability
+        docker_check = subprocess.run(
+            ["docker", "--version"],
+            capture_output=True,
+            timeout=5,
+        )
+        if docker_check.returncode != 0:
+            return False
+
+        # Check docker compose availability
+        for cmd in [["docker", "compose", "version"], ["docker-compose", "version"]]:
+            try:
+                compose_check = subprocess.run(
+                    cmd, capture_output=True, timeout=5
+                )
+                if compose_check.returncode == 0:
+                    return True
+            except Exception:
+                continue
+
+        return False
+    except Exception:
+        return False
+
+
+def perform_docker_update(compose_path: Optional[str] = None) -> None:
+    """
+    Perform a Docker-only update (pull new images and restart).
+    Does not require git repository.
+    """
+    # Find compose file
+    if compose_path is None:
+        # Check common locations
+        for path in [
+            "/app/docker-compose.yml",
+            "/opt/idm-metrics-collector/docker-compose.yml",
+            os.path.join(os.getcwd(), "docker-compose.yml"),
+        ]:
+            if os.path.exists(path):
+                compose_path = os.path.dirname(path) or "."
+                break
+
+        # Also check repo path if available
+        repo_path = get_repo_path()
+        if repo_path and os.path.exists(os.path.join(repo_path, "docker-compose.yml")):
+            compose_path = repo_path
+
+    if not compose_path:
+        raise RuntimeError(
+            "docker-compose.yml nicht gefunden. "
+            "Bitte geben Sie den Pfad an oder führen Sie das Update "
+            "im Verzeichnis mit docker-compose.yml aus."
+        )
+
+    logger.info(f"Performing Docker update in {compose_path}...")
+
+    # Determine compose command
+    compose_cmd = ["docker", "compose"]
+    check_result = subprocess.run(
+        compose_cmd + ["version"], capture_output=True, timeout=5
+    )
+    if check_result.returncode != 0:
+        compose_cmd = ["docker-compose"]
+
+    # Pull new images
+    logger.info("Pulling latest Docker images...")
+    pull_result = subprocess.run(
+        compose_cmd + ["pull"],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=compose_path,
+    )
+    if pull_result.returncode != 0:
+        raise RuntimeError(f"Docker pull failed: {pull_result.stderr}")
+
+    # Restart containers
+    logger.info("Restarting containers...")
+    subprocess.run(
+        compose_cmd + ["down"], capture_output=True, timeout=60, cwd=compose_path
+    )
+    subprocess.run(
+        compose_cmd + ["up", "-d"], capture_output=True, timeout=120, cwd=compose_path
+    )
+
+    logger.info("Docker update completed successfully")
 
 
 def _parse_version(version: str) -> Optional[Tuple[int, int, int, int, int]]:
@@ -389,30 +622,54 @@ def check_for_update() -> Dict[str, Any]:
         get_update_type(current_version, latest_version) if update_available else "none"
     )
 
+    # Also check Docker image updates
+    docker_status = check_docker_updates()
+
+    # Combine update availability
+    any_update_available = update_available or docker_status.get("updates_available", False)
+
     return {
-        "update_available": update_available,
+        "update_available": any_update_available,
+        "git_update_available": update_available,
         "update_type": update_type,
         "current_version": current_version,
         "latest_version": latest_version,
         "release_date": release_date,
         "release_notes": release_notes,
+        "docker": docker_status,
     }
 
 
-def perform_update(repo_path: Optional[str] = None) -> None:
+def perform_update(repo_path: Optional[str] = None, docker_only: bool = False) -> None:
+    """
+    Perform system update.
+
+    Args:
+        repo_path: Path to git repository (optional)
+        docker_only: If True, only pull Docker images without git operations
+    """
     # Use detected path if none provided, but prioritize argument if given
     if repo_path is None:
         repo_path = get_repo_path()
 
-    if not repo_path:
-        logger.error("Cannot update: No git repository found")
-        raise RuntimeError(
-            "Update fehlgeschlagen: Kein Git-Repository gefunden. "
-            "Bitte mounten Sie das Repo oder setzen Sie REPO_PATH."
-        )
+    # If no git repo and docker_only not explicitly set, try Docker-only update
+    if not repo_path or docker_only:
+        if can_run_docker_updates():
+            logger.info("No git repository found - performing Docker-only update")
+            perform_docker_update()
+            return
+        else:
+            raise RuntimeError(
+                "Update fehlgeschlagen: Weder Git-Repository noch Docker verfügbar."
+            )
 
     git_dir = Path(repo_path) / ".git"
     if not git_dir.exists():
+        # Try Docker-only update as fallback
+        if can_run_docker_updates():
+            logger.info(f"{repo_path} has no .git - performing Docker-only update")
+            perform_docker_update(repo_path)
+            return
         logger.error(f"Cannot update: {repo_path} is not a git repository.")
         raise RuntimeError(
             f"Update fehlgeschlagen: {repo_path} ist kein Git-Repository."
