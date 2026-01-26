@@ -196,13 +196,16 @@ class HeatpumpManager:
         device_config = hp_config.get("device_config", {})
         sensors = driver.get_sensors(device_config)
 
-        # Create Modbus client
-        client = ModbusTcpClient(
-            host=host,
-            port=port,
-            timeout=timeout,
-            retries=3
-        )
+        # Create client (Modbus or custom)
+        if driver.requires_custom_client() and hasattr(driver, "create_client"):
+            client = driver.create_client(conn_config)
+        else:
+            client = ModbusTcpClient(
+                host=host,
+                port=port,
+                timeout=timeout,
+                retries=3
+            )
 
         # Store connection
         connection = HeatpumpConnection(
