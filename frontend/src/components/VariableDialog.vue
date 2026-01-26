@@ -140,7 +140,10 @@ import Select from 'primevue/select';
 import Chips from 'primevue/chips';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
+import { useToast } from 'primevue/usetoast';
 import axios from 'axios';
+
+const toast = useToast();
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -213,7 +216,12 @@ const handleSave = async () => {
         resetForm();
     } catch (error) {
         console.error('Failed to save variable:', error);
-        // TODO: Show error toast
+        toast.add({
+            severity: 'error',
+            summary: 'Fehler',
+            detail: 'Variable konnte nicht gespeichert werden',
+            life: 5000
+        });
     }
 };
 
@@ -225,7 +233,12 @@ const handleDelete = async () => {
         resetForm();
     } catch (error) {
         console.error('Failed to delete variable:', error);
-        // TODO: Show error toast
+        toast.add({
+            severity: 'error',
+            summary: 'Fehler',
+            detail: 'Variable konnte nicht gelöscht werden',
+            life: 5000
+        });
     }
 };
 

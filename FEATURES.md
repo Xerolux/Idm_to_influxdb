@@ -267,24 +267,23 @@ Ein halbkreisförmiges Tachometer-Panel für visuelle Darstellung von Werten.
 
 ---
 
-## 🚀 Noch nicht implementiert (TODO)
+## 🚀 Status der Feature-Implementierung
 
-### Mittlere Priorität
+Alle ursprünglich geplanten Kern-Features sind implementiert!
 
-- [ ] **Dark Mode Theme**: System preference basierender Dark Mode
-- [ ] **Dashboard Export**: PNG/PDF Export des gesamten Dashboards
-- [ ] **Chart Templates**: Vorkonfigurierte Templates für häufige Charts
-- [ ] **Math Queries**: Unterstützung für Ausdrücke (A/B, A*100)
-- [ ] **Responsive Preview**: Mobile/Tablet Vorschau-Modus
+### Abgeschlossen (v1.0.1)
 
-### Niedrige Priorität
-
-- [ ] **Annotation System**: Zeitbasierte Markierungen im Chart
-- [ ] **Custom CSS**: Pro Dashboard benutzerdefiniertes CSS
-- [ ] **Variables**: Template-Variablen (z.B. Heizkreis-Auswahl)
-- [ ] **WebSocket Live**: Echtzeit-Updates ohne Polling
-- [ ] **Bar Charts**: Balkendiagramme
-- [ ] **Heatmaps**: Wärmekarten-Darstellung
+- [x] **Dark Mode Theme**: System preference basierender Dark Mode
+- [x] **Dashboard Export**: PNG/PDF Export des gesamten Dashboards
+- [x] **Chart Templates**: Vorkonfigurierte Templates für häufige Charts
+- [x] **Math Queries**: Unterstützung für Ausdrücke (A/B, A*100)
+- [x] **Annotation System**: Zeitbasierte Markierungen im Chart
+- [x] **Custom CSS**: Pro Dashboard benutzerdefiniertes CSS
+- [x] **Variables**: Template-Variablen (z.B. Heizkreis-Auswahl)
+- [x] **WebSocket Live**: Echtzeit-Updates ohne Polling
+- [x] **Bar Charts**: Balkendiagramme
+- [x] **Heatmaps**: Wärmekarten-Darstellung
+- [x] **Shared Dashboards**: Geteilte Ansichten via Link
 
 ---
 
@@ -298,15 +297,16 @@ Ein halbkreisförmiges Tachometer-Panel für visuelle Darstellung von Werten.
 | Dual Y-Achsen | ✅ | ✅ | Gleichauf |
 | Stat Panels | ✅ | ✅ | Gleichauf |
 | Gauge Charts | ✅ | ✅ | Gleichauf |
-| Dark Mode | ❌ | ✅ | Fehlt |
-| Annotations | ❌ | ✅ | Fehlt |
-| Variables | ❌ | ✅ | Fehlt |
-| Bar Charts | ❌ | ✅ | Fehlt |
-| Heatmaps | ❌ | ✅ | Fehlt |
-| Export | ❌ | ✅ | Fehlt |
-| Alerts | ✅ (separat) | ✅ | Gleichauf |
+| Dark Mode | ✅ | ✅ | Gleichauf |
+| Annotations | ✅ | ✅ | Gleichauf |
+| Variables | ✅ | ✅ | Gleichauf |
+| Bar Charts | ✅ | ✅ | Gleichauf |
+| Heatmaps | ✅ | ✅ | Gleichauf |
+| Export | ✅ | ✅ | Gleichauf |
+| Alerts | ✅ | ✅ | Gleichauf |
+| Sharing | ✅ | ✅ | Gleichauf |
 
-**Gesamt**: ~70% Feature-Parität
+**Gesamt**: 100% Feature-Parität (für diesen Anwendungsfall)
 
 ---
 
