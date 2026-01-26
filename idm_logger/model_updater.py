@@ -58,6 +58,10 @@ class ModelUpdater:
                     break
                 time.sleep(10)
 
+    def trigger_check(self):
+        """Manually trigger an update check."""
+        threading.Thread(target=self._check_and_download, daemon=True).start()
+
     def _check_and_download(self):
         # Determine endpoint (production or dummy)
         # Using the same logic as TelemetryManager implicitly via config if we wanted,

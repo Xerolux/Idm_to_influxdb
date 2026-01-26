@@ -38,6 +38,7 @@ from .variables import VariableManager
 from .expression_parser import ExpressionParser
 from .websocket_handler import websocket_handler
 from .sharing import SharingManager
+from .model_updater import model_updater
 from shutil import which
 import threading
 import logging
@@ -906,6 +907,20 @@ def get_ai_status():
     with _ai_status_lock:
         status = _ai_status_cache.copy()
     return jsonify(status)
+
+
+@app.route("/api/ai/update_now", methods=["POST"])
+@login_required
+def trigger_ai_update():
+    """
+    Manually trigger a check for community model updates.
+    """
+    try:
+        model_updater.trigger_check()
+        return jsonify({"success": True, "message": "Suche nach Updates im Hintergrund gestartet."})
+    except Exception as e:
+        logger.error(f"Failed to trigger model update: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/metrics/query_range", methods=["GET"])

@@ -344,6 +344,10 @@
                                          <i class="pi pi-spin pi-spinner mr-2"></i> Lade Status...
                                      </div>
                                  </div>
+
+                                 <div class="flex justify-end">
+                                     <Button label="Jetzt nach Modell-Updates suchen" icon="pi pi-cloud-download" severity="secondary" size="small" @click="triggerModelUpdate" :loading="modelUpdateLoading" />
+                                 </div>
                              </div>
                         </Fieldset>
                      </div>
@@ -708,6 +712,7 @@ const signalStatus = ref({});
 const aiStatus = ref(null);
 const statusLoading = ref(false);
 const checkingUpdates = ref(false);
+const modelUpdateLoading = ref(false);
 const currentClientIP = ref('');
 const loading = ref(true);
 const saving = ref(false);
@@ -879,6 +884,18 @@ const loadAiStatus = async () => {
         aiStatus.value = res.data;
     } catch (e) {
         console.error("Failed to load AI status", e);
+    }
+};
+
+const triggerModelUpdate = async () => {
+    modelUpdateLoading.value = true;
+    try {
+        const res = await axios.post('/api/ai/update_now');
+        toast.add({ severity: 'success', summary: 'Gestartet', detail: res.data.message, life: 3000 });
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Fehler', detail: 'Update-Suche konnte nicht gestartet werden', life: 3000 });
+    } finally {
+        modelUpdateLoading.value = false;
     }
 };
 
