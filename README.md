@@ -60,6 +60,24 @@ Die integrierte Grafana-Lösung ist Vergangenheit. **Version 1.0.1** bringt ein 
 
 ---
 
+## 📋 Unterstützte Modelle
+
+Der IDM Metrics Collector unterstützt nativ die folgenden IDM Wärmepumpen-Serien (Navigator 2.0):
+
+- **AERO ALM**: 2-8, 4-12, 6-15, 10-24, 10-50 MAX
+- **AERO SLM / ILM**
+- **TERRA**: SW, ML, SW Max
+- **iPump**: A, T, T7, T7 ONE, N5
+- **Andere**: Generische Unterstützung für weitere Navigator 2.0 Modelle
+
+Zusätzlich unterstützt (Beta/Experimentell):
+
+- **NIBE**: S-Serie (Modbus TCP)
+- **Luxtronik**: Alpha Innotec, Novelan, Bosch, Roth (Luxtronik 2.0/2.1)
+- **Daikin**: Altherma 3 (Modbus)
+
+---
+
 ## 📖 Dokumentation
 
 Wir legen Wert auf erstklassige Dokumentation:
@@ -76,6 +94,7 @@ Wir legen Wert auf erstklassige Dokumentation:
 
 - Docker & Docker Compose
 - Netzwerkverbindung zur IDM Wärmepumpe (Navigator 2.0)
+- Unterstützte Architekturen: amd64, arm64 (Raspberry Pi 4/5)
 
 ### Installation & Start
 
@@ -94,8 +113,9 @@ docker compose up -d
 ### Ersteinrichtung
 
 1. **IP der Wärmepumpe** eingeben
-2. **Sicheres Passwort** vergeben (min. 6 Zeichen)
-3. **Fertig!** Das Dashboard ist sofort live
+2. **Modell auswählen** (z.B. iPump T7, AERO ALM)
+3. **Sicheres Passwort** vergeben (min. 6 Zeichen)
+4. **Fertig!** Das Dashboard ist sofort live
 
 ---
 
@@ -193,6 +213,14 @@ Systeminformationen auf einen Blick.
 
 ## 🆕 Was ist neu in v1.0.1?
 
+### Neue Features
+
+- 🏗️ **Multi-Wärmepumpen Support**: Verwalte unbegrenzt viele Wärmepumpen (auch verschiedener Hersteller) zentral in einem einzigen Dashboard. Ideal für Kaskaden oder mehrere Gebäude.
+- 🧙‍♂️ **Setup Wizard**: Einfache geführte Ersteinrichtung für IP, Modell und Sicherheit.
+- 🍓 **ARM64 Support**: Volle Unterstützung für Raspberry Pi (4/5) und andere ARM-Plattformen.
+- 📡 **Community Telemetry**: Optionales Teilen anonymer Sensordaten. **Das Highlight:** Die KI lernt aus den Daten der Gemeinschaft ("Swarm Learning"), um Anomalien und Fehler (z.B. Kältemittelverlust, Verdichter-Verschleiß) noch präziser vorherzusagen und Fehlalarme zu minimieren.
+- 🔒 **Verbesserte Sicherheit**: Striktes Auth-Handling und Fail-Closed Prinzip.
+
 ### Dashboard Revolution
 
 | Feature | v0.6.0 | v1.0.1 |
@@ -278,6 +306,7 @@ Warum wir das integrierte Dashboard dem externen Grafana vorziehen:
 - Multi-stage build
 - Alpine-based images
 - Automatic restart policies
+- **Multi-Arch**: amd64, arm64
 
 ### Performance
 
