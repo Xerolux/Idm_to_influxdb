@@ -9,3 +9,7 @@
 ## 2025-05-24 - Unused WebSocket Logic
 **Learning:** The `broadcast_metric_update` method existed but was never called, and client subscriptions lacked `join_room` logic, rendering real-time updates non-functional. The frontend relied on frequent polling (5s) as a result.
 **Action:** Implemented `join_room` in subscription handler and hooked `broadcast_metrics` into the main data update loop. Converted `SensorValues` to use WebSocket push updates, reducing polling to 60s fallback.
+
+## 2025-05-25 - SensorValues Reactivity Isolation
+**Learning:** `SensorValues.vue` re-rendered the entire list of sensors whenever `currentValues` (a large object) changed, even if only one value updated. This was due to using methods (`formatValue`) directly in the template within `v-for`.
+**Action:** Extracted `MetricRow.vue` component. By passing the specific value object as a prop, Vue's reactivity system now isolates updates to the individual row component, significantly reducing render overhead.
