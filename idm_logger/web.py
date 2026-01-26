@@ -548,6 +548,12 @@ def setup():
             config.data["metrics"] = {}
         config.data["metrics"]["url"] = data.get("metrics_url")
 
+        if "heatpump_model" in data:
+            config.data["heatpump_model"] = data.get("heatpump_model")
+
+        if "share_data" in data:
+            config.data["share_data"] = bool(data.get("share_data"))
+
         password = data.get("password")
         if not password or len(password) < 6:
             return jsonify(
@@ -1645,6 +1651,12 @@ def config_page():
                             {"error": f"Ungültiger Blacklist-Eintrag: {entry}"}
                         ), 400
                 config.data["network_security"]["blacklist"] = validated_blacklist
+
+            # Data Sharing
+            if "heatpump_model" in data:
+                config.data["heatpump_model"] = data["heatpump_model"]
+            if "share_data" in data:
+                config.data["share_data"] = bool(data["share_data"])
 
             new_pass = data.get("new_password")
             if new_pass:

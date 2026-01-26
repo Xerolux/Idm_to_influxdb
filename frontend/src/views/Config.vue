@@ -255,6 +255,26 @@
 
                 <TabPanel header="KI-Analyse">
                      <div class="flex flex-col gap-6">
+                        <Fieldset legend="Community Daten & Modell" :toggleable="true">
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-col gap-2">
+                                    <label>Wärmepumpen Modell</label>
+                                    <Dropdown v-model="config.heatpump_model" :options="heatpumpModels" placeholder="Maschine auswählen" class="w-full md:w-1/2" />
+                                    <small class="text-gray-400">Notwendig für die korrekte Einordnung der Daten.</small>
+                                </div>
+
+                                <div class="flex items-start gap-3 p-3 bg-purple-900/20 border border-purple-700/50 rounded-md">
+                                     <Checkbox v-model="config.share_data" :binary="true" inputId="shareDataConf" />
+                                     <div class="flex flex-col gap-1">
+                                        <label for="shareDataConf" class="font-bold cursor-pointer">Anonyme Daten teilen</label>
+                                        <p class="text-sm text-gray-300">
+                                            Wenn aktiviert, werden anonymisierte Sensordaten an die Community-Server gesendet, um die KI-Modelle zu verbessern.
+                                        </p>
+                                     </div>
+                                </div>
+                            </div>
+                        </Fieldset>
+
                         <Fieldset legend="KI & Anomalieerkennung" :toggleable="true">
                             <template #legend>
                                 <div class="flex items-center gap-2">
@@ -611,6 +631,7 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
 import SelectButton from 'primevue/selectbutton';
+import Dropdown from 'primevue/dropdown';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
@@ -629,8 +650,29 @@ const config = ref({
     webdav: { enabled: false, url: '', username: '' },
     ai: { enabled: false, sensitivity: 3.0, model: 'rolling' },
     updates: { enabled: false, interval_hours: 12, mode: 'apply', target: 'all', channel: 'latest' },
-    backup: { enabled: false, interval: 24, retention: 10, auto_upload: false }
+    backup: { enabled: false, interval: 24, retention: 10, auto_upload: false },
+    heatpump_model: '',
+    share_data: true
 });
+
+const heatpumpModels = [
+    'AERO ALM 2-8',
+    'AERO ALM 4-12',
+    'AERO ALM 6-15',
+    'AERO ALM 10-24',
+    'AERO ALM 10-50 MAX',
+    'AERO SLM',
+    'AERO ILM',
+    'TERRA SW',
+    'TERRA ML',
+    'TERRA SW Max',
+    'iPump A',
+    'iPump T',
+    'iPump T7',
+    'iPump T7 ONE',
+    'iPump N5',
+    'Andere / Unbekannt'
+];
 const showPasswordDialog = ref(false);
 const newPassword = ref('');
 const confirmPassword = ref('');
@@ -871,6 +913,8 @@ const saveConfig = async () => {
             ai_enabled: config.value.ai?.enabled || false,
             ai_sensitivity: config.value.ai?.sensitivity || 3.0,
             ai_model: config.value.ai?.model || 'rolling',
+            heatpump_model: config.value.heatpump_model || '',
+            share_data: config.value.share_data || false,
             updates_enabled: config.value.updates?.enabled || false,
             updates_interval_hours: config.value.updates?.interval_hours || 12,
             updates_mode: config.value.updates?.mode || 'apply',
