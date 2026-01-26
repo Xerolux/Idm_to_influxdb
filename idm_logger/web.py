@@ -1224,6 +1224,8 @@ def ml_alert_endpoint():
         score = data.get("score", 0.0)
         threshold = data.get("threshold", 0.7)
         message = data.get("message", f"ML Alert: Score {score}")
+        extra_data = data.get("data", {})
+        mode = extra_data.get("mode", "unknown")
 
         logger.warning(
             f"ML Alert received: {message} (Score: {score}, Threshold: {threshold})"
@@ -1233,6 +1235,17 @@ def ml_alert_endpoint():
         notification_manager.send_all(
             message=message, subject="IDM ML Anomalie-Warnung"
         )
+
+        # Add Annotation to Dashboard (Rückkanal)
+        try:
+            annotation_manager.add_annotation(
+                time=int(time.time()),
+                text=message,  # Includes top features
+                tags=["ai", "anomaly", mode],
+                color="#ef4444",
+            )
+        except Exception as e:
+            logger.error(f"Failed to create annotation for ML alert: {e}")
 
         return jsonify(
             {"status": "success", "message": "Alert processed", "notified": True}
