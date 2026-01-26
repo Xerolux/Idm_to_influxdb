@@ -9,13 +9,28 @@ import time
 # Configuration
 # VictoriaMetrics Import Endpoint (Influx Line Protocol)
 VM_WRITE_URL = os.environ.get("VM_WRITE_URL", "http://victoriametrics:8428/write")
+VM_QUERY_URL = os.environ.get("VM_QUERY_URL", "http://victoriametrics:8428/api/v1/query")
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "change-me-to-something-secure")
 
 # Setup Logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("telemetry-server")
 
 app = FastAPI(title="IDM Telemetry Server")
+
+def mask_ip(ip: str) -> str:
+    """Mask IP address for GDPR compliance logging."""
+    if not ip:
+        return "0.0.0.0"
+    if ":" in ip: # IPv6
+        return "xxxx:xxxx"
+    parts = ip.split(".")
+    if len(parts) == 4:
+        return f"{parts[0]}.{parts[1]}.xxx.xxx"
+    return "xxx.xxx.xxx.xxx"
 
 class TelemetryPayload(BaseModel):
     installation_id: str
@@ -39,6 +54,7 @@ async def submit_telemetry(payload: TelemetryPayload, request: Request, auth: No
     """
     Ingest telemetry data and forward to VictoriaMetrics.
     """
+    client_ip = mask_ip(request.client.host)
     try:
         lines = []
 
@@ -77,14 +93,61 @@ async def submit_telemetry(payload: TelemetryPayload, request: Request, auth: No
                 logger.error(f"VictoriaMetrics write failed: {response.status_code} - {response.text}")
                 raise HTTPException(status_code=502, detail="Database Write Failed")
 
-            logger.info(f"Ingested {len(lines)} points from {payload.installation_id} ({payload.heatpump_model})")
+            logger.info(f"Ingested {len(lines)} points from {payload.installation_id} ({client_ip})")
 
         return {"status": "success", "processed": len(lines)}
 
     except Exception as e:
-        logger.error(f"Error processing telemetry: {e}")
+        logger.error(f"Error processing telemetry from {client_ip}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/api/v1/status")
+async def server_status(auth: None = Depends(verify_token)):
+    """
+    Get server statistics (Internal/Admin only).
+    """
+    try:
+        # Count unique installations (approximate)
+        # Using a count query on installation_id tag
+        query = 'count(count_over_time(heatpump_metrics{installation_id!=""}[30d]))'
+        response = requests.get(VM_QUERY_URL, params={"query": query})
+        installations = 0
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success" and data["data"]["result"]:
+                installations = int(data["data"]["result"][0]["value"][1])
+
+        return {
+            "status": "online",
+            "active_installations_30d": installations,
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        logger.error(f"Status check failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/v1/model/check")
+async def check_eligibility(installation_id: str):
+    """
+    Check if an installation ID is eligible for community models.
+    Concept: User must have submitted data in the last 30 days.
+    """
+    try:
+        # Query: Check if this ID appears in the last 30 days
+        query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
+        response = requests.get(VM_QUERY_URL, params={"query": query})
+
+        eligible = False
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success" and data["data"]["result"]:
+                eligible = True
+
+        return {"eligible": eligible}
+    except Exception as e:
+        logger.error(f"Eligibility check failed for {installation_id}: {e}")
+        raise HTTPException(status_code=500, detail="Check failed")

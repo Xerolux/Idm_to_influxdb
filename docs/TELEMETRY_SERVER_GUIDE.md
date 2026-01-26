@@ -28,8 +28,27 @@ Dieser Ordner enthält eine Referenzimplementierung für den Telemetry-Server, d
 
 1.  **Reverse Proxy**: Nutze Nginx oder Traefik als Reverse Proxy vor dem Container.
 2.  **SSL/TLS**: Erzwinge HTTPS.
-3.  **Firewall**: Erlaube nur Port 443 (HTTPS) von außen. Der Port 8428 (VictoriaMetrics) sollte **nicht** öffentlich sein.
-4.  **Token**: Setze ein starkes `AUTH_TOKEN` in der `docker-compose.yml` und verteile dieses nur an vertrauenswürdige Clients oder kompiliere es fest in die Firmware ein (wenn du der Hersteller bist).
+3.  **Firewall**: Erlaube nur Port 443 (HTTPS) und Port 22 (SSH) von außen. Der Port 8428 (VictoriaMetrics) ist standardmäßig an `127.0.0.1` gebunden und somit **nicht** öffentlich erreichbar.
+4.  **Token**: Setze ein starkes `AUTH_TOKEN` in der `docker-compose.yml`.
+
+### DSGVO / GDPR Hinweise
+
+*   **Serverstandort**: Wähle einen Hoster mit Rechenzentrum in Deutschland.
+*   **IP-Adressen**: Die Software maskiert IP-Adressen im Log (`1.2.xxx.xxx`), um Personenbezug zu minimieren.
+*   **Zugriff**: Nur API-Zugriff erlauben. SSH nur per Key-Authentication.
+
+## Verwaltung (CLI)
+
+Wenn du per SSH auf dem Server bist, kannst du den Status abrufen:
+
+```bash
+docker compose exec telemetry-api python scripts/manage.py status
+```
+
+Dies zeigt:
+*   Anzahl aktiver Installationen (letzte 30 Tage)
+*   Server Status
+*   Modell Status
 
 ## Workflow: Vom Datensatz zum KI-Modell
 

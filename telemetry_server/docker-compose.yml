@@ -14,7 +14,7 @@ services:
   victoriametrics:
     image: victoriametrics/victoria-metrics:v1.93.5
     ports:
-      - "8428:8428"
+      - "127.0.0.1:8428:8428" # Bind to localhost ONLY for security
     volumes:
       - vmdata:/storage
     command:
