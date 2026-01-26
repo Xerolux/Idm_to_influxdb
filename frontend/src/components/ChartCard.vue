@@ -8,6 +8,7 @@
                 @click="openConfig"
                 class="p-1.5 bg-white hover:bg-gray-100 rounded shadow text-gray-600"
                 title="Bearbeiten"
+                aria-label="Bearbeiten"
             >
                 <i class="pi pi-pencil text-xs"></i>
             </button>
@@ -15,6 +16,7 @@
                 @click="confirmDelete"
                 class="p-1.5 bg-white hover:bg-red-50 rounded shadow text-red-500"
                 title="Löschen"
+                aria-label="Löschen"
             >
                 <i class="pi pi-trash text-xs"></i>
             </button>
@@ -30,6 +32,7 @@
                     @click="resetZoom"
                     class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                     title="Zoom zurücksetzen"
+                    aria-label="Zoom zurücksetzen"
                     v-if="isZoomed"
                 >
                     <i class="pi pi-times text-xs"></i>
@@ -37,6 +40,8 @@
                 <button
                     @click="toggleFullscreen"
                     class="text-gray-400 hover:text-gray-600"
+                    title="Vollbild umschalten"
+                    aria-label="Vollbild umschalten"
                 >
                     <i :class="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-expand'" class="text-xs"></i>
                 </button>
@@ -52,6 +57,8 @@
                  <button
                     @click="toggleFullscreen"
                     class="p-2 bg-gray-100 hover:bg-gray-200 rounded-full"
+                    title="Vollbild schließen"
+                    aria-label="Vollbild schließen"
                 >
                     <i class="pi pi-times text-lg"></i>
                 </button>
