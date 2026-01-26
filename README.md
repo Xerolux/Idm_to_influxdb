@@ -70,6 +70,12 @@ Der IDM Metrics Collector unterstützt nativ die folgenden IDM Wärmepumpen-Seri
 - **iPump**: A, T, T7, T7 ONE, N5
 - **Andere**: Generische Unterstützung für weitere Navigator 2.0 Modelle
 
+Zusätzlich unterstützt (Beta/Experimentell):
+
+- **NIBE**: S-Serie (Modbus TCP)
+- **Luxtronik**: Alpha Innotec, Novelan, Bosch, Roth (Luxtronik 2.0/2.1)
+- **Daikin**: Altherma 3 (Modbus)
+
 ---
 
 ## 📖 Dokumentation
@@ -209,10 +215,10 @@ Systeminformationen auf einen Blick.
 
 ### Neue Features
 
-- 🏗️ **Multi-Wärmepumpen Support**: Verwalte mehrere Anlagen zentral in einem Dashboard.
+- 🏗️ **Multi-Wärmepumpen Support**: Verwalte unbegrenzt viele Wärmepumpen (auch verschiedener Hersteller) zentral in einem einzigen Dashboard. Ideal für Kaskaden oder mehrere Gebäude.
 - 🧙‍♂️ **Setup Wizard**: Einfache geführte Ersteinrichtung für IP, Modell und Sicherheit.
 - 🍓 **ARM64 Support**: Volle Unterstützung für Raspberry Pi (4/5) und andere ARM-Plattformen.
-- 📡 **Community Telemetry**: Optionales Teilen anonymer Sensordaten zur Verbesserung der KI-Modelle.
+- 📡 **Community Telemetry**: Optionales Teilen anonymer Sensordaten. **Das Highlight:** Die KI lernt aus den Daten der Gemeinschaft ("Swarm Learning"), um Anomalien und Fehler (z.B. Kältemittelverlust, Verdichter-Verschleiß) noch präziser vorherzusagen und Fehlalarme zu minimieren.
 - 🔒 **Verbesserte Sicherheit**: Striktes Auth-Handling und Fail-Closed Prinzip.
 
 ### Dashboard Revolution
