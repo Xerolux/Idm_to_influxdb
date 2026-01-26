@@ -172,6 +172,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { sanitizeCss } from '@/utils/cssSanitizer';
+import { useHeatpumpsStore } from '@/stores/heatpumps';
 
 // Import Components
 import ChartCard from '../components/ChartCard.vue';
@@ -188,6 +189,7 @@ import Select from 'primevue/select';
 
 const route = useRoute();
 const token = route.params.token;
+const hpStore = useHeatpumpsStore();
 
 const loading = ref(true);
 const error = ref('');
@@ -241,6 +243,12 @@ const fetchDashboard = async () => {
     try {
         const response = await axios.get(`/api/sharing/dashboard/${token}`);
         dashboard.value = response.data;
+
+        // Set context if dashboard is tied to specific heatpump
+        if (dashboard.value.heatpump_id) {
+            hpStore.setActiveHeatpump(dashboard.value.heatpump_id);
+        }
+
         lastUpdate.value = new Date().toLocaleTimeString();
         showPasswordDialog.value = false;
     } catch (err) {
