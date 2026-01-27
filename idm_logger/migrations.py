@@ -124,6 +124,15 @@ def migrate_single_to_multi() -> Optional[str]:
     try:
         hp_id = db.add_heatpump(hp_data)
         logger.info(f"Created legacy heatpump {hp_id} from existing config")
+
+        # Update config to set heatpump_model if not already set
+        # This prevents the frontend warning "Bitte Wärmepumpen-Modell konfigurieren!"
+        if not config.get("heatpump_model"):
+            from .config import config as config_obj
+
+            config_obj.set("heatpump_model", heatpump_name)
+            config_obj.save()
+            logger.info(f"Updated heatpump_model in config to: {heatpump_name}")
     except Exception as e:
         logger.error(f"Failed to create legacy heatpump: {e}")
         return None
