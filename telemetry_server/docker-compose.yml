@@ -23,6 +23,22 @@ services:
       retries: 3
       start_period: 10s
 
+  telemetry-trainer:
+    build: .
+    environment:
+      - VM_QUERY_URL=http://victoriametrics:8428/api/v1/query_range
+      - VM_EXPORT_URL=http://victoriametrics:8428/api/v1/export
+      - MODEL_DIR=/app/models
+      - TARGET_MODELS=AERO_SLM,TERRA_SW,Navigator_2.0
+      - TRAINING_TIME=03:00
+      - RUN_ON_STARTUP=false
+    volumes:
+      - model-data:/app/models
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+    command: python3 training_scheduler.py
+
   victoriametrics:
     image: victoriametrics/victoria-metrics:v1.93.5
     ports:

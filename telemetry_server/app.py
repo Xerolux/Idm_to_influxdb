@@ -1,14 +1,17 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Any
 import os
 import logging
 import requests
 import time
 import hashlib
+import re
+import uuid
 from pathlib import Path
 from collections import defaultdict
+from analysis import get_community_averages
 
 # Configuration
 # VictoriaMetrics Import Endpoint (Influx Line Protocol)
@@ -65,6 +68,24 @@ def get_file_hash(filepath: str) -> Optional[str]:
         return sha256_hash.hexdigest()
     except Exception:
         return None
+
+
+def validate_installation_id(installation_id: str) -> str:
+    """Validate installation ID is a UUID."""
+    try:
+        uuid.UUID(installation_id)
+        return installation_id
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid installation_id format (must be UUID)")
+
+def validate_model_name(model_name: Optional[str]) -> Optional[str]:
+    """Validate model name contains only safe characters."""
+    if not model_name:
+        return None
+    # Allow alphanumeric, underscore, hyphen, dot, space, parentheses
+    if not re.match(r"^[a-zA-Z0-9_\-\. \(\)]+$", model_name):
+        raise HTTPException(status_code=400, detail="Invalid model name format")
+    return model_name
 
 
 def get_data_pool_stats() -> Dict[str, Any]:
@@ -152,6 +173,20 @@ class TelemetryPayload(BaseModel):
     heatpump_model: str
     version: str
     data: List[Dict[str, Any]]
+
+    @validator("installation_id")
+    def validate_id(cls, v):
+        try:
+            uuid.UUID(v)
+            return v
+        except ValueError:
+            raise ValueError("installation_id must be a valid UUID")
+
+    @validator("heatpump_model")
+    def validate_model(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_\-\. \(\)]+$", v):
+             raise ValueError("heatpump_model contains invalid characters")
+        return v
 
 
 async def verify_token(authorization: Optional[str] = Header(None)):
@@ -277,6 +312,10 @@ async def check_eligibility(
         model: Optional heat pump model name for model-specific checks
         current_hash: Optional current model hash to check if update needed
     """
+    # Validation
+    validate_installation_id(installation_id)
+    validate_model_name(model)
+
     try:
         result = {
             "eligible": False,
@@ -358,6 +397,8 @@ async def check_eligibility(
 
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Eligibility check failed for {installation_id}: {e}")
         raise HTTPException(status_code=500, detail="Check failed")
@@ -377,6 +418,10 @@ async def download_model(
         installation_id: Unique installation identifier (for eligibility check)
         model: Optional heat pump model name for model-specific downloads
     """
+    # Validation
+    validate_installation_id(installation_id)
+    validate_model_name(model)
+
     try:
         # Verify eligibility first
         query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
@@ -469,3 +514,33 @@ async def list_available_models(auth: None = Depends(verify_token)):
         "total": len(models),
         "model_dir": str(model_dir),
     }
+
+@app.get("/api/v1/community/averages")
+async def community_averages(
+    model: str,
+    metrics: Optional[str] = None,
+    auth: None = Depends(verify_token)
+):
+    """
+    Get aggregated community statistics.
+    Requires authentication (token).
+    """
+    # Validate Inputs
+    validate_model_name(model)
+
+    if not metrics:
+        # Default metrics
+        metric_list = ["cop_current", "temp_outdoor"]
+    else:
+        metric_list = [m.strip() for m in metrics.split(",") if m.strip()]
+        # Validate metric names to prevent injection (simple alphanumeric + underscore)
+        for m in metric_list:
+            if not re.match(r"^[a-zA-Z0-9_]+$", m):
+                raise HTTPException(status_code=400, detail=f"Invalid metric name: {m}")
+
+    result = get_community_averages(model, metric_list)
+
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return result

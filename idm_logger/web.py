@@ -1030,6 +1030,61 @@ def get_telemetry_pool_status():
         }), 500
 
 
+@app.route("/api/telemetry/community/averages", methods=["GET"])
+@auth_or_token_required
+def get_community_averages():
+    """
+    Get community averages from telemetry server.
+    Proxies the request to /api/v1/community/averages.
+    """
+    try:
+        model = request.args.get("model")
+        metrics = request.args.get("metrics")
+
+        if not model:
+            return jsonify({"error": "Model parameter is required"}), 400
+
+        # Get telemetry endpoint from config or environment
+        telemetry_endpoint = os.environ.get(
+            "TELEMETRY_ENDPOINT", "https://collector.xerolux.de"
+        )
+
+        auth_token = config.data.get("telemetry_auth_token")
+        if not auth_token:
+             # Try environment variable
+            auth_token = os.environ.get("TELEMETRY_AUTH_TOKEN")
+
+        if not auth_token:
+            return jsonify({
+                "error": "Telemetry auth token not configured",
+                "message": "Please configure telemetry token in settings."
+            }), 401
+
+        headers = {"Authorization": f"Bearer {auth_token}"}
+        params = {"model": model}
+        if metrics:
+            params["metrics"] = metrics
+
+        response = requests.get(
+            f"{telemetry_endpoint}/api/v1/community/averages",
+            params=params,
+            headers=headers,
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        elif response.status_code == 401:
+             return jsonify({"error": "Invalid telemetry token"}), 401
+        else:
+            logger.warning(f"Community averages failed: {response.status_code} - {response.text}")
+            return jsonify({"error": f"Telemetry server error: {response.status_code}"}), 502
+
+    except Exception as e:
+        logger.error(f"Community averages proxy failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/metrics/query_range", methods=["GET"])
 @auth_or_token_required
 def query_metrics_range():
