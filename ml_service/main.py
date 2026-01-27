@@ -234,9 +234,14 @@ def load_model_state():
     global saved_state_cache
 
     # 1. Check for Community Model (Encrypted) - acts as default seed
-    # We load this into a special 'community' key in cache if we want to use it
-    # But for now, let's just stick to restoring exact states.
-    # TODO: Implement community model seeding for new heatpumps.
+    if os.path.exists(COMMUNITY_MODEL_PATH):
+        try:
+            community_model = load_encrypted_model(COMMUNITY_MODEL_PATH)
+            if community_model:
+                saved_state_cache["community"] = community_model
+                logger.info("Loaded community model template (encrypted)")
+        except Exception as e:
+            logger.error(f"Failed to load community model: {e}")
 
     # 2. Check for Local Model
     try:
@@ -284,12 +289,13 @@ def get_context(hp_id: str) -> HeatpumpContext:
             ctx.restore_models(saved_state_cache[hp_id])
         elif "default" in saved_state_cache:
             # Try to migrate legacy default to first seen HP?
-            # Or just use it as seed.
-            # If we have "default" and seeing a real ID, assume it's the migration.
-            # Only do this if we haven't assigned "default" to anyone else?
-            # Simplification: just use it.
             logger.info(f"[{hp_id}] seeding with legacy model state")
             ctx.restore_models(saved_state_cache["default"])
+        elif "community" in saved_state_cache:
+            # Seed with community model if no local history
+            logger.info(f"[{hp_id}] seeding with community model template")
+            # Deep copy to ensure independence
+            ctx.restore_models(copy.deepcopy(saved_state_cache["community"]))
 
         contexts[hp_id] = ctx
 
