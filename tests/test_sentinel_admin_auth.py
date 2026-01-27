@@ -17,28 +17,24 @@ from idm_logger.config import Config  # noqa: E402
 class TestSentinelAdminAuth:
     def setup_method(self):
         # Reset environment variables before each test
-        if "ADMIN_PASSWORD" in os.environ:
-            del os.environ["ADMIN_PASSWORD"]
+        self._env_patch = patch.dict(os.environ, clear=True)
+        self._env_patch.start()
 
     def teardown_method(self):
-        # Clean up
-        if "ADMIN_PASSWORD" in os.environ:
-            del os.environ["ADMIN_PASSWORD"]
+        self._env_patch.stop()
 
     def test_fail_closed_no_hash(self):
         """Verify that with no hash set, checking any password (including 'admin') returns False."""
-        # Setup clean config
-        with patch.dict(os.environ, clear=True):
-            # Instantiate Config
-            config = Config()
+        # Instantiate Config
+        config = Config()
 
-            # Ensure no hash is present (in case defaults change)
-            if "admin_password_hash" in config.data["web"]:
-                del config.data["web"]["admin_password_hash"]
+        # Ensure no hash is present (in case defaults change)
+        if "admin_password_hash" in config.data["web"]:
+            del config.data["web"]["admin_password_hash"]
 
-            assert config.check_admin_password("admin") is False
-            assert config.check_admin_password("secret") is False
-            assert config.check_admin_password("") is False
+        assert config.check_admin_password("admin") is False
+        assert config.check_admin_password("secret") is False
+        assert config.check_admin_password("") is False
 
     def test_admin_password_env_var(self):
         """Verify that ADMIN_PASSWORD environment variable sets the hash correctly."""
@@ -87,11 +83,31 @@ class TestSentinelAdminAuth:
                 "updates": {},
                 "backup": {},
                 "internal_api_key": None,
+                "setup_completed": True,
             }
             mock_load.return_value = mock_data
 
-            with patch.dict(os.environ, clear=True):
-                config = Config()
+            config = Config()
 
-                assert config.check_admin_password(existing_pass) is True
-                assert config.check_admin_password("admin") is False
+            assert config.check_admin_password(existing_pass) is True
+            assert config.check_admin_password("admin") is False
+
+    def test_partial_setup_metrics_only(self):
+        """Verify that METRICS_URL alone does NOT complete setup if password is missing."""
+        # Mock only METRICS_URL
+        with patch.dict(os.environ, {"METRICS_URL": "http://influx:8086"}):
+            config = Config()
+            # Should be False because no password was provided
+            assert config.is_setup() is False
+            # Check password check fails (fail closed)
+            assert config.check_admin_password("admin") is False
+
+    def test_full_setup_via_env(self):
+        """Verify that METRICS_URL + ADMIN_PASSWORD completes setup."""
+        with patch.dict(os.environ, {
+            "METRICS_URL": "http://influx:8086",
+            "ADMIN_PASSWORD": "mysecretpassword"
+        }):
+            config = Config()
+            assert config.is_setup() is True
+            assert config.check_admin_password("mysecretpassword") is True

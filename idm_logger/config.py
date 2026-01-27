@@ -345,9 +345,11 @@ class Config:
         # Auto-complete setup in Docker environment
         # If METRICS_URL is provided, we assume environment setup
         if os.environ.get("METRICS_URL"):
-            defaults["setup_completed"] = True
-            defaults["web"]["write_enabled"] = True
             defaults["metrics"]["url"] = os.environ.get("METRICS_URL")
+            # Only consider setup complete if password is also provided
+            if os.environ.get("ADMIN_PASSWORD"):
+                defaults["setup_completed"] = True
+                defaults["web"]["write_enabled"] = True
 
         # Load from DB, structure into dict like old yaml
         raw = db.get_setting("config")
@@ -428,9 +430,9 @@ class Config:
         self.save()
 
     def check_admin_password(self, password):
-        # On fresh installation (no password hash set), accept "admin" as default
+        # On fresh installation (no password hash set), we fail closed.
         if "admin_password_hash" not in self.data["web"]:
-            return password == "admin"
+            return False
         return check_password_hash(self.data["web"]["admin_password_hash"], password)
 
     def is_setup(self):
