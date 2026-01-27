@@ -13,6 +13,7 @@ export const ChartType = {
     TABLE: 'table',
     STATE_TIMELINE: 'state_timeline',
     TELEMETRY_STATUS: 'telemetry_status',
+    COMMUNITY_COMPARISON: 'community_comparison',
 };
 
 export const ChartTypeConfig = {
@@ -70,6 +71,13 @@ export const ChartTypeConfig = {
         description: 'Zeigt den Community-Datenpool-Status und Beitragsstatus',
         icon: 'pi pi-cloud',
         component: () => import('../components/TelemetryStatusCard.vue'),
+        supported: true,
+    },
+    [ChartType.COMMUNITY_COMPARISON]: {
+        name: 'Community Vergleich',
+        description: 'Vergleich mit Community-Durchschnittswerten',
+        icon: 'pi pi-users',
+        component: () => import('../components/CommunityComparisonCard.vue'),
         supported: true,
     },
 };

@@ -95,9 +95,9 @@
 #### 5. Frontend Integration Datenvergleich
 **Konzept:** Visualisierung der Community-Daten im Vergleich zu eigenen Werten.
 
-- [ ] Neue Chart-Komponente `CommunityComparisonCard.vue`.
-- [ ] Integration in Dashboard.
-- [ ] Backend-Proxy im `idm_logger` für den neuen Endpoint.
+- [x] Neue Chart-Komponente `CommunityComparisonCard.vue`.
+- [x] Integration in Dashboard.
+- [x] Backend-Proxy im `idm_logger` für den neuen Endpoint.
 
 ---
 

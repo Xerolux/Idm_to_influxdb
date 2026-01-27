@@ -51,6 +51,11 @@
     "modelTraining": "Model is training...",
     "statusUnavailable": "Status unavailable",
     "communityStatus": "Community Status",
-    "users": "Users"
+    "users": "Users",
+    "comparison": "Community Comparison",
+    "yourValue": "Your Value",
+    "communityAvg": "Community Avg",
+    "range": "Range (Min-Max)",
+    "selectMetric": "Select Metric"
   }
 }
