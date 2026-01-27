@@ -234,9 +234,14 @@ def load_model_state():
     global saved_state_cache
 
     # 1. Check for Community Model (Encrypted) - acts as default seed
-    # We load this into a special 'community' key in cache if we want to use it
-    # But for now, let's just stick to restoring exact states.
-    # TODO: Implement community model seeding for new heatpumps.
+    if os.path.exists(COMMUNITY_MODEL_PATH):
+        try:
+            community_model = load_encrypted_model(COMMUNITY_MODEL_PATH)
+            if community_model:
+                saved_state_cache["community"] = community_model
+                logger.info("Loaded community model template (encrypted)")
+        except Exception as e:
+            logger.error(f"Failed to load community model: {e}")
 
     # 2. Check for Local Model
     try:
@@ -283,13 +288,14 @@ def get_context(hp_id: str) -> HeatpumpContext:
         if hp_id in saved_state_cache:
             ctx.restore_models(saved_state_cache[hp_id])
         elif "default" in saved_state_cache:
-             # Try to migrate legacy default to first seen HP?
-             # Or just use it as seed.
-             # If we have "default" and seeing a real ID, assume it's the migration.
-             # Only do this if we haven't assigned "default" to anyone else?
-             # Simplification: just use it.
-             logger.info(f"[{hp_id}] seeding with legacy model state")
-             ctx.restore_models(saved_state_cache["default"])
+            # Try to migrate legacy default to first seen HP?
+            logger.info(f"[{hp_id}] seeding with legacy model state")
+            ctx.restore_models(saved_state_cache["default"])
+        elif "community" in saved_state_cache:
+            # Seed with community model if no local history
+            logger.info(f"[{hp_id}] seeding with community model template")
+            # Deep copy to ensure independence
+            ctx.restore_models(copy.deepcopy(saved_state_cache["community"]))
 
         contexts[hp_id] = ctx
 
@@ -425,11 +431,11 @@ def write_metrics(
     hp_label = ctx.hp_id.replace('"', '\\"')
 
     lines = [
-        f"idm_anomaly_score{{heatpump_id=\"{hp_label}\",mode=\"{mode}\"}} {score}",
-        f"idm_anomaly_flag{{heatpump_id=\"{hp_label}\",mode=\"{mode}\"}} {1 if is_anomaly else 0}",
-        f"idm_ml_features_count{{heatpump_id=\"{hp_label}\",mode=\"{mode}\"}} {features_count}",
-        f"idm_ml_processing_time_ms{{heatpump_id=\"{hp_label}\",mode=\"{mode}\"}} {processing_time * 1000}",
-        f"idm_ml_model_updates{{heatpump_id=\"{hp_label}\",mode=\"{mode}\"}} 1",
+        f'idm_anomaly_score{{heatpump_id="{hp_label}",mode="{mode}"}} {score}',
+        f'idm_anomaly_flag{{heatpump_id="{hp_label}",mode="{mode}"}} {1 if is_anomaly else 0}',
+        f'idm_ml_features_count{{heatpump_id="{hp_label}",mode="{mode}"}} {features_count}',
+        f'idm_ml_processing_time_ms{{heatpump_id="{hp_label}",mode="{mode}"}} {processing_time * 1000}',
+        f'idm_ml_model_updates{{heatpump_id="{hp_label}",mode="{mode}"}} 1',
     ]
 
     data = "\n".join(lines)
@@ -473,7 +479,9 @@ def get_top_features(model, data, n=3):
         return []
 
 
-def send_anomaly_alert(ctx: HeatpumpContext, score: float, data: dict, mode: str, top_features: list):
+def send_anomaly_alert(
+    ctx: HeatpumpContext, score: float, data: dict, mode: str, top_features: list
+):
     """Send anomaly alert to IDM Logger."""
     if not ENABLE_ALERTS:
         return
@@ -500,7 +508,11 @@ def send_anomaly_alert(ctx: HeatpumpContext, score: float, data: dict, mode: str
             "sensor_count": len(data),
             "timestamp": int(time.time()),
             "message": f"⚠️ Anomalie erkannt! ({ctx.hp_id} / {mode})\nScore: {score:.2f} (Limit: {ANOMALY_THRESHOLD}){feature_msg}",
-            "data": {"mode": mode, "top_features": top_features, "heatpump_id": ctx.hp_id},
+            "data": {
+                "mode": mode,
+                "top_features": top_features,
+                "heatpump_id": ctx.hp_id,
+            },
         }
 
         headers = {}
