@@ -74,6 +74,7 @@ class TestMLServiceLogic(unittest.TestCase):
     def test_job_flow(self):
         # Import HeatpumpContext
         from ml_service.main import HeatpumpContext
+        from unittest.mock import MagicMock
 
         with (
             patch.object(self.main, "fetch_latest_data") as mock_fetch,
@@ -91,13 +92,16 @@ class TestMLServiceLogic(unittest.TestCase):
 
             # Create a context for the test heatpump
             ctx = HeatpumpContext("test-hp")
-            ctx.models["heating"].score_one.return_value = 0.1  # Low score
-            ctx.models["heating"].steps = {}
+            # Replace models with mocks
+            mock_model = MagicMock()
+            mock_model.score_one.return_value = 0.1  # Low score
+            mock_model.learn_one = MagicMock()
+            ctx.models["heating"] = mock_model
             self.main.contexts["test-hp"] = ctx
 
             self.main.job()
 
-            self.main.contexts["test-hp"].models["heating"].learn_one.assert_called()
+            mock_model.learn_one.assert_called()
             mock_write.assert_called()
             args, _ = mock_write.call_args
             # Check the context argument (first arg) and mode argument (5th arg)
@@ -108,6 +112,7 @@ class TestMLServiceLogic(unittest.TestCase):
     def test_debounce_logic(self):
         # Import HeatpumpContext
         from ml_service.main import HeatpumpContext
+        from unittest.mock import MagicMock
 
         with (
             patch.object(self.main, "fetch_latest_data") as mock_fetch,
@@ -125,8 +130,10 @@ class TestMLServiceLogic(unittest.TestCase):
 
             # Create a context for the test heatpump
             ctx = HeatpumpContext("test-hp")
-            ctx.models["heating"].score_one.return_value = 0.9  # High score (Anomaly)
-            ctx.models["heating"].steps = {}
+            # Replace model with mock
+            mock_model = MagicMock()
+            mock_model.score_one.return_value = 0.9  # High score (Anomaly)
+            ctx.models["heating"] = mock_model
             ctx.model_trained = True  # Force trained
             ctx.consecutive_anomalies = 0  # Start at 0
             self.main.contexts["test-hp"] = ctx
@@ -149,6 +156,7 @@ class TestMLServiceLogic(unittest.TestCase):
     def test_warmup_logic(self):
         # Import HeatpumpContext
         from ml_service.main import HeatpumpContext
+        from unittest.mock import MagicMock
 
         # We need to force update_counter to match what we expect.
         # job() increments it at the end.
@@ -162,7 +170,10 @@ class TestMLServiceLogic(unittest.TestCase):
 
             # Create a context for the test heatpump
             ctx = HeatpumpContext("test-hp")
-            ctx.models["standby"].score_one.return_value = 0.0
+            # Replace model with mock
+            mock_model = MagicMock()
+            mock_model.score_one.return_value = 0.0
+            ctx.models["standby"] = mock_model
             self.main.contexts["test-hp"] = ctx
 
             # Run enough times to exceed WARMUP_UPDATES=5
