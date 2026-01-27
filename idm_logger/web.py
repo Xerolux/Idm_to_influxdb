@@ -10,7 +10,11 @@ from flask import (
 )
 from flask_socketio import SocketIO
 from waitress import serve
-from flasgger import Swagger
+try:
+    from flasgger import Swagger
+    HAS_FLASGGER = True
+except ImportError:
+    HAS_FLASGGER = False
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -57,6 +61,10 @@ from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Log if flasgger is not available
+if not HAS_FLASGGER:
+    logger.warning("flasgger not available - API documentation will be disabled")
 
 # Input validation patterns and limits
 _MAX_STRING_LENGTH = 255
@@ -169,13 +177,16 @@ if os.environ.get("TRUST_PROXIES") or config.get("web.trust_proxies"):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # Swagger/OpenAPI Configuration
-app.config["SWAGGER"] = {
-    "title": "IDM Metrics Collector API",
-    "uiversion": 3,
-    "version": "1.0.1",
-    "description": "API for IDM Heat Pump Monitoring & Control",
-}
-swagger = Swagger(app)
+if HAS_FLASGGER:
+    app.config["SWAGGER"] = {
+        "title": "IDM Metrics Collector API",
+        "uiversion": 3,
+        "version": "1.0.1",
+        "description": "API for IDM Heat Pump Monitoring & Control",
+    }
+    swagger = Swagger(app)
+else:
+    swagger = None
 
 # Rate Limiter Configuration
 limiter = Limiter(
