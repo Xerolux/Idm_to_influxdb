@@ -44,6 +44,7 @@ from .expression_parser import ExpressionParser
 from .websocket_handler import websocket_handler
 from .sharing import SharingManager
 from .model_updater import model_updater
+from .privatebin import upload
 from .manufacturers import ManufacturerRegistry
 from .migrations import run_migration, get_default_heatpump_id, get_legacy_heatpump_id
 from .db import db
@@ -1572,6 +1573,28 @@ def download_logs():
     except Exception as e:
         logger.error(f"Failed to download logs: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/logs/share", methods=["POST"])
+@login_required
+def share_logs():
+    """Upload logs to PrivateBin and return share link."""
+    try:
+        logs = memory_handler.get_logs()
+        # Format logs for text file
+        lines = []
+        for log in logs:
+            line = f"[{log['timestamp']}] {log['level']}: {log['message']}"
+            lines.append(line)
+        content = "\n".join(lines)
+
+        privatebin_url = config.get("privatebin.url", "https://paste.blueml.eu")
+        link = upload(content, url=privatebin_url)
+
+        return jsonify({"success": True, "link": link})
+    except Exception as e:
+        logger.error(f"Failed to share logs: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/tools/technician-code", methods=["GET"])
