@@ -22,7 +22,7 @@ from .alerts import alert_manager
 from .backup import backup_manager
 from .telemetry import telemetry_manager
 from .model_updater import model_updater
-from .migrations import get_default_heatpump_id
+from .migrations import get_default_heatpump_id, run_migration
 
 # Get logger instance (configure in main())
 logger = logging.getLogger("idm_logger")
@@ -170,6 +170,14 @@ def main():
     backup_thread = threading.Thread(target=backup_worker, daemon=True)
     backup_thread.start()
 
+    # Run database migrations (single -> multi-heatpump)
+    try:
+        migrated_hp = run_migration()
+        if migrated_hp:
+            logger.info(f"Successfully migrated legacy configuration to heatpump {migrated_hp}")
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}", exc_info=True)
+
     # Now initialize the backend components
     try:
         # Initialize HeatpumpManager
@@ -187,11 +195,16 @@ def main():
 
     # MQTT Publisher
     try:
-        if config.get("mqtt.enabled", False):
+        mqtt_enabled = config.get("mqtt.enabled", False)
+        mqtt_broker = config.get("mqtt.broker", "")
+
+        if mqtt_enabled and mqtt_broker:
             mqtt_publisher.set_heatpump_manager(heatpump_manager)
             mqtt_publisher.start()
             mqtt = mqtt_publisher
             logger.info("MQTT publisher initialized")
+        elif mqtt_enabled and not mqtt_broker:
+            logger.warning("MQTT is enabled but no broker configured - skipping MQTT initialization")
     except Exception as e:
         logger.error(f"Failed to initialize MQTT publisher: {e}", exc_info=True)
 
