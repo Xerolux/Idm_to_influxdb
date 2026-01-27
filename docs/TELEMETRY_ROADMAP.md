@@ -104,27 +104,6 @@
 
 ### Priorität: MITTEL
 
-#### 4. i18n Übersetzungen
-**Dateien:**
-- `frontend/src/locales/de.json`
-- `frontend/src/locales/en.json`
-
-Neue Strings zu übersetzen:
-```json
-{
-  "telemetry": {
-    "poolStatus": "Community Data Pool Status",
-    "building": "Building data pool",
-    "ready": "Data pool ready",
-    "sharingEnabled": "Data sharing enabled",
-    "sharingDisabled": "Data sharing disabled",
-    "installations": "Installations",
-    "dataPoints": "Data points",
-    "modelsAvailable": "Models available"
-  }
-}
-```
-
 #### 5. Datenvergleich-Feature
 **Konzept:** Benutzer können ihre Werte mit Community-Durchschnitt vergleichen
 
