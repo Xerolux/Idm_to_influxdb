@@ -48,12 +48,11 @@ def export_model(input_file, output_dir):
         "payload": payload_b64
     }
 
-    # Calculate HMAC signature of the JSON string representation of the envelope (excluding signature)
-    # To ensure consistent signing, we sign the payload string + timestamp string
-    # A robust way is to sign the payload itself.
-    # Let's sign the payload string.
+    # Sign payload AND metadata
+    # Format: payload_b64 + "." + canonical_json(metadata)
+    metadata_json = json.dumps(metadata, sort_keys=True)
+    msg = f"{payload_b64}.{metadata_json}".encode('utf-8')
 
-    msg = payload_b64.encode('utf-8')
     signature = hmac.new(key, msg, hashlib.sha256).hexdigest()
 
     envelope["signature"] = signature

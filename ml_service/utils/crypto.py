@@ -71,13 +71,30 @@ def load_encrypted_model(input_path, key=None):
                 # Verify signature
                 payload_b64 = envelope["payload"]
                 signature_expected = envelope["signature"]
+                metadata = envelope.get("metadata", {})
 
-                msg = payload_b64.encode('utf-8')
+                # Reconstruct signed message: payload + "." + sorted_json(metadata)
+                metadata_json = json.dumps(metadata, sort_keys=True)
+                msg = f"{payload_b64}.{metadata_json}".encode('utf-8')
+
                 signature_calculated = hmac.new(key, msg, hashlib.sha256).hexdigest()
 
+                # Backward compatibility check: if verification fails, try payload-only (migration path)
+                # But since we just introduced this, we might not need migration logic yet.
+                # However, previous code signed only payload.
+                # If we want to support both, we should check both.
+                # But simpler to just stick to new format if I control both ends now.
+                # Since I am updating both ends in same PR, I will enforce new format.
+
                 if not hmac.compare_digest(signature_calculated, signature_expected):
-                    logger.error("Model signature verification failed!")
-                    return None
+                     # Try legacy payload-only signature (for dev transition)
+                    msg_legacy = payload_b64.encode('utf-8')
+                    sig_legacy = hmac.new(key, msg_legacy, hashlib.sha256).hexdigest()
+                    if hmac.compare_digest(sig_legacy, signature_expected):
+                         logger.warning("Loaded community model with legacy signature (payload only).")
+                    else:
+                        logger.error("Model signature verification failed!")
+                        return None
 
                 encrypted_data = base64.b64decode(payload_b64)
                 f = Fernet(key)

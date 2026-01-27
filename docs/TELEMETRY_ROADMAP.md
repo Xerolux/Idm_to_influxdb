@@ -228,15 +228,10 @@ idm_logger/manufacturers/
 - Bei Netzwerkfehlern gehen Daten verloren
 - TODO: Lokale Persistenz für fehlgeschlagene Sends
 
-### 2. VictoriaMetrics Export Format
-**Datei:** `telemetry_server/scripts/train_model.py`
-- `eval()` wird verwendet statt `json.loads()` (Sicherheitsrisiko)
-- Zeile 38: `yield eval(line)` sollte ersetzt werden
-
-### 3. Fehlende Input-Validierung
+### 2. Fehlende Input-Validierung
 **Datei:** `telemetry_server/app.py`
-- `installation_id` wird nicht auf gültiges UUID-Format geprüft
-- `model` Parameter könnte Path-Traversal-Angriffe ermöglichen
+- `installation_id` wird nicht auf gültiges UUID-Format geprüft (Behoben)
+- `model` Parameter könnte Path-Traversal-Angriffe ermöglichen (Behoben)
 
 ---
 

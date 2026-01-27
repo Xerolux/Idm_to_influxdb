@@ -42,13 +42,6 @@ def test_roundtrip_encryption(temp_dir):
         assert envelope["version"] == "2.0"
 
     # 4. Load (Decrypt & Verify)
-    # Using the default key (which export_model also uses if env var is not set,
-    # but conftest sets it, so we rely on that or passing key explicitly)
-
-    # export_model uses os.environ or default.
-    # load_encrypted_model uses os.environ or default.
-    # conftest sets TELEMETRY_ENCRYPTION_KEY.
-
     loaded_data = load_encrypted_model(str(exported_file))
 
     assert loaded_data is not None
@@ -102,5 +95,30 @@ def test_tampered_payload(temp_dir):
         json.dump(envelope, f)
 
     # 4. Try to load
+    loaded_data = load_encrypted_model(str(exported_file))
+    assert loaded_data is None
+
+def test_tampered_metadata(temp_dir):
+    # 1. Create model
+    input_file = temp_dir / "test_model.pkl"
+    with open(input_file, "wb") as f:
+        pickle.dump({"foo": "bar"}, f)
+
+    # 2. Export
+    output_dir = temp_dir / "output"
+    export_model(str(input_file), str(output_dir))
+    exported_file = output_dir / "model.enc"
+
+    # 3. Tamper with metadata
+    with open(exported_file, "r") as f:
+        envelope = json.load(f)
+
+    # Change filename in metadata
+    envelope["metadata"]["filename"] = "hacked.pkl"
+
+    with open(exported_file, "w") as f:
+        json.dump(envelope, f)
+
+    # 4. Try to load (Should fail because signature covers metadata now)
     loaded_data = load_encrypted_model(str(exported_file))
     assert loaded_data is None
