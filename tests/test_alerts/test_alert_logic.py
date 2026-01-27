@@ -3,7 +3,7 @@
 
 import unittest
 import time
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import patch, ANY
 import sys
 import os
 
