@@ -470,65 +470,62 @@
                             <h3 class="font-bold text-lg flex items-center gap-2">
                                 <i class="pi pi-refresh"></i> Update Status
                             </h3>
-                             <div class="flex items-center justify-between bg-gray-900/50 p-3 rounded">
-                                 <div>
-                                     <div class="text-sm text-gray-400">Installierte Version</div>
-                                     <div class="font-mono">{{ updateStatus.current_version || 'v0.0.0' }}</div>
-                                 </div>
-                                 <div class="text-right">
-                                     <div class="text-sm text-gray-400">Verfügbare Version</div>
-                                     <div class="font-mono text-green-400">{{ updateStatus.latest_version || 'Checking...' }}</div>
-                                 </div>
-                             </div>
 
-                             <!-- Docker Image Status -->
-                             <div v-if="updateStatus.docker" class="bg-gray-900/50 p-3 rounded mt-2">
+                            <!-- BIG PROMINENT STATUS DISPLAY -->
+                            <div v-if="updateStatus.update_available" class="bg-blue-900/40 border-2 border-blue-500 p-6 rounded-lg text-center shadow-lg animate-pulse">
+                                <i class="pi pi-cloud-download text-5xl text-blue-300 mb-2"></i>
+                                <h2 class="text-2xl font-bold text-white mb-1">UPDATE VERFÜGBAR</h2>
+                                <div class="text-lg text-blue-200">
+                                    Version <span class="font-mono font-bold">{{ updateStatus.latest_version }}</span> ist bereit.
+                                </div>
+                                <div class="mt-4 text-sm text-gray-300 bg-gray-900/50 p-2 rounded inline-block">
+                                    Aktuell installiert: <span class="font-mono">{{ updateStatus.current_version }}</span>
+                                </div>
+                            </div>
+
+                            <div v-else class="bg-green-900/30 border border-green-600 p-6 rounded-lg text-center">
+                                <i class="pi pi-check-circle text-5xl text-green-400 mb-2"></i>
+                                <h2 class="text-2xl font-bold text-white mb-1">SYSTEM AKTUELL</h2>
+                                <div class="text-green-200">
+                                    Keine Updates gefunden.
+                                </div>
+                                <div class="mt-2 font-mono text-sm text-gray-400">
+                                    Version {{ updateStatus.current_version || 'v0.0.0' }}
+                                </div>
+                            </div>
+
+                             <!-- Docker Image Status (Compact) -->
+                             <div v-if="updateStatus.docker && updateStatus.docker.updates_available" class="bg-gray-900/50 p-3 rounded mt-2">
                                  <div class="flex items-center gap-2 mb-2">
                                      <i class="pi pi-box text-blue-400"></i>
-                                     <span class="text-sm font-bold">Docker Images</span>
-                                     <span v-if="updateStatus.docker.updates_available" class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Updates verfügbar</span>
+                                     <span class="text-sm font-bold">Docker Images Updates</span>
                                  </div>
                                  <div class="grid grid-cols-1 gap-2 text-xs">
                                      <div v-for="(img, name) in updateStatus.docker.images" :key="name"
-                                          class="flex items-center justify-between p-2 rounded"
-                                          :class="img.update_available ? 'bg-blue-900/30 border border-blue-600/50' : 'bg-gray-800'">
+                                          v-show="img.update_available"
+                                          class="flex items-center justify-between p-2 rounded bg-blue-900/30 border border-blue-600/50">
                                          <div class="flex items-center gap-2">
-                                             <i :class="img.update_available ? 'pi pi-arrow-up text-blue-400' : 'pi pi-check text-green-400'"></i>
+                                             <i class="pi pi-arrow-up text-blue-400"></i>
                                              <span class="font-mono">{{ name }}</span>
                                          </div>
-                                         <div class="text-right">
-                                             <span v-if="img.update_available" class="text-blue-300">Update verfügbar</span>
-                                             <span v-else class="text-green-400">Aktuell</span>
-                                         </div>
+                                         <div class="text-right text-blue-300">Update verfügbar</div>
                                      </div>
                                  </div>
-                             </div>
-
-                             <!-- Update Available Info -->
-                             <div v-if="updateStatus.update_available" class="bg-blue-900/20 border border-blue-600/50 p-3 rounded mt-2 flex flex-col gap-2">
-                                <div class="flex items-center gap-2 text-blue-300 text-sm">
-                                    <i class="pi pi-info-circle"></i>
-                                    <span>Neue Version verfügbar!</span>
-                                </div>
-                                <p class="text-xs text-gray-400">
-                                    Watchtower aktualisiert automatisch täglich um 3:00 Uhr.
-                                </p>
                              </div>
 
                              <!-- Watchtower Info -->
                              <div class="bg-gray-900/50 p-3 rounded mt-2">
                                  <div class="flex items-center gap-2 mb-2">
-                                     <i class="pi pi-sync text-green-400"></i>
-                                     <span class="text-sm font-bold">Automatische Updates</span>
+                                     <i class="pi pi-clock text-gray-400"></i>
+                                     <span class="text-sm font-bold text-gray-400">Auto-Update Info</span>
                                  </div>
-                                 <p class="text-xs text-gray-400 mb-2">
-                                     Watchtower prüft täglich um <span class="text-green-400 font-mono">03:00 Uhr</span> auf neue Docker Images und aktualisiert automatisch.
+                                 <p class="text-xs text-gray-500 mb-2">
+                                     Watchtower prüft und aktualisiert automatisch täglich um <span class="font-mono">03:00 Uhr</span>.
                                  </p>
-                                 <Button label="Anleitung für manuelles Update" icon="pi pi-question-circle" severity="secondary" size="small" text @click="showUpdateHelpDialog = true" />
-                             </div>
-
-                             <div class="flex justify-end mt-2">
-                                 <Button label="Jetzt prüfen" icon="pi pi-search" size="small" severity="secondary" @click="checkUpdates" :loading="checkingUpdates" />
+                                 <div class="flex justify-between items-center mt-2">
+                                     <Button label="Hilfe zum Update" icon="pi pi-question-circle" severity="secondary" size="small" text @click="showUpdateHelpDialog = true" />
+                                     <Button label="Jetzt prüfen" icon="pi pi-search" size="small" severity="secondary" @click="checkUpdates" :loading="checkingUpdates" />
+                                 </div>
                              </div>
                         </div>
 
@@ -769,6 +766,7 @@ const heatpumpModels = [
     'iPump N5',
     'Andere / Unbekannt'
 ];
+
 const showPasswordDialog = ref(false);
 const newPassword = ref('');
 const confirmPassword = ref('');
