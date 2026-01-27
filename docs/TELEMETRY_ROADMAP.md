@@ -1,7 +1,7 @@
 # Telemetry Server & Community Features - Roadmap & Übergabedokumentation
 
 > **Erstellt:** 2026-01-27
-> **Letzte Bearbeitung:** Claude (Session 017Z6yfcDMS5mkLwNHH9KKYc)
+> **Letzte Bearbeitung:** Jules (Session Update)
 > **Branch:** `claude/telemetry-server-review-W1oKn`
 > **Status:** In Entwicklung
 
@@ -61,6 +61,14 @@
 
 ## Abgeschlossene Arbeiten
 
+### Session Update (Jules)
+
+#### Feature: Model Encryption & Testing
+- `export_model.py`: Auf JSON-Format umgestellt, signiert (HMAC-SHA256) und Env-Var für Key.
+- `ml_service/utils/crypto.py`: Support für JSON-formatiertes Community-Model hinzugefügt.
+- Bugfix: `load_encrypted_model` gibt nun deserialisiertes Objekt zurück.
+- Test-Suite für Telemetry-Server erstellt (`test_crypto.py`, `test_app.py`).
+
 ### Session 017Z6yfcDMS5mkLwNHH9KKYc (2026-01-27)
 
 #### Commit 1: `3ef10e1` - Telemetry Server Implementation
@@ -104,22 +112,6 @@ python train_model.py --model "AERO_SLM" --output model.pkl
 - [ ] Cron-Job oder Scheduled Task für automatisches Training
 - [ ] GitHub Action für nächtliches Training wenn genug Daten
 - [ ] Benachrichtigung an Admin wenn neues Model verfügbar
-
-#### 2. Model-Verschlüsselung vervollständigen
-**Datei:** `telemetry_server/scripts/export_model.py`
-
-Der Export existiert, aber:
-- [ ] Schlüssel-Management verbessern (nicht hardcoded)
-- [ ] Signatur für Model-Integrität hinzufügen
-- [ ] Versionierung der Models
-
-#### 3. Tests für Telemetry-Server
-**Verzeichnis:** `telemetry_server/tests/` (existiert nicht)
-
-**TODO:**
-- [ ] Unit-Tests für alle Endpoints
-- [ ] Integration-Tests mit Mock-VictoriaMetrics
-- [ ] Load-Tests für Rate-Limiting
 
 ---
 
@@ -231,24 +223,17 @@ idm_logger/manufacturers/
 
 ## Technische Schulden
 
-### 1. Hardcoded Encryption Key
-**Datei:** `telemetry_server/scripts/export_model.py`
-```python
-# FIXME: Key sollte aus Umgebungsvariable oder Secret Manager kommen
-ENCRYPTION_KEY = b'...'  # Hardcoded!
-```
-
-### 2. Keine Retry-Logik im TelemetryManager
+### 1. Keine Retry-Logik im TelemetryManager
 **Datei:** `idm_logger/telemetry.py`
 - Bei Netzwerkfehlern gehen Daten verloren
 - TODO: Lokale Persistenz für fehlgeschlagene Sends
 
-### 3. VictoriaMetrics Export Format
+### 2. VictoriaMetrics Export Format
 **Datei:** `telemetry_server/scripts/train_model.py`
 - `eval()` wird verwendet statt `json.loads()` (Sicherheitsrisiko)
 - Zeile 38: `yield eval(line)` sollte ersetzt werden
 
-### 4. Fehlende Input-Validierung
+### 3. Fehlende Input-Validierung
 **Datei:** `telemetry_server/app.py`
 - `installation_id` wird nicht auf gültiges UUID-Format geprüft
 - `model` Parameter könnte Path-Traversal-Angriffe ermöglichen
