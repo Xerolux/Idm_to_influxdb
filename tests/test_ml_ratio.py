@@ -63,7 +63,9 @@ class TestMlRatio(unittest.TestCase):
 
         # Case 2: 4 sensors (40%) -> Should proceed (since ratio is 0.4)
         # New architecture: fetch returns {hp_id: {sensor: value}}
-        mock_fetch.return_value = {"default": {"s1": 1.0, "s2": 1.0, "s3": 1.0, "s4": 1.0}}
+        mock_fetch.return_value = {
+            "default": {"s1": 1.0, "s2": 1.0, "s3": 1.0, "s4": 1.0}
+        }
 
         ml_main.job()
 

@@ -60,6 +60,7 @@ class TestMLServiceLogic(unittest.TestCase):
     def test_feature_engineering_delta(self):
         # Create a mock context for enrich_features
         from ml_service.main import HeatpumpContext
+
         ctx = HeatpumpContext("test-hp")
 
         data1 = {"sensor1": 10.0, "status_heat_pump": 0}
