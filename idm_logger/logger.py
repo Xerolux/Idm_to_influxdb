@@ -268,6 +268,12 @@ def main():
                     default_hp_id = get_default_heatpump_id()
 
                     for hp_id, measurements in data.items():
+                        if not isinstance(measurements, dict):
+                            logger.error(
+                                f"Invalid measurements for {hp_id}: expected dict, got {type(measurements)} ({measurements})"
+                            )
+                            continue
+
                         for sensor, value in measurements.items():
                             # New format
                             flat_data[f"{hp_id}.{sensor}"] = value
