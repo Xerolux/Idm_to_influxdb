@@ -80,6 +80,11 @@ services:
       - ALERT_COOLDOWN=3600
       - IDM_LOGGER_URL=http://idm-logger:5000
       - INTERNAL_API_KEY=change_me_secure_key
+      # Connection stability settings
+      - RETRY_BASE_DELAY=1.0
+      - RETRY_MAX_DELAY=60.0
+      - RETRY_MULTIPLIER=2.0
+      - RETRY_MAX_ATTEMPTS=3
       # Sensor coverage (adjust to your setup)
       - ML_CIRCUITS=A
       - ML_ZONES=

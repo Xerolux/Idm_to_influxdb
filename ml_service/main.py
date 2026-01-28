@@ -59,6 +59,12 @@ ALARM_CONSECUTIVE_HITS = int(os.environ.get("ALARM_CONSECUTIVE_HITS", "3"))
 IDM_LOGGER_URL = os.environ.get("IDM_LOGGER_URL", "http://idm-logger:5000")
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
 
+# Connection retry configuration
+RETRY_BASE_DELAY = float(os.environ.get("RETRY_BASE_DELAY", "1.0"))
+RETRY_MAX_DELAY = float(os.environ.get("RETRY_MAX_DELAY", "60.0"))
+RETRY_MULTIPLIER = float(os.environ.get("RETRY_MULTIPLIER", "2.0"))
+RETRY_MAX_ATTEMPTS = int(os.environ.get("RETRY_MAX_ATTEMPTS", "3"))
+
 # Circuit and Zone configuration
 ML_CIRCUITS = os.environ.get("ML_CIRCUITS", "A").split(",")
 ML_ZONES = [
@@ -82,6 +88,18 @@ current_mode = "unknown"
 last_data_points = {}  # Store previous values for delta calculation
 consecutive_anomalies = 0
 
+# Connection health tracking
+connection_stats = {
+    "metrics_connected": False,
+    "metrics_last_success": None,
+    "metrics_consecutive_failures": 0,
+    "alert_last_success": None,
+    "alert_consecutive_failures": 0,
+    "total_fetch_errors": 0,
+    "total_write_errors": 0,
+    "total_alert_errors": 0,
+}
+
 # Flask health check app
 health_app = Flask(__name__)
 
@@ -89,9 +107,13 @@ health_app = Flask(__name__)
 @health_app.route("/health")
 def health():
     """Health check endpoint for monitoring."""
+    # Determine overall health status
+    is_healthy = connection_stats["metrics_connected"] or update_counter > 0
+    status = "healthy" if is_healthy else "degraded"
+
     return jsonify(
         {
-            "status": "healthy",
+            "status": status,
             "model_state": "trained" if model_trained else "learning",
             "current_mode": current_mode,
             "last_score": last_score,
@@ -100,6 +122,12 @@ def health():
             "update_interval": UPDATE_INTERVAL,
             "anomaly_threshold": ANOMALY_THRESHOLD,
             "updates_processed": update_counter,
+            "connection": {
+                "metrics_connected": connection_stats["metrics_connected"],
+                "metrics_failures": connection_stats["metrics_consecutive_failures"],
+                "total_errors": connection_stats["total_fetch_errors"]
+                + connection_stats["total_write_errors"],
+            },
         }
     ), 200
 
@@ -310,6 +338,7 @@ def enrich_features(data: dict) -> dict:
 def fetch_latest_data():
     """
     Fetch the latest values for the selected sensors from VictoriaMetrics.
+    Uses exponential backoff retry on transient failures.
     """
     query_url = f"{METRICS_URL.rstrip('/')}/api/v1/query"
     data_point = {}
@@ -318,42 +347,69 @@ def fetch_latest_data():
     regex = "|".join([f"{MEASUREMENT_NAME}_{s}" for s in SENSORS])
     query = f'{{__name__=~"{regex}"}}'
 
-    try:
-        response = requests.get(query_url, params={"query": query}, timeout=10)
-        if response.status_code != 200:
-            logger.error(
-                f"Failed to fetch data from {query_url}: {response.status_code} {response.text}"
-            )
+    delay = RETRY_BASE_DELAY
+    last_error = None
+
+    for attempt in range(RETRY_MAX_ATTEMPTS):
+        try:
+            response = requests.get(query_url, params={"query": query}, timeout=10)
+            if response.status_code != 200:
+                last_error = f"HTTP {response.status_code}: {response.text[:100]}"
+                if attempt < RETRY_MAX_ATTEMPTS - 1:
+                    logger.debug(f"Fetch attempt {attempt + 1} failed: {last_error}")
+                    time.sleep(delay)
+                    delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                    continue
+                logger.error(f"Failed to fetch data after {RETRY_MAX_ATTEMPTS} attempts: {last_error}")
+                connection_stats["total_fetch_errors"] += 1
+                connection_stats["metrics_consecutive_failures"] += 1
+                return None
+
+            json_data = response.json()
+            if json_data.get("status") != "success":
+                logger.error(f"Query returned error status: {json_data}")
+                connection_stats["total_fetch_errors"] += 1
+                return None
+
+            results = json_data.get("data", {}).get("result", [])
+
+            for result in results:
+                metric_name = result["metric"].get("__name__", "")
+                # Extract sensor name by removing prefix
+                sensor_name = metric_name.replace(f"{MEASUREMENT_NAME}_", "")
+
+                if "value" in result:
+                    # PromQL instant query value is [timestamp, "value"]
+                    val = result["value"][1]
+                    try:
+                        data_point[sensor_name] = float(val)
+                    except (ValueError, TypeError):
+                        pass
+
+            # Success - update connection stats
+            connection_stats["metrics_connected"] = True
+            connection_stats["metrics_last_success"] = time.time()
+            connection_stats["metrics_consecutive_failures"] = 0
+            return data_point
+
+        except requests.exceptions.ConnectionError as e:
+            last_error = str(e)
+            if attempt < RETRY_MAX_ATTEMPTS - 1:
+                logger.debug(f"Connection error on attempt {attempt + 1}, retrying in {delay:.1f}s")
+                time.sleep(delay)
+                delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                continue
+            logger.error(f"Connection error after {RETRY_MAX_ATTEMPTS} attempts: {e}")
+            connection_stats["metrics_connected"] = False
+            connection_stats["metrics_consecutive_failures"] += 1
+            connection_stats["total_fetch_errors"] += 1
+            return None
+        except Exception as e:
+            logger.error(f"Exception fetching data: {e}")
+            connection_stats["total_fetch_errors"] += 1
             return None
 
-        json_data = response.json()
-        if json_data.get("status") != "success":
-            logger.error(f"Query returned error status: {json_data}")
-            return None
-
-        results = json_data.get("data", {}).get("result", [])
-
-        for result in results:
-            metric_name = result["metric"].get("__name__", "")
-            # Extract sensor name by removing prefix
-            sensor_name = metric_name.replace(f"{MEASUREMENT_NAME}_", "")
-
-            if "value" in result:
-                # PromQL instant query value is [timestamp, "value"]
-                val = result["value"][1]
-                try:
-                    data_point[sensor_name] = float(val)
-                except (ValueError, TypeError):
-                    pass
-
-        return data_point
-
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Connection error fetching data from {query_url}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Exception fetching data: {e}")
-        return None
+    return None
 
 
 def write_metrics(
@@ -365,6 +421,7 @@ def write_metrics(
 ):
     """
     Write anomaly and ML performance metrics to VictoriaMetrics.
+    Uses retry logic for transient failures.
     """
     write_url = f"{METRICS_URL.rstrip('/')}/write"
 
@@ -377,15 +434,33 @@ def write_metrics(
     ]
 
     data = "\n".join(lines)
+    delay = RETRY_BASE_DELAY
 
-    try:
-        response = requests.post(write_url, data=data, timeout=5)
-        if response.status_code not in (200, 204):
+    for attempt in range(RETRY_MAX_ATTEMPTS):
+        try:
+            response = requests.post(write_url, data=data, timeout=5)
+            if response.status_code in (200, 204):
+                return  # Success
+            if attempt < RETRY_MAX_ATTEMPTS - 1:
+                logger.debug(f"Write attempt {attempt + 1} failed with {response.status_code}")
+                time.sleep(delay)
+                delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                continue
             logger.error(
-                f"Failed to write metrics to {write_url}: {response.status_code} {response.text}"
+                f"Failed to write metrics after {RETRY_MAX_ATTEMPTS} attempts: {response.status_code}"
             )
-    except Exception as e:
-        logger.error(f"Exception writing metrics: {e}")
+            connection_stats["total_write_errors"] += 1
+        except requests.exceptions.ConnectionError:
+            if attempt < RETRY_MAX_ATTEMPTS - 1:
+                time.sleep(delay)
+                delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                continue
+            logger.error(f"Connection error writing metrics after {RETRY_MAX_ATTEMPTS} attempts")
+            connection_stats["total_write_errors"] += 1
+        except Exception as e:
+            logger.error(f"Exception writing metrics: {e}")
+            connection_stats["total_write_errors"] += 1
+            return
 
 
 def get_top_features(model, data, n=3):
@@ -426,7 +501,10 @@ def get_top_features(model, data, n=3):
 
 
 def send_anomaly_alert(score: float, data: dict, mode: str, top_features: list):
-    """Send anomaly alert to IDM Logger notification system."""
+    """
+    Send anomaly alert to IDM Logger notification system.
+    Uses retry logic for transient failures.
+    """
     global last_alert_time
 
     if not ENABLE_ALERTS:
@@ -446,30 +524,52 @@ def send_anomaly_alert(score: float, data: dict, mode: str, top_features: list):
             ]
         )
 
-    try:
-        alert_url = f"{IDM_LOGGER_URL}/api/internal/ml_alert"
-        payload = {
-            "type": "anomaly",
-            "score": round(score, 4),
-            "threshold": ANOMALY_THRESHOLD,
-            "sensor_count": len(data),
-            "timestamp": int(time.time()),
-            "message": f"⚠️ Anomalie erkannt! ({mode})\nScore: {score:.2f} (Limit: {ANOMALY_THRESHOLD}){feature_msg}",
-            "data": {"mode": mode, "top_features": top_features},
-        }
+    alert_url = f"{IDM_LOGGER_URL}/api/internal/ml_alert"
+    payload = {
+        "type": "anomaly",
+        "score": round(score, 4),
+        "threshold": ANOMALY_THRESHOLD,
+        "sensor_count": len(data),
+        "timestamp": int(time.time()),
+        "message": f"Anomalie erkannt! ({mode})\nScore: {score:.2f} (Limit: {ANOMALY_THRESHOLD}){feature_msg}",
+        "data": {"mode": mode, "top_features": top_features},
+    }
 
-        headers = {}
-        if INTERNAL_API_KEY:
-            headers["X-Internal-Secret"] = INTERNAL_API_KEY
+    headers = {}
+    if INTERNAL_API_KEY:
+        headers["X-Internal-Secret"] = INTERNAL_API_KEY
 
-        response = requests.post(alert_url, json=payload, headers=headers, timeout=5)
-        if response.status_code in (200, 201):
-            logger.info(f"Anomaly alert sent successfully (score: {score:.4f})")
-            last_alert_time = time.time()
-        else:
-            logger.warning(f"Alert endpoint returned {response.status_code}")
-    except Exception as e:
-        logger.error(f"Failed to send anomaly alert: {e}")
+    delay = RETRY_BASE_DELAY
+
+    for attempt in range(RETRY_MAX_ATTEMPTS):
+        try:
+            response = requests.post(alert_url, json=payload, headers=headers, timeout=5)
+            if response.status_code in (200, 201):
+                logger.info(f"Anomaly alert sent successfully (score: {score:.4f})")
+                last_alert_time = time.time()
+                connection_stats["alert_last_success"] = time.time()
+                connection_stats["alert_consecutive_failures"] = 0
+                return
+            if attempt < RETRY_MAX_ATTEMPTS - 1:
+                logger.debug(f"Alert attempt {attempt + 1} failed with {response.status_code}")
+                time.sleep(delay)
+                delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                continue
+            logger.warning(f"Alert endpoint returned {response.status_code} after {RETRY_MAX_ATTEMPTS} attempts")
+            connection_stats["alert_consecutive_failures"] += 1
+            connection_stats["total_alert_errors"] += 1
+        except requests.exceptions.ConnectionError:
+            if attempt < RETRY_MAX_ATTEMPTS - 1:
+                time.sleep(delay)
+                delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
+                continue
+            logger.error(f"Connection error sending alert after {RETRY_MAX_ATTEMPTS} attempts")
+            connection_stats["alert_consecutive_failures"] += 1
+            connection_stats["total_alert_errors"] += 1
+        except Exception as e:
+            logger.error(f"Failed to send anomaly alert: {e}")
+            connection_stats["total_alert_errors"] += 1
+            return
 
 
 def job():
@@ -584,31 +684,37 @@ def job():
 def wait_for_connection():
     """
     Wait for VictoriaMetrics to be reachable.
+    Uses exponential backoff to avoid overwhelming the service during startup.
     """
     query_url = f"{METRICS_URL.rstrip('/')}/api/v1/query"
+    delay = RETRY_BASE_DELAY
+    attempt = 0
 
     logger.info(f"Attempting to connect to VictoriaMetrics at {METRICS_URL}...")
 
     while True:
+        attempt += 1
         try:
             response = requests.get(query_url, params={"query": "up"}, timeout=5)
             if response.status_code == 200:
-                logger.info("Successfully connected to VictoriaMetrics.")
+                logger.info(f"Successfully connected to VictoriaMetrics after {attempt} attempt(s).")
+                connection_stats["metrics_connected"] = True
                 return
             else:
                 logger.warning(
-                    f"VictoriaMetrics reachable but returned {response.status_code}. Retrying in 5s..."
+                    f"VictoriaMetrics reachable but returned {response.status_code}. Retrying in {delay:.1f}s..."
                 )
         except requests.exceptions.ConnectionError:
             logger.warning(
-                f"Connection refused to {METRICS_URL}. VictoriaMetrics might be starting up. Retrying in 5s..."
+                f"Connection refused to {METRICS_URL}. VictoriaMetrics might be starting up. Retrying in {delay:.1f}s..."
             )
         except Exception as e:
             logger.error(
-                f"Unexpected error connecting to {METRICS_URL}: {e}. Retrying in 5s..."
+                f"Unexpected error connecting to {METRICS_URL}: {e}. Retrying in {delay:.1f}s..."
             )
 
-        time.sleep(5)
+        time.sleep(delay)
+        delay = min(delay * RETRY_MULTIPLIER, RETRY_MAX_DELAY)
 
 
 def main():

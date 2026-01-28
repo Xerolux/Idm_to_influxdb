@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 import logging
+import time
 from pymodbus.client import ModbusTcpClient
 
 from .config import config
@@ -14,12 +15,21 @@ from .sensor_addresses import (
 
 logger = logging.getLogger(__name__)
 
+# Connection configuration
+MODBUS_TIMEOUT = config.get("modbus.timeout", 10)
+MODBUS_RETRIES = config.get("modbus.retries", 3)
+RECONNECT_BASE_DELAY = config.get("modbus.reconnect_base_delay", 1.0)
+RECONNECT_MAX_DELAY = config.get("modbus.reconnect_max_delay", 60.0)
+RECONNECT_MULTIPLIER = config.get("modbus.reconnect_multiplier", 2.0)
+
 
 class ModbusClient:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.client = ModbusTcpClient(host, port=port, timeout=10, retries=3)
+        self.client = ModbusTcpClient(
+            host, port=port, timeout=MODBUS_TIMEOUT, retries=MODBUS_RETRIES
+        )
 
         # Initialize with common sensors
         self.sensors = {s.name: s for s in COMMON_SENSORS}
@@ -51,8 +61,23 @@ class ModbusClient:
         self._failed_blocks = set()
         self._sensor_config_hash = self._compute_sensor_hash()
 
-        # Connection state tracking to reduce log spam
+        # Connection state tracking for exponential backoff
         self._connection_was_lost = False
+        self._reconnect_delay = RECONNECT_BASE_DELAY
+        self._last_reconnect_attempt = 0
+        self._consecutive_failures = 0
+
+        # Connection health statistics
+        self._stats = {
+            "total_connects": 0,
+            "total_disconnects": 0,
+            "total_reconnects": 0,
+            "total_read_errors": 0,
+            "total_write_errors": 0,
+            "last_successful_read": None,
+            "last_error": None,
+            "uptime_start": None,
+        }
 
     def _compute_sensor_hash(self) -> int:
         """Compute hash of current sensor configuration for cache invalidation."""
@@ -75,31 +100,94 @@ class ModbusClient:
 
         if self.client.is_socket_open():
             return True
+
         logger.info(f"Connecting to Modbus server at {self.host}:{self.port}")
-        return self.client.connect()
+        try:
+            result = self.client.connect()
+            if result:
+                self._stats["total_connects"] += 1
+                self._stats["uptime_start"] = time.time()
+                self._reconnect_delay = RECONNECT_BASE_DELAY
+                self._consecutive_failures = 0
+                logger.info("Modbus connection established successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to connect to Modbus server: {e}")
+            self._stats["last_error"] = str(e)
+            return False
 
     def close(self):
         """Closes the Modbus connection."""
         if self.client.is_socket_open():
             logger.info("Closing Modbus connection")
+            self._stats["total_disconnects"] += 1
             self.client.close()
 
+    def get_connection_stats(self) -> dict:
+        """Returns connection health statistics."""
+        stats = self._stats.copy()
+        stats["is_connected"] = self.client.is_socket_open()
+        stats["consecutive_failures"] = self._consecutive_failures
+        stats["current_reconnect_delay"] = self._reconnect_delay
+        if stats["uptime_start"] and stats["is_connected"]:
+            stats["uptime_seconds"] = int(time.time() - stats["uptime_start"])
+        else:
+            stats["uptime_seconds"] = 0
+        return stats
+
     def _ensure_connection(self):
-        """Ensures the client is connected, reconnecting if necessary."""
+        """
+        Ensures the client is connected, using exponential backoff for reconnection.
+        Returns True if connected, False otherwise.
+        """
         if self.client.is_socket_open():
             if self._connection_was_lost:
                 logger.info("Modbus connection restored")
                 self._connection_was_lost = False
+                self._stats["total_reconnects"] += 1
+                self._reconnect_delay = RECONNECT_BASE_DELAY
+                self._consecutive_failures = 0
             return True
+
+        # Check if we should wait before next reconnect attempt (exponential backoff)
+        now = time.time()
+        time_since_last_attempt = now - self._last_reconnect_attempt
+
+        if time_since_last_attempt < self._reconnect_delay:
+            # Still in backoff period, don't spam reconnects
+            return False
+
+        self._last_reconnect_attempt = now
 
         # Log warning only on first detection of connection loss
         if not self._connection_was_lost:
             logger.warning("Modbus connection lost. Attempting to reconnect...")
             self._connection_was_lost = True
+            self._stats["total_disconnects"] += 1
         else:
-            logger.debug("Modbus reconnect attempt...")
+            logger.debug(
+                f"Modbus reconnect attempt (delay: {self._reconnect_delay:.1f}s, "
+                f"failures: {self._consecutive_failures})"
+            )
 
-        return self.connect()
+        # Attempt to reconnect
+        try:
+            result = self.client.connect()
+            if result:
+                self._stats["total_reconnects"] += 1
+                self._stats["uptime_start"] = time.time()
+                return True
+        except Exception as e:
+            logger.debug(f"Reconnect attempt failed: {e}")
+            self._stats["last_error"] = str(e)
+
+        # Increase backoff delay for next attempt
+        self._consecutive_failures += 1
+        self._reconnect_delay = min(
+            self._reconnect_delay * RECONNECT_MULTIPLIER, RECONNECT_MAX_DELAY
+        )
+
+        return False
 
     def _build_read_blocks(self):
         """Groups sensors into contiguous blocks for optimized reading."""
@@ -176,7 +264,9 @@ class ModbusClient:
     def read_sensors(self):
         data = {}
         if not self._ensure_connection():
-            logger.error("Could not connect to Modbus server")
+            if self._consecutive_failures == 1:
+                # Only log error on first failure to avoid log spam
+                logger.error("Could not connect to Modbus server")
             return data
 
         try:
@@ -251,11 +341,20 @@ class ModbusClient:
                     logger.error(
                         f"Exception reading block starting at {start_addr}: {e}"
                     )
+                    self._stats["total_read_errors"] += 1
+                    self._stats["last_error"] = str(e)
                     # Mark block as failed and use individual reads
                     self._failed_blocks.add(block_key)
                     self._read_block_individually(block, data)
+
+            # Update statistics on successful read
+            if data:
+                self._stats["last_successful_read"] = time.time()
+
         except Exception as e:
             logger.error(f"Unhandled exception in read_sensors: {e}")
+            self._stats["total_read_errors"] += 1
+            self._stats["last_error"] = str(e)
             self.close()
             raise  # Re-raise the exception to the caller
 
@@ -347,9 +446,15 @@ class ModbusClient:
             # Pymodbus 3.x API: write_registers(address, values, device_id=1)
             rr = self.client.write_registers(sensor.address, registers, device_id=1)
             if rr.isError():
+                self._stats["total_write_errors"] += 1
+                self._stats["last_error"] = f"Write error: {rr}"
                 raise IOError(f"Modbus write error: {rr}")
+        except IOError:
+            raise  # Re-raise IOError without additional handling
         except Exception as e:
             logger.error(f"Write failed: {e}")
+            self._stats["total_write_errors"] += 1
+            self._stats["last_error"] = str(e)
             self.close()  # Close connection on error
             raise
 
