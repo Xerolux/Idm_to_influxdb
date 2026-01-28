@@ -333,6 +333,9 @@ class Config:
                 "retention": 10,
                 "auto_upload": False,
             },
+            "privatebin": {
+                "url": "https://paste.blueml.eu",
+            },
             "internal_api_key": None,
             "setup_completed": False,
         }
