@@ -1580,7 +1580,7 @@ def share_logs():
         logs = memory_handler.get_logs()
 
         # Add Header
-        header = f"IDM Metrics Collector System Logs\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'-'*40}\n"
+        header = f"IDM Metrics Collector System Logs\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'-' * 40}\n"
 
         # Format logs for text file (Reverse order: Oldest -> Newest)
         lines = []
