@@ -241,12 +241,12 @@ export class WebSocketClient {
             }
         });
 
-        this.socket.on('disconnect', (reason) => {
+        this.socket.on('disconnect', (_reason) => {
             this.connectionState = ConnectionState.DISCONNECTED;
             this._emitStateChange();
         });
 
-        this.socket.on('reconnect', (attemptNumber) => {
+        this.socket.on('reconnect', (_attemptNumber) => {
             this.connectionState = ConnectionState.CONNECTED;
             this.reconnectAttempts = 0;
             this._emitStateChange();
@@ -271,7 +271,7 @@ export class WebSocketClient {
         });
 
         // Server events
-        this.socket.on('connected', (data) => {
+        this.socket.on('connected', (_data) => {
         });
 
         this.socket.on('metric_update', (data) => {

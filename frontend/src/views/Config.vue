@@ -858,7 +858,6 @@ const fileInput = ref(null);
 const showDeleteDialog = ref(false);
 const deleteConfirmationText = ref('');
 const deletingDatabase = ref(false);
-const updating = ref(false);
 
 // Update Help Dialog
 const showUpdateHelpDialog = ref(false);
@@ -1066,7 +1065,7 @@ const triggerModelUpdate = async () => {
     try {
         const res = await axios.post('/api/ai/update_now');
         toast.add({ severity: 'success', summary: 'Gestartet', detail: res.data.message, life: 3000 });
-    } catch (e) {
+    } catch {
         toast.add({ severity: 'error', summary: 'Fehler', detail: 'Update-Suche konnte nicht gestartet werden', life: 3000 });
     } finally {
         modelUpdateLoading.value = false;

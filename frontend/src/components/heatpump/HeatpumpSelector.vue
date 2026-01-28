@@ -29,7 +29,7 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 
 const store = useHeatpumpsStore()
-const emit = defineEmits(['add'])
+defineEmits(['add'])
 
 const heatpumps = computed(() => store.heatpumps)
 const selectedId = computed({
