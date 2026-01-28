@@ -1,5 +1,5 @@
 <template>
-    <div class="p-4 flex flex-col gap-4">
+    <div class="p-4 flex flex-col gap-4 pb-20">
         <h1 class="text-2xl font-bold mb-4">Konfiguration</h1>
 
         <div v-if="loading" class="flex justify-center">

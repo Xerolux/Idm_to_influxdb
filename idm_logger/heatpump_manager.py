@@ -380,7 +380,7 @@ class HeatpumpManager:
         def _do_read():
             with conn._lock:
                 result = conn.client.read_holding_registers(
-                    address, count=count, slave=conn.unit_id
+                    address, count=count, device_id=conn.unit_id
                 )
                 if result.isError():
                     return None
@@ -450,7 +450,7 @@ class HeatpumpManager:
         def _do_write():
             with conn._lock:
                 result = conn.client.write_registers(
-                    sensor.address, registers, slave=conn.unit_id
+                    sensor.address, registers, device_id=conn.unit_id
                 )
                 return not result.isError()
 
