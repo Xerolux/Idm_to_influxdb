@@ -26,8 +26,8 @@ class TestSentinelAdminAuth:
         if "ADMIN_PASSWORD" in os.environ:
             del os.environ["ADMIN_PASSWORD"]
 
-    def test_fail_closed_no_hash(self):
-        """Verify that with no hash set, checking any password (including 'admin') returns False."""
+    def test_default_admin_password(self):
+        """Verify that with no hash set, default 'admin' password works."""
         # Setup clean config
         with patch.dict(os.environ, clear=True):
             # Instantiate Config
@@ -37,7 +37,9 @@ class TestSentinelAdminAuth:
             if "admin_password_hash" in config.data["web"]:
                 del config.data["web"]["admin_password_hash"]
 
-            assert config.check_admin_password("admin") is False
+            # Default password 'admin' should work
+            assert config.check_admin_password("admin") is True
+            # Other passwords should fail
             assert config.check_admin_password("secret") is False
             assert config.check_admin_password("") is False
 

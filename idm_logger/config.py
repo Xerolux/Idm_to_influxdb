@@ -426,9 +426,9 @@ class Config:
         self.save()
 
     def check_admin_password(self, password):
-        # Fail closed if no hash is set
+        # Default to 'admin' if no hash is set (for initial setup)
         if "admin_password_hash" not in self.data["web"]:
-            return False
+            return password == "admin"
         return check_password_hash(self.data["web"]["admin_password_hash"], password)
 
     def is_setup(self):
