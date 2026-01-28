@@ -75,24 +75,29 @@ def upload(text, url="https://paste.blueml.eu"):
         "none",
     ]
 
-    # JSON stringify adata parameters array
-    adata_json = json.dumps(adata, separators=(",", ":"))
+    # 5. Prepare Payload Structure (used for AAD)
+    # The full array is used as AAD: [[params], "plaintext", 0, 0]
+    payload_adata = [adata, "plaintext", 0, 0]
+    payload_adata_json = json.dumps(payload_adata, separators=(",", ":"))
 
-    # 5. Encrypt
+    # 6. Encrypt
     aesgcm = AESGCM(derived_key)
     # cryptography AESGCM.encrypt appends the tag to the ciphertext
-    ct_blob = aesgcm.encrypt(iv, text.encode("utf-8"), adata_json.encode("utf-8"))
+    # The AAD MUST be the full payload_adata structure
+    ct_blob = aesgcm.encrypt(
+        iv, text.encode("utf-8"), payload_adata_json.encode("utf-8")
+    )
     ct_b64 = base64.b64encode(ct_blob).decode("utf-8")
 
-    # 6. Payload
+    # 7. Payload
     payload = {
         "v": 2,
-        "adata": [adata, "plaintext", 0, 0],
+        "adata": payload_adata,
         "ct": ct_b64,
         "meta": {"expire": "1week"},
     }
 
-    # 7. Post
+    # 8. Post
     headers = {
         "X-Requested-With": "JSONHttpRequest",
         "Content-Type": "application/json",

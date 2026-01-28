@@ -431,9 +431,9 @@ class Config:
         self.save()
 
     def check_admin_password(self, password):
-        # On fresh installation (no password hash set), accept "admin" as default
+        # Fail closed if no password hash is set
         if "admin_password_hash" not in self.data["web"]:
-            return password == "admin"
+            return False
         return check_password_hash(self.data["web"]["admin_password_hash"], password)
 
     def is_setup(self):

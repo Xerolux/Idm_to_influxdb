@@ -71,7 +71,10 @@ class TestPrivateBin(unittest.TestCase):
         derived_key = kdf.derive(key_part.encode("utf-8"))
 
         aesgcm = AESGCM(derived_key)
-        adata_json = json.dumps(params, separators=(",", ":"))
 
-        plaintext = aesgcm.decrypt(iv, ct_blob, adata_json.encode("utf-8"))
+        # Verify using correct AAD structure (full adata array)
+        payload_adata = [params, "plaintext", 0, 0]
+        payload_adata_json = json.dumps(payload_adata, separators=(",", ":"))
+
+        plaintext = aesgcm.decrypt(iv, ct_blob, payload_adata_json.encode("utf-8"))
         self.assertEqual(plaintext.decode("utf-8"), "This is a test log")
