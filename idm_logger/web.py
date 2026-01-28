@@ -38,7 +38,7 @@ from .variables import VariableManager
 from .expression_parser import ExpressionParser
 from .websocket_handler import websocket_handler
 from .sharing import SharingManager
-from .privatebin import upload
+from .paste import upload
 from shutil import which
 import threading
 import logging
@@ -1330,8 +1330,7 @@ def share_logs():
         content = "\n".join(lines)
 
         paste_url = config.get("privatebin.url", "https://paste.blueml.eu")
-        service_type = config.get("privatebin.service_type", "privatebin")
-        link = upload(content, url=paste_url, service_type=service_type)
+        link = upload(content, url=paste_url)
 
         return jsonify({"success": True, "link": link})
     except Exception as e:
