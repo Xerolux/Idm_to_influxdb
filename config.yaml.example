@@ -10,6 +10,18 @@ idm:
   # Heating circuits to monitor (A, B, C, D, E, F, G)
   circuits: ["A"]
 
+modbus:
+  # Connection timeout in seconds
+  timeout: 10
+  # Number of retries per request
+  retries: 3
+  # Base delay for reconnection attempts (seconds)
+  reconnect_base_delay: 1.0
+  # Maximum delay between reconnection attempts (seconds)
+  reconnect_max_delay: 60.0
+  # Multiplier for exponential backoff
+  reconnect_multiplier: 2.0
+
 metrics:
   # VictoriaMetrics write URL
   url: "http://victoriametrics:8428/write"
