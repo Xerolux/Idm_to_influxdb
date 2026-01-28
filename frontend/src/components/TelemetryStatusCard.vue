@@ -74,10 +74,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
-const props = defineProps({
+defineProps({
     sharingEnabled: {
         type: Boolean,
         default: true

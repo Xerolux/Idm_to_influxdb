@@ -620,7 +620,7 @@ const loadDashboards = async () => {
         try {
              const res = await axios.get('/api/dashboards');
              dashboards.value = res.data;
-        } catch (e) {
+        } catch {
              toast.add({
                 severity: 'error',
                 summary: 'Fehler',

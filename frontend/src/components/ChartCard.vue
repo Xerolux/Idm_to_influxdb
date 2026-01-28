@@ -752,8 +752,8 @@ onUnmounted(() => {
     unsubscribeFromMetrics();
 });
 
-const getSubscribedMetrics = (hpId = hpStore.activeHeatpumpId) => {
-    const rawMetrics = props.queries
+const getSubscribedMetrics = (hpId = hpStore.activeHeatpumpId, queries = props.queries) => {
+    const rawMetrics = queries
         .filter(q => !q.type || q.type === 'metric')
         .map(q => q.query);
 
@@ -779,10 +779,18 @@ const unsubscribeFromMetrics = (hpId = hpStore.activeHeatpumpId) => {
     }
 };
 
-watch(() => props.queries, (newVal, oldVal) => {
+watch(() => props.queries, (_, oldVal) => {
     // Note: oldVal might be same object if mutated, but props usually change ref
     // For queries array, we might need deep watch or assume replacement
-    unsubscribeFromMetrics(); // Unsub old metrics (using current ID)
+
+    // Unsubscribe using OLD queries
+    if (oldVal) {
+        const oldMetrics = getSubscribedMetrics(hpStore.activeHeatpumpId, oldVal);
+        if (oldMetrics.length > 0 && wsClient && wsClient.isConnected()) {
+            wsClient.unsubscribe(oldMetrics, props.dashboardId);
+        }
+    }
+
     fetchData();
     subscribeToMetrics(); // Sub new metrics
 });
