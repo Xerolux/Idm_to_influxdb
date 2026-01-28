@@ -4,10 +4,8 @@ Metrics writer for VictoriaMetrics time-series database.
 
 Supports multi-heatpump labeling with heatpump_id, manufacturer, and model tags.
 
-Metric format:
-    idm_heatpump_<sensor_name>{heatpump_id="hp-001",manufacturer="idm",model="navigator_2_0"} <value>
-
-For backwards compatibility, metrics without labels are also supported.
+Metric format (Influx Line Protocol):
+    idm_heatpump,heatpump_id=hp-001,manufacturer=idm <sensor_name>=<value>
 """
 
 import logging
@@ -134,6 +132,12 @@ class MetricsWriter:
         if not measurements:
             return True
 
+        if not isinstance(measurements, dict):
+            logger.warning(
+                f"MetricsWriter received invalid measurements (expected dict, got {type(measurements)})"
+            )
+            return False
+
         # Wrap measurements with metadata
         labeled_data = {
             "_heatpump_id": heatpump_id,
@@ -165,6 +169,12 @@ class MetricsWriter:
         """
         success = True
         for hp_id, values in all_values.items():
+            if not isinstance(values, dict):
+                logger.warning(
+                    f"Skipping metrics write for {hp_id}: values is not a dict ({type(values)})"
+                )
+                continue
+
             hp_config = configs.get(hp_id, {})
             result = self.write_heatpump(
                 heatpump_id=hp_id,
@@ -185,17 +195,31 @@ class MetricsWriter:
         lines = []
 
         for measurements in items:
+            if not isinstance(measurements, dict):
+                continue
+
             # Check for heatpump metadata (new format)
             heatpump_id = measurements.pop("_heatpump_id", None)
             manufacturer = measurements.pop("_manufacturer", None)
             model = measurements.pop("_model", None)
             hp_name = measurements.pop("_name", None)
 
-            # Build labels if we have metadata
+            # Build tag set (Influx format: key=value,key=value)
+            tags = []
             if heatpump_id:
-                labels = self._build_labels(heatpump_id, manufacturer, model, hp_name)
+                tags.append(f"heatpump_id={self._escape_tag(str(heatpump_id))}")
+            if manufacturer:
+                tags.append(f"manufacturer={self._escape_tag(str(manufacturer))}")
+            if model:
+                tags.append(f"model={self._escape_tag(str(model))}")
+            if hp_name:
+                tags.append(f"name={self._escape_tag(str(hp_name))}")
+
+            tag_string = ",".join(tags)
+            if tag_string:
+                measurement_prefix = f"idm_heatpump,{tag_string}"
             else:
-                labels = ""
+                measurement_prefix = "idm_heatpump"
 
             for key, value in measurements.items():
                 # Skip string representation fields
@@ -212,16 +236,15 @@ class MetricsWriter:
 
                 # Only write numeric values
                 if isinstance(value, (int, float)):
-                    # Sanitize metric name
-                    metric_name = self._sanitize_metric_name(key)
-                    full_name = f"idm_heatpump_{metric_name}"
+                    # Influx Line Protocol:
+                    # measurement,tags field=value
+                    # Here we use 'idm_heatpump' as measurement and metric name as field key
 
-                    # InfluxDB line protocol format: name{labels} value [timestamp]
-                    if labels:
-                        lines.append(f"{full_name}{labels} {value}")
-                    else:
-                        # Legacy format without labels
-                        lines.append(f"idm_heatpump {key}={value}")
+                    # Sanitize field key (metric name)
+                    field_key = self._sanitize_metric_name(key)
+
+                    # Construct line: idm_heatpump,tags field_key=value
+                    lines.append(f"{measurement_prefix} {field_key}={value}")
 
         if not lines:
             return False
@@ -229,7 +252,7 @@ class MetricsWriter:
         payload = "\n".join(lines)
 
         try:
-            # VictoriaMetrics /write endpoint
+            # VictoriaMetrics /write endpoint (Influx Line Protocol)
             response = self.session.post(self.url, data=payload, timeout=5)
             if response.status_code in (200, 204):
                 return True
@@ -242,37 +265,20 @@ class MetricsWriter:
             logger.error(f"Exception writing metrics: {e}")
             return False
 
-    def _build_labels(
-        self,
-        heatpump_id: str,
-        manufacturer: Optional[str],
-        model: Optional[str],
-        name: Optional[str],
-    ) -> str:
-        """Build label string for metrics."""
-        labels = [f'heatpump_id="{self._escape_label(heatpump_id)}"']
-
-        if manufacturer:
-            labels.append(f'manufacturer="{self._escape_label(manufacturer)}"')
-        if model:
-            labels.append(f'model="{self._escape_label(model)}"')
-        if name:
-            labels.append(f'name="{self._escape_label(name)}"')
-
-        return "{" + ",".join(labels) + "}"
+    def _escape_tag(self, value: str) -> str:
+        """Escape InfluxDB tag characters (comma, equals, space)."""
+        return value.replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
 
     def _sanitize_metric_name(self, name: str) -> str:
-        """Sanitize a metric name to be valid."""
-        # Replace invalid characters with underscores
+        """Sanitize a metric name to be a valid Influx field key."""
+        # Influx field keys can contain anything if escaped, but sticking to
+        # simpler chars is better for compatibility
+        # We assume standard prometheus-like names, just ensure no spaces or weird chars
         sanitized = re.sub(r"[^a-zA-Z0-9_]", "_", name)
         # Ensure starts with letter or underscore
         if sanitized and sanitized[0].isdigit():
             sanitized = "_" + sanitized
         return sanitized
-
-    def _escape_label(self, value: str) -> str:
-        """Escape special characters in label values."""
-        return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
     def get_status(self) -> dict:
         return {

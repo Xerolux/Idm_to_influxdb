@@ -1591,6 +1591,11 @@ def share_logs():
 
         content = header + "\n".join(lines)
 
+        # Limit size to avoid server rejection (approx 1MB)
+        if len(content) > 1024 * 1024:
+            content = content[-(1024 * 1024) :]
+            content = f"{header}\n[...Logs truncated due to size limit...]\n" + content
+
         privatebin_url = config.get("privatebin.url", "https://paste.blueml.eu")
         link = upload(content, url=privatebin_url)
 
