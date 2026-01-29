@@ -108,9 +108,7 @@ def get_data_pool_stats() -> Dict[str, Any]:
 
     try:
         # Count unique installations (last 30 days)
-        query_installations = (
-            'count(count_over_time(heatpump_metrics{installation_id!=""}[30d]))'
-        )
+        query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
         response = requests.get(
             VM_QUERY_URL, params={"query": query_installations}, timeout=5
         )
@@ -122,7 +120,7 @@ def get_data_pool_stats() -> Dict[str, Any]:
                 )
 
         # Count total data points (last 30 days)
-        query_points = "sum(count_over_time(heatpump_metrics{}[30d]))"
+        query_points = 'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
         response = requests.get(VM_QUERY_URL, params={"query": query_points}, timeout=5)
         if response.status_code == 200:
             data = response.json()
@@ -299,7 +297,7 @@ async def server_status(auth: None = Depends(verify_token)):
     try:
         # Count unique installations (approximate)
         # Using a count query on installation_id tag
-        query = 'count(count_over_time(heatpump_metrics{installation_id!=""}[30d]))'
+        query = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
         response = requests.get(VM_QUERY_URL, params={"query": query})
         installations = 0
         if response.status_code == 200:
@@ -360,7 +358,7 @@ async def check_eligibility(
             return result
 
         # Query: Check if this ID appears in the last 30 days
-        query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
+        query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
         response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
 
         if response.status_code == 200:
@@ -444,7 +442,7 @@ async def download_model(
 
     try:
         # Verify eligibility first
-        query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
+        query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
         response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
 
         eligible = False

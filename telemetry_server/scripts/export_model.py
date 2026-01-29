@@ -9,13 +9,24 @@ import time
 from cryptography.fernet import Fernet
 
 
-def export_model(input_file, output_dir):
+def export_model(input_file, output_dir=None, output_file=None):
     if not os.path.exists(input_file):
         print(f"Error: {input_file} not found")
         return
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Determine destination
+    if output_file:
+        dest = output_file
+        dest_dir = os.path.dirname(dest)
+        if dest_dir and not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+    elif output_dir:
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        dest = os.path.join(output_dir, "model.enc")
+    else:
+        print("Error: Either output_dir or output_file must be provided")
+        return
 
     # Get key from environment or use default (for dev/compat)
     # Ideally should fail if not set in production
@@ -54,7 +65,6 @@ def export_model(input_file, output_dir):
 
     envelope["signature"] = signature
 
-    dest = os.path.join(output_dir, "model.enc")
     with open(dest, "w") as file:
         json.dump(envelope, file, indent=2)
 
@@ -69,4 +79,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    export_model(args.input, args.output_dir)
+    export_model(args.input, output_dir=args.output_dir)

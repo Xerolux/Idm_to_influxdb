@@ -17,6 +17,7 @@ import pickle
 import logging
 import argparse
 import sys
+import os
 from datetime import datetime, timedelta
 from typing import Generator, Dict, Any
 
@@ -26,8 +27,10 @@ from river import compose
 from river import preprocessing
 
 # Configuration
-VM_EXPORT_URL = "http://localhost:8428/api/v1/export"
-VM_QUERY_URL = "http://localhost:8428/api/v1/query_range"
+VM_EXPORT_URL = os.environ.get("VM_EXPORT_URL", "http://localhost:8428/api/v1/export")
+VM_QUERY_URL = os.environ.get(
+    "VM_QUERY_URL", "http://localhost:8428/api/v1/query_range"
+)
 
 # Minimum data requirements
 DEFAULT_MIN_POINTS = 5000
@@ -66,9 +69,9 @@ def fetch_data_stats(model_name: str) -> Dict[str, Any]:
     }
 
     try:
-        # Count data points
+        # Count data points (across all metrics for this model)
         safe_model = model_name.replace(" ", "_")
-        query = f'count(heatpump_metrics{{model="{safe_model}"}})'
+        query = f'count({{__name__=~"heatpump_metrics_.*", model="{safe_model}"}})'
         response = requests.get(
             VM_QUERY_URL.replace("query_range", "query"),
             params={"query": query},
@@ -83,7 +86,7 @@ def fetch_data_stats(model_name: str) -> Dict[str, Any]:
                 )
 
         # Count installations
-        query = f'count(count by (installation_id) (heatpump_metrics{{model="{safe_model}"}}))'
+        query = f'count(count by (installation_id) ({{__name__=~"heatpump_metrics_.*", model="{safe_model}"}}))'
         response = requests.get(
             VM_QUERY_URL.replace("query_range", "query"),
             params={"query": query},
@@ -119,8 +122,9 @@ def stream_training_data(
     start_time = end_time - timedelta(days=lookback_days)
 
     # Export format for VictoriaMetrics
+    # match[] uses regex to select all heatpump metrics for this model
     params = {
-        "match[]": f'heatpump_metrics{{model="{safe_model}"}}',
+        "match[]": f'{{__name__=~"heatpump_metrics_.*", model="{safe_model}"}}',
         "start": int(start_time.timestamp()),
         "end": int(end_time.timestamp()),
     }
@@ -147,6 +151,7 @@ def stream_training_data(
                 timestamps = series.get("timestamps", [])
 
                 # Extract field name from metric
+                # In VM/Influx, metric name is usually measurement_field
                 field_name = metric_info.get("__name__", "").replace(
                     "heatpump_metrics_", ""
                 )
