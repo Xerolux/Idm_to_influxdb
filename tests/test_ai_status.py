@@ -1,3 +1,4 @@
+# Xerolux 2026
 # SPDX-License-Identifier: MIT
 import unittest
 from unittest.mock import MagicMock, patch

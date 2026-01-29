@@ -1,3 +1,4 @@
+# Xerolux 2026
 import pytest
 from unittest.mock import MagicMock, patch
 from idm_logger.metrics import MetricsWriter
@@ -27,10 +28,13 @@ class TestMetricsBatching:
         args, kwargs = mock_requests.post.call_args
         data = kwargs["data"]
 
-        # Verify Line Protocol format
-        assert "idm_heatpump sensor1=10" in data
-        assert "idm_heatpump sensor2=20" in data
-        assert "idm_heatpump sensor3=30.5" in data
+        # Verify Line Protocol format - now includes tags
+        # Format: idm_heatpump,tag1=val,tag2=val sensor=value
+        assert "idm_heatpump" in data
+        assert "sensor1=10" in data
+        assert "sensor2=20" in data
+        assert "sensor3=30.5" in data
+        assert "installation_id=" in data
         assert len(data.splitlines()) == 3
 
         writer.stop()
@@ -46,7 +50,8 @@ class TestMetricsBatching:
         args, kwargs = mock_requests.post.call_args
         payload = kwargs["data"]
 
-        assert "idm_heatpump sensor1=10" in payload
+        assert "idm_heatpump" in payload
+        assert "sensor1=10" in payload
         assert "\n" not in payload.strip()
 
         writer.stop()

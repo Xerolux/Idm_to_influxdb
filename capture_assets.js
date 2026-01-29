@@ -1,3 +1,4 @@
+// Xerolux 2026
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs');

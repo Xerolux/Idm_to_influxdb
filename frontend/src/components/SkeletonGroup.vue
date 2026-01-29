@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
-import SkeletonLoader from './SkeletonLoader.vue';
+// Xerolux 2026
+import { computed } from 'vue'
+import SkeletonLoader from './SkeletonLoader.vue'
 
 const props = defineProps({
   title: {
@@ -15,9 +16,9 @@ const props = defineProps({
     type: String,
     default: 'card' // card, list, table
   }
-});
+})
 
-const skeletonItems = computed(() => Array.from({ length: props.count }, (_, i) => i));
+const skeletonItems = computed(() => Array.from({ length: props.count }, (_, i) => i))
 </script>
 
 <template>

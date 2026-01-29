@@ -1,3 +1,4 @@
+// Xerolux 2026
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
