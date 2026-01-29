@@ -2735,7 +2735,6 @@ def run_web(modbus_client, scheduler):
 
     # Start background tasks
     _start_ai_status_thread()
-    telemetry_manager.start(scheduler)
 
     if config.get("web.enabled"):
         host = config.get("web.host", "0.0.0.0")

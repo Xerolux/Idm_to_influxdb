@@ -47,7 +47,7 @@
                     <div class="p-inputgroup flex-1">
                       <span class="p-inputgroup-addon">ID</span>
                       <InputText v-model="config.installation_id" readonly class="w-full font-mono bg-gray-800" />
-                      <Button icon="pi pi-copy" severity="secondary" @click="() => { navigator.clipboard.writeText(config.installation_id); toast.add({severity:'info', summary:'Kopiert', detail:'ID in Zwischenablage kopiert', life:2000}) }" />
+                      <Button icon="pi pi-copy" severity="secondary" @click="copyId" />
                     </div>
                   </div>
                 </div>
@@ -1057,6 +1057,7 @@ import SelectButton from 'primevue/selectbutton'
 import Dropdown from 'primevue/dropdown'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { copyToClipboard } from '../utils/clipboard'
 import PrivacyPolicyDialog from '../components/PrivacyPolicyDialog.vue'
 
 const config = ref({
@@ -1137,6 +1138,15 @@ const manufacturers = ref([])
 const privacyDialog = ref(null)
 
 let aiStatusInterval = null
+
+const copyId = async () => {
+  const success = await copyToClipboard(config.value.installation_id)
+  if (success) {
+    toast.add({ severity: 'info', summary: 'Kopiert', detail: 'ID in Zwischenablage kopiert', life: 2000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht kopiert werden', life: 3000 })
+  }
+}
 
 const passwordMismatch = computed(() => {
   return newPassword.value && confirmPassword.value && newPassword.value !== confirmPassword.value

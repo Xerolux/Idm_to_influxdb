@@ -56,43 +56,42 @@ class TelemetryManager:
         config.save()
 
     def start(self, scheduler=None):
+        """
+        Start the telemetry manager.
+        The `scheduler` argument is kept for compatibility but ignored if it's the custom Modbus scheduler.
+        Telemetry uses its own internal thread/scheduler for background tasks.
+        """
         if self.running:
             return
 
         self.running = True
 
-        if scheduler:
+        # Start internal loop thread
+        self.thread = threading.Thread(target=self._run_loop, daemon=True)
+        self.thread.start()
+        logger.info("Telemetry Manager started")
+
+    def _run_loop(self):
+        """Internal loop to check for scheduled tasks."""
+        # Use simple schedule library if available, or manual loop
+        import schedule
+
+        # Schedule jobs
+        # Run submission every 24 hours (e.g., at 02:00)
+        schedule.every().day.at("02:00").do(self.submit_data_job)
+
+        # Run model check every 24 hours (e.g., at 04:00)
+        schedule.every().day.at("04:00").do(self.check_model_job)
+
+        logger.info("Telemetry jobs scheduled")
+
+        while self.running:
             try:
-                # Schedule jobs using APScheduler
-                # Run submission every 24 hours (e.g., at 02:00)
-                # Check if job exists to avoid duplicates if re-added?
-                # APScheduler replace_existing=True usually handles it if id matches.
-
-                scheduler.add_job(
-                    func=self.submit_data_job,
-                    trigger="cron",
-                    hour=2,
-                    minute=0,
-                    id="telemetry_submit",
-                    replace_existing=True,
-                )
-
-                # Run model check every 24 hours (e.g., at 04:00)
-                scheduler.add_job(
-                    func=self.check_model_job,
-                    trigger="cron",
-                    hour=4,
-                    minute=0,
-                    id="telemetry_check",
-                    replace_existing=True,
-                )
-                logger.info("Telemetry Manager scheduled jobs (APScheduler)")
+                schedule.run_pending()
+                time.sleep(60)
             except Exception as e:
-                logger.error(f"Failed to schedule telemetry jobs: {e}")
-        else:
-            logger.warning(
-                "No scheduler provided to Telemetry Manager. Automatic tasks disabled."
-            )
+                logger.error(f"Telemetry loop error: {e}")
+                time.sleep(60)
 
     def stop(self):
         self.running = False

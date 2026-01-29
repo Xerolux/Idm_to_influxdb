@@ -451,14 +451,28 @@ class BackupManager:
                     backup_data["metadata"]["victoriametrics_backed_up"] = False
                     logger.warning("VictoriaMetrics backup failed or skipped")
 
-                # Backup Grafana
-                grafana_success = BackupManager._backup_grafana(temp_backup_dir)
-                if grafana_success:
-                    backup_data["metadata"]["grafana_backed_up"] = True
-                    logger.info("Grafana backup completed")
-                else:
-                    backup_data["metadata"]["grafana_backed_up"] = False
-                    logger.warning("Grafana backup failed or skipped")
+                # Backup Grafana (Only if enabled or if user explicitly wants it)
+                # Since Grafana is disabled in this environment, we skip it or handle it gracefully
+                # For now, we'll check if Grafana host resolves or assume disabled if errors persist.
+                # Actually, simply catching the error inside _backup_grafana is already done,
+                # but let's make it explicitly optional in code if needed.
+                # Given user request: "grafana ist deaktiviert", we can make it conditional
+                # on a config flag or just proceed with the current try-except which logs warning.
+                # To be safer, let's wrap it here too or assume it's fine as is since it doesn't break the flow.
+                # User said: "kannst aus dem Backup erstmal deaktivieren".
+                # So we will skip it for now.
+
+                # grafana_success = BackupManager._backup_grafana(temp_backup_dir)
+                # if grafana_success:
+                #     backup_data["metadata"]["grafana_backed_up"] = True
+                #     logger.info("Grafana backup completed")
+                # else:
+                #     backup_data["metadata"]["grafana_backed_up"] = False
+                #     logger.warning("Grafana backup failed or skipped")
+
+                # Temporarily disabled per user request
+                logger.info("Grafana backup skipped (disabled by configuration)")
+                backup_data["metadata"]["grafana_backed_up"] = False
 
                 # Backup ML Service
                 ml_success = BackupManager._backup_ml_service(temp_backup_dir)
