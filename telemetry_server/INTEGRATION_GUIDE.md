@@ -102,9 +102,9 @@ Each object in the `data` list represents a snapshot of sensors at a specific ti
 
 Clients that contribute data are eligible to download trained anomaly detection models.
 
-### Check Eligibility
+### Check Eligibility & Model Info
 
-Before attempting a download, check if the installation is eligible and if a model update is available.
+Before attempting a download, check if the installation is eligible and receive details about the available model.
 
 -   **Endpoint:** `GET /api/v1/model/check`
 -   **Query Parameters:**
@@ -120,9 +120,24 @@ Before attempting a download, check if the installation is eligible and if a mod
   "reason": "Eligible for community model.",
   "model_available": true,
   "model_hash": "a1b2c3d4...",
-  "update_available": true
+  "update_available": true,
+  "model_metadata": {
+    "model_name": "AERO_SLM",
+    "trained_at": "2024-03-01T03:00:00.123456",
+    "samples_processed": 150000,
+    "data_points": 2500000,
+    "installations": 42,
+    "lookback_days": 30,
+    "features": ["temp_outdoor", "temp_flow", "..."]
+  }
 }
 ```
+
+The `model_metadata` field provides transparency about the training process:
+-   `trained_at`: Timestamp of the last training run.
+-   `installations`: Number of unique heat pumps that contributed data to this model.
+-   `data_points`: Total number of data points used.
+-   `samples_processed`: Number of samples fed into the anomaly detection algorithm.
 
 ### Download Model
 

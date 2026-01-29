@@ -9,6 +9,7 @@ import time
 import hashlib
 import re
 import uuid
+import json
 from pathlib import Path
 from collections import defaultdict
 from analysis import get_community_averages
@@ -223,7 +224,13 @@ async def submit_telemetry(
     """
     Ingest telemetry data and forward to VictoriaMetrics.
     """
-    raw_ip = request.client.host if request.client else "unknown"
+    # Prefer X-Forwarded-For if behind proxy, else fallback to direct connection
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        raw_ip = forwarded.split(",")[0].strip()
+    else:
+        raw_ip = request.client.host if request.client else "unknown"
+
     client_ip = mask_ip(raw_ip)
 
     # Rate limiting
@@ -339,6 +346,7 @@ async def check_eligibility(
             "reason": "",
             "reason_de": "",
             "model_hash": None,
+            "model_metadata": None,
             "model_available": False,
             "update_available": False,
             "data_pool": get_data_pool_stats(),
@@ -379,20 +387,32 @@ async def check_eligibility(
         # Check for model availability and hash
         model_dir = Path(MODEL_DIR)
         model_file = None
+        metadata_file = None
 
         if model:
             # Look for model-specific file
             safe_model_name = model.replace(" ", "_").replace("/", "_")
             model_file = model_dir / f"{safe_model_name}.enc"
+            metadata_file = model_dir / f"{safe_model_name}_metadata.json"
             if not model_file.exists():
                 # Fall back to generic model
                 model_file = model_dir / "community_model.enc"
+                metadata_file = model_dir / "community_model_metadata.json"
         else:
             model_file = model_dir / "community_model.enc"
+            metadata_file = model_dir / "community_model_metadata.json"
 
         if model_file and model_file.exists():
             result["model_available"] = True
             result["model_hash"] = get_file_hash(str(model_file))
+
+            # Load metadata if available
+            if metadata_file and metadata_file.exists():
+                try:
+                    with open(metadata_file, "r") as f:
+                        result["model_metadata"] = json.load(f)
+                except Exception as e:
+                    logger.warning(f"Failed to load metadata from {metadata_file}: {e}")
 
             # Check if update is needed
             if current_hash and result["model_hash"]:
