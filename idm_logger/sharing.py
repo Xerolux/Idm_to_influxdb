@@ -1,3 +1,4 @@
+# Xerolux 2026
 """
 Dashboard Sharing Module
 

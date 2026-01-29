@@ -1,3 +1,4 @@
+# Xerolux 2026
 services:
   idm-logger:
     image: ghcr.io/xerolux/idm-metrics-collector:latest

@@ -1,3 +1,4 @@
+# Xerolux 2026
 from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, validator

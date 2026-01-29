@@ -1,3 +1,4 @@
+# Xerolux 2026
 import http.server
 import socketserver
 import os

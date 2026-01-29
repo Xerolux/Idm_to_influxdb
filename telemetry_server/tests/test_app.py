@@ -1,3 +1,4 @@
+# Xerolux 2026
 from unittest.mock import patch, MagicMock
 
 # ... existing tests ...
