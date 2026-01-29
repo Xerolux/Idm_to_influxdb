@@ -161,6 +161,66 @@
                 </div>
               </div>
             </Fieldset>
+
+            <Fieldset legend="Community Daten & Telemetrie" :toggleable="true">
+              <template #legend>
+                <div class="flex items-center gap-2">
+                  <Checkbox v-model="config.telemetry.enabled" binary />
+                  <span class="font-bold">Community Modell nutzen</span>
+                </div>
+              </template>
+
+              <div v-if="config.telemetry.enabled" class="flex flex-col gap-6">
+                <div class="bg-purple-900/20 border border-purple-600/50 p-4 rounded flex flex-col gap-3">
+                  <div class="flex items-start gap-3">
+                    <i class="pi pi-users text-purple-400 text-xl mt-1"></i>
+                    <div class="text-sm text-purple-200">
+                      Durch die Teilnahme am Community-Programm hilfst du, das Anomalie-Erkennungsmodell für alle zu verbessern.
+                      Deine Daten werden anonymisiert (IP-Masking) übertragen.
+                      <br><br>
+                      <strong>Vorteil:</strong> Du erhältst Zugriff auf vortrainierte Modelle ("Community Model"), die auf Daten vieler Wärmepumpen basieren.
+                      Dies ist besonders hilfreich, wenn du noch nicht genügend eigene Daten (weniger als 1 Woche) hast.
+                    </div>
+                  </div>
+                  <div class="flex justify-end">
+                    <Button label="Datenschutz-Details" icon="pi pi-shield" size="small" text @click="privacyDialog.open()" />
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <label>Auth Token (Optional / Shared Secret)</label>
+                  <InputText v-model="config.telemetry.auth_token" type="password" class="w-full md:w-1/2" placeholder="Token falls erforderlich" />
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-2">
+                  <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
+                    <i class="pi pi-cloud"></i> Telemetrie Status
+                  </h4>
+                  <div v-if="telemetryStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="flex justify-between border-b border-gray-700 py-2">
+                      <span class="text-gray-400">Server:</span>
+                      <span class="font-mono truncate max-w-[150px]">{{ telemetryStatus.server_url }}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-700 py-2">
+                      <span class="text-gray-400">Letzte Übertragung:</span>
+                      <span class="font-mono">{{ telemetryStatus.last_submission ? new Date(telemetryStatus.last_submission * 1000).toLocaleString() : 'Nie' }}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-700 py-2">
+                      <span class="text-gray-400">Letzter Modell-Check:</span>
+                      <span class="font-mono">{{ telemetryStatus.last_model_check ? new Date(telemetryStatus.last_model_check * 1000).toLocaleString() : 'Nie' }}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-700 py-2">
+                      <span class="text-gray-400">Manuelle Downloads heute:</span>
+                      <span class="font-mono">{{ telemetryStatus.manual_downloads_today }} / 3</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-4">
+                    <Button label="Daten jetzt senden" icon="pi pi-upload" size="small" severity="secondary" @click="manualSubmitTelemetry" :loading="submittingTelemetry" />
+                    <Button label="Modell prüfen & laden" icon="pi pi-download" size="small" severity="help" @click="manualCheckModel" :loading="checkingModel" :disabled="telemetryStatus?.manual_downloads_today >= 3" />
+                  </div>
+                </div>
+              </div>
+            </Fieldset>
           </div>
 
           <!-- MQTT -->
@@ -976,6 +1036,7 @@
 
     <Toast />
     <ConfirmDialog />
+    <PrivacyPolicyDialog ref="privacyDialog" />
   </div>
 </template>
 
@@ -996,6 +1057,7 @@ import SelectButton from 'primevue/selectbutton'
 import Dropdown from 'primevue/dropdown'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import PrivacyPolicyDialog from '../components/PrivacyPolicyDialog.vue'
 
 const config = ref({
   installation_id: '',
@@ -1031,6 +1093,7 @@ const config = ref({
   },
   webdav: { enabled: false, url: '', username: '' },
   ai: { enabled: false, sensitivity: 3.0, model: 'rolling' },
+  telemetry: { enabled: true, auth_token: '' },
   updates: { enabled: false, interval_hours: 12, mode: 'apply', target: 'all' },
   backup: { enabled: false, interval: 24, retention: 10, auto_upload: false }
 })
@@ -1059,8 +1122,11 @@ const emailRecipientsText = ref('')
 const updateStatus = ref({})
 const signalStatus = ref({})
 const aiStatus = ref(null)
+const telemetryStatus = ref(null)
 const statusLoading = ref(false)
 const checkingUpdates = ref(false)
+const checkingModel = ref(false)
+const submittingTelemetry = ref(false)
 const currentClientIP = ref('')
 const loading = ref(true)
 const saving = ref(false)
@@ -1068,6 +1134,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const models = ref([])
 const manufacturers = ref([])
+const privacyDialog = ref(null)
 
 let aiStatusInterval = null
 
@@ -1142,9 +1209,13 @@ onMounted(async () => {
     loadBackups()
     loadStatus(true) // Show notification on initial load
     loadAiStatus()
+    loadTelemetryStatus()
 
     // Refresh AI status periodically
-    aiStatusInterval = setInterval(loadAiStatus, 10000)
+    aiStatusInterval = setInterval(() => {
+      loadAiStatus()
+      loadTelemetryStatus()
+    }, 10000)
   } catch (e) {
     console.error(e)
     toast.add({
@@ -1270,6 +1341,41 @@ const loadAiStatus = async () => {
   }
 }
 
+const loadTelemetryStatus = async () => {
+  try {
+    const res = await axios.get('/api/telemetry/status')
+    telemetryStatus.value = res.data
+  } catch (e) {
+    console.error('Failed to load Telemetry status', e)
+  }
+}
+
+const manualSubmitTelemetry = async () => {
+  submittingTelemetry.value = true
+  try {
+    const res = await axios.post('/api/telemetry/submit')
+    toast.add({ severity: 'success', summary: 'Erfolg', detail: res.data.message, life: 3000 })
+    loadTelemetryStatus()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.message || e.message, life: 5000 })
+  } finally {
+    submittingTelemetry.value = false
+  }
+}
+
+const manualCheckModel = async () => {
+  checkingModel.value = true
+  try {
+    const res = await axios.post('/api/telemetry/check')
+    toast.add({ severity: 'success', summary: 'Erfolg', detail: res.data.message, life: 3000 })
+    loadTelemetryStatus()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Fehler', detail: e.response?.data?.error || e.message, life: 5000 })
+  } finally {
+    checkingModel.value = false
+  }
+}
+
 const saveConfig = async () => {
   saving.value = true
   try {
@@ -1321,6 +1427,8 @@ const saveConfig = async () => {
       ai_enabled: config.value.ai?.enabled || false,
       ai_sensitivity: config.value.ai?.sensitivity || 3.0,
       ai_model: config.value.ai?.model || 'rolling',
+      telemetry_enabled: config.value.telemetry?.enabled || false,
+      telemetry_auth_token: config.value.telemetry?.auth_token || '',
       updates_enabled: config.value.updates?.enabled || false,
       updates_interval_hours: config.value.updates?.interval_hours || 12,
       updates_mode: config.value.updates?.mode || 'apply',
