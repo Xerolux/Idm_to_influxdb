@@ -10,7 +10,7 @@ from datetime import datetime
 from river import anomaly
 from river import preprocessing
 from river import compose
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import sys
 
 # Use joblib for safer model serialization (no arbitrary code execution)
@@ -88,6 +88,7 @@ last_model_save = time.time()
 current_mode = "unknown"
 last_data_points = {}  # Store previous values for delta calculation
 consecutive_anomalies = 0
+model_lock = threading.Lock()
 
 # Connection health tracking
 connection_stats = {
@@ -131,6 +132,46 @@ def health():
             },
         }
     ), 200
+
+
+@health_app.route("/model/upload", methods=["POST"])
+def upload_model():
+    """
+    Endpoint to receive a new model file (decrypted) and reload.
+    Protected by INTERNAL_API_KEY check if possible, or just open within internal network.
+    """
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "No selected file"}), 400
+
+        # Optional: Check secret header if supplied by client
+        # secret = request.headers.get("X-Internal-Secret")
+        # if INTERNAL_API_KEY and secret != INTERNAL_API_KEY:
+        #    return jsonify({"error": "Unauthorized"}), 401
+
+        logger.info("Receiving new model file via API...")
+
+        # Save to temporary location first to avoid corruption
+        temp_path = MODEL_PATH + ".tmp"
+        file.save(temp_path)
+
+        # Move to actual location (atomic on POSIX)
+        os.replace(temp_path, MODEL_PATH)
+
+        # Reload
+        if load_model_state():
+            return jsonify(
+                {"success": True, "message": "Model updated and reloaded"}
+            ), 200
+        else:
+            return jsonify({"error": "Failed to load uploaded model"}), 500
+
+    except Exception as e:
+        logger.error(f"Model upload failed: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 def get_all_readable_sensors():
@@ -213,11 +254,12 @@ def save_model_state():
     """Save model state to disk for persistence across restarts."""
     try:
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        if USE_JOBLIB:
-            joblib.dump(models, MODEL_PATH)
-        else:
-            with open(MODEL_PATH, "wb") as f:
-                pickle.dump(models, f)
+        with model_lock:
+            if USE_JOBLIB:
+                joblib.dump(models, MODEL_PATH)
+            else:
+                with open(MODEL_PATH, "wb") as f:
+                    pickle.dump(models, f)
         logger.info(f"Model state saved to {MODEL_PATH}")
         return True
     except Exception as e:
@@ -230,25 +272,26 @@ def load_model_state():
     global models, model_trained
     try:
         if os.path.exists(MODEL_PATH):
-            if USE_JOBLIB:
-                loaded = joblib.load(MODEL_PATH)
-            else:
-                with open(MODEL_PATH, "rb") as f:
-                    loaded = pickle.load(f)
+            with model_lock:
+                if USE_JOBLIB:
+                    loaded = joblib.load(MODEL_PATH)
+                else:
+                    with open(MODEL_PATH, "rb") as f:
+                        loaded = pickle.load(f)
 
-            if isinstance(loaded, dict) and all(k in loaded for k in MODES):
-                models = loaded
-                logger.info(f"Multi-mode model state loaded from {MODEL_PATH}")
-            else:
-                logger.warning(
-                    "Legacy model state found (single model). Starting fresh with multi-mode models."
-                )
-                # We could try to migrate, but a generic model is bad for specific modes.
-                # Better to start fresh.
+                if isinstance(loaded, dict) and all(k in loaded for k in MODES):
+                    models = loaded
+                    logger.info(f"Multi-mode model state loaded from {MODEL_PATH}")
+                else:
+                    logger.warning(
+                        "Legacy model state found (single model). Starting fresh with multi-mode models."
+                    )
+                    # We could try to migrate, but a generic model is bad for specific modes.
+                    # Better to start fresh.
 
-            # Assume if we loaded something valid, we have some training.
-            # Realistically, we should check per model, but this flag is for global health.
-            model_trained = True
+                # Assume if we loaded something valid, we have some training.
+                # Realistically, we should check per model, but this flag is for global health.
+                model_trained = True
             return True
         else:
             logger.info("No saved model state found, starting fresh")
@@ -636,11 +679,12 @@ def job():
             logger.warning(f"Unknown mode '{mode}' detected. Using standby model.")
             mode = "standby"
 
-        active_model = models[mode]
+        with model_lock:
+            active_model = models[mode]
 
-        # Update model
-        score = active_model.score_one(data)
-        active_model.learn_one(data)
+            # Update model
+            score = active_model.score_one(data)
+            active_model.learn_one(data)
 
         # Warm-up Logic
         if not model_trained:

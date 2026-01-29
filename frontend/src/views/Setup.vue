@@ -101,6 +101,18 @@
             </div>
           </div>
 
+          <div class="flex flex-col gap-2 border-t border-gray-700 pt-4">
+            <div class="flex items-center gap-2">
+              <Checkbox v-model="form.telemetry_enabled" binary inputId="telemetry" />
+              <label for="telemetry" class="font-bold">Community Daten & KI (Empfohlen)</label>
+            </div>
+            <p class="text-xs text-gray-400 ml-8">
+              Aktiviere die Übermittlung anonymisierter Daten, um das Community-Modell zur Anomalie-Erkennung zu nutzen.
+              Dies verbessert die Genauigkeit der KI für alle.
+              <a href="#" @click.prevent="privacyDialog.open()" class="text-blue-400 hover:text-blue-300 underline">Mehr Infos</a>
+            </p>
+          </div>
+
           <div class="flex items-center gap-2 border-t border-gray-700 pt-4">
             <Checkbox v-model="privacyAccepted" binary inputId="privacy" />
             <label for="privacy" class="text-sm">
@@ -163,6 +175,7 @@ const form = ref({
   circuits: ['A'],
   zones: [],
   metrics_url: 'http://victoriametrics:8428/write',
+  telemetry_enabled: true,
   password: ''
 })
 
