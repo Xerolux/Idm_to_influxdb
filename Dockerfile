@@ -8,7 +8,8 @@ RUN mkdir -p idm_logger/static
 WORKDIR /app/frontend
 # Install dependencies and build
 ENV CI=true
-RUN npm install -g pnpm && pnpm install && pnpm run build
+ARG CACHEBUST=1
+RUN echo "Cachebust: $CACHEBUST" && npm install -g pnpm && pnpm install && pnpm run build
 
 # Stage 2: Runtime
 FROM python:3.12-slim
