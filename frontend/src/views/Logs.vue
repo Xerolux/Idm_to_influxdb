@@ -74,6 +74,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
+import { copyToClipboard } from '../utils/clipboard'
 
 const toast = useToast()
 const logs = ref([])
@@ -154,14 +155,23 @@ const shareLogs = async () => {
   }
 }
 
-const copyLink = () => {
-  navigator.clipboard.writeText(shareLink.value)
-  toast.add({
-    severity: 'success',
-    summary: 'Kopiert',
-    detail: 'Link in die Zwischenablage kopiert',
-    life: 2000
-  })
+const copyLink = async () => {
+  const success = await copyToClipboard(shareLink.value)
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Kopiert',
+      detail: 'Link in die Zwischenablage kopiert',
+      life: 2000
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Kopieren fehlgeschlagen. Bitte manuell kopieren.',
+      life: 3000
+    })
+  }
 }
 
 const getLevelColor = (level) => {
