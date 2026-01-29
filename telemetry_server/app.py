@@ -9,6 +9,7 @@ import time
 import hashlib
 import re
 import uuid
+import json
 from pathlib import Path
 from collections import defaultdict
 from analysis import get_community_averages
@@ -107,9 +108,7 @@ def get_data_pool_stats() -> Dict[str, Any]:
 
     try:
         # Count unique installations (last 30 days)
-        query_installations = (
-            'count(count_over_time(heatpump_metrics{installation_id!=""}[30d]))'
-        )
+        query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
         response = requests.get(
             VM_QUERY_URL, params={"query": query_installations}, timeout=5
         )
@@ -121,7 +120,7 @@ def get_data_pool_stats() -> Dict[str, Any]:
                 )
 
         # Count total data points (last 30 days)
-        query_points = "sum(count_over_time(heatpump_metrics{}[30d]))"
+        query_points = 'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
         response = requests.get(VM_QUERY_URL, params={"query": query_points}, timeout=5)
         if response.status_code == 200:
             data = response.json()
@@ -225,7 +224,13 @@ async def submit_telemetry(
     """
     Ingest telemetry data and forward to VictoriaMetrics.
     """
-    raw_ip = request.client.host if request.client else "unknown"
+    # Prefer X-Forwarded-For if behind proxy, else fallback to direct connection
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        raw_ip = forwarded.split(",")[0].strip()
+    else:
+        raw_ip = request.client.host if request.client else "unknown"
+
     client_ip = mask_ip(raw_ip)
 
     # Rate limiting
@@ -298,7 +303,7 @@ async def server_status(auth: None = Depends(verify_token)):
     try:
         # Count unique installations (approximate)
         # Using a count query on installation_id tag
-        query = 'count(count_over_time(heatpump_metrics{installation_id!=""}[30d]))'
+        query = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
         response = requests.get(VM_QUERY_URL, params={"query": query})
         installations = 0
         if response.status_code == 200:
@@ -341,6 +346,7 @@ async def check_eligibility(
             "reason": "",
             "reason_de": "",
             "model_hash": None,
+            "model_metadata": None,
             "model_available": False,
             "update_available": False,
             "data_pool": get_data_pool_stats(),
@@ -359,7 +365,7 @@ async def check_eligibility(
             return result
 
         # Query: Check if this ID appears in the last 30 days
-        query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
+        query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
         response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
 
         if response.status_code == 200:
@@ -381,20 +387,32 @@ async def check_eligibility(
         # Check for model availability and hash
         model_dir = Path(MODEL_DIR)
         model_file = None
+        metadata_file = None
 
         if model:
             # Look for model-specific file
             safe_model_name = model.replace(" ", "_").replace("/", "_")
             model_file = model_dir / f"{safe_model_name}.enc"
+            metadata_file = model_dir / f"{safe_model_name}_metadata.json"
             if not model_file.exists():
                 # Fall back to generic model
                 model_file = model_dir / "community_model.enc"
+                metadata_file = model_dir / "community_model_metadata.json"
         else:
             model_file = model_dir / "community_model.enc"
+            metadata_file = model_dir / "community_model_metadata.json"
 
         if model_file and model_file.exists():
             result["model_available"] = True
             result["model_hash"] = get_file_hash(str(model_file))
+
+            # Load metadata if available
+            if metadata_file and metadata_file.exists():
+                try:
+                    with open(metadata_file, "r") as f:
+                        result["model_metadata"] = json.load(f)
+                except Exception as e:
+                    logger.warning(f"Failed to load metadata from {metadata_file}: {e}")
 
             # Check if update is needed
             if current_hash and result["model_hash"]:
@@ -443,7 +461,7 @@ async def download_model(
 
     try:
         # Verify eligibility first
-        query = f'last_over_time(heatpump_metrics{{installation_id="{installation_id}"}}[30d])'
+        query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
         response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
 
         eligible = False
