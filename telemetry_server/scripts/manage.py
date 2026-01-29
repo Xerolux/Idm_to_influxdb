@@ -1,3 +1,4 @@
+# Xerolux 2026
 import requests
 import argparse
 import os

@@ -1,3 +1,4 @@
+# Xerolux 2026
 import pytest
 from fastapi.testclient import TestClient
 import os

@@ -1,62 +1,63 @@
-import { defineStore } from 'pinia';
+// Xerolux 2026
+import { defineStore } from 'pinia'
 
-const editModeStorageKey = 'dashboard_edit_mode';
-const darkModeStorageKey = 'dashboard_dark_mode';
+const editModeStorageKey = 'dashboard_edit_mode'
+const darkModeStorageKey = 'dashboard_dark_mode'
 
 export const useUiStore = defineStore('ui', {
-    state: () => ({
-        editMode: false,
-        darkMode: false,
-        initialized: false
-    }),
-    actions: {
-        init() {
-            if (this.initialized) return;
-            if (typeof window !== 'undefined') {
-                const stored = window.localStorage.getItem(editModeStorageKey);
-                this.editMode = stored === 'true';
+  state: () => ({
+    editMode: false,
+    darkMode: false,
+    initialized: false
+  }),
+  actions: {
+    init() {
+      if (this.initialized) return
+      if (typeof window !== 'undefined') {
+        const stored = window.localStorage.getItem(editModeStorageKey)
+        this.editMode = stored === 'true'
 
-                // Check dark mode preference
-                const storedDarkMode = window.localStorage.getItem(darkModeStorageKey);
-                if (storedDarkMode !== null) {
-                    this.darkMode = storedDarkMode === 'true';
-                } else {
-                    // Default to system preference
-                    this.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                }
-
-                // Listen for system preference changes
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (window.localStorage.getItem(darkModeStorageKey) === null) {
-                        this.darkMode = e.matches;
-                    }
-                });
-            }
-            this.initialized = true;
-        },
-        setEditMode(value) {
-            this.editMode = value;
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(editModeStorageKey, `${value}`);
-            }
-        },
-        toggleEditMode() {
-            this.setEditMode(!this.editMode);
-        },
-        setDarkMode(value) {
-            this.darkMode = value;
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(darkModeStorageKey, `${value}`);
-            }
-            // Apply dark mode class to document
-            if (value) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        },
-        toggleDarkMode() {
-            this.setDarkMode(!this.darkMode);
+        // Check dark mode preference
+        const storedDarkMode = window.localStorage.getItem(darkModeStorageKey)
+        if (storedDarkMode !== null) {
+          this.darkMode = storedDarkMode === 'true'
+        } else {
+          // Default to system preference
+          this.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
         }
+
+        // Listen for system preference changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+          if (window.localStorage.getItem(darkModeStorageKey) === null) {
+            this.darkMode = e.matches
+          }
+        })
+      }
+      this.initialized = true
+    },
+    setEditMode(value) {
+      this.editMode = value
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(editModeStorageKey, `${value}`)
+      }
+    },
+    toggleEditMode() {
+      this.setEditMode(!this.editMode)
+    },
+    setDarkMode(value) {
+      this.darkMode = value
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(darkModeStorageKey, `${value}`)
+      }
+      // Apply dark mode class to document
+      if (value) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    },
+    toggleDarkMode() {
+      this.setDarkMode(!this.darkMode)
     }
-});
+  }
+})

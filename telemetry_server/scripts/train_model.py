@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Xerolux 2026
 """
 Community Model Training Script for IDM Telemetry Server.
 

@@ -1,3 +1,4 @@
+// Xerolux 2026
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -70,11 +71,11 @@ router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
   if (to.meta.requiresAuth) {
-     const valid = await auth.checkAuth()
-     if (!valid) {
-         next('/login')
-         return
-     }
+    const valid = await auth.checkAuth()
+    if (!valid) {
+      next('/login')
+      return
+    }
   }
   next()
 })

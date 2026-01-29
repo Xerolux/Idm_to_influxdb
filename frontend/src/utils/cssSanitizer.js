@@ -1,3 +1,4 @@
+// Xerolux 2026
 /**
  * CSS Sanitizer - Removes potentially dangerous CSS constructs
  *
@@ -10,40 +11,40 @@
 
 // Dangerous patterns that could execute code or load external resources
 const DANGEROUS_PATTERNS = [
-    // JavaScript in URLs
-    /url\s*\(\s*["']?\s*javascript\s*:/gi,
-    /url\s*\(\s*["']?\s*data\s*:\s*text\/html/gi,
-    /url\s*\(\s*["']?\s*vbscript\s*:/gi,
+  // JavaScript in URLs
+  /url\s*\(\s*["']?\s*javascript\s*:/gi,
+  /url\s*\(\s*["']?\s*data\s*:\s*text\/html/gi,
+  /url\s*\(\s*["']?\s*vbscript\s*:/gi,
 
-    // IE expression() - executes JavaScript
-    /expression\s*\(/gi,
+  // IE expression() - executes JavaScript
+  /expression\s*\(/gi,
 
-    // External resource loading
-    /@import/gi,
+  // External resource loading
+  /@import/gi,
 
-    // IE behavior property - loads HTC files
-    /behavior\s*:/gi,
+  // IE behavior property - loads HTC files
+  /behavior\s*:/gi,
 
-    // Firefox XBL binding
-    /-moz-binding\s*:/gi,
+  // Firefox XBL binding
+  /-moz-binding\s*:/gi,
 
-    // Webkit mask with external URL (potential data exfiltration)
-    /-webkit-mask\s*:\s*url\s*\([^)]*https?:/gi,
+  // Webkit mask with external URL (potential data exfiltration)
+  /-webkit-mask\s*:\s*url\s*\([^)]*https?:/gi,
 
-    // HTML comments that might break out of style tag
-    /<!--/g,
-    /-->/g,
+  // HTML comments that might break out of style tag
+  /<!--/g,
+  /-->/g,
 
-    // Script injection attempts
-    /<\s*\/?script/gi,
-    /<\s*\/?style/gi,
+  // Script injection attempts
+  /<\s*\/?script/gi,
+  /<\s*\/?style/gi,
 
-    // Unicode escapes that might bypass filters
-    /\\0{0,4}(4a|4A|6a|6A)/g,  // 'j' for javascript
-];
+  // Unicode escapes that might bypass filters
+  /\\0{0,4}(4a|4A|6a|6A)/g // 'j' for javascript
+]
 
 // Patterns for external URLs (warn but allow with sanitization)
-const EXTERNAL_URL_PATTERN = /url\s*\(\s*["']?\s*https?:\/\//gi;
+const EXTERNAL_URL_PATTERN = /url\s*\(\s*["']?\s*https?:\/\//gi
 
 /**
  * Sanitize CSS input by removing dangerous patterns
@@ -55,49 +56,49 @@ const EXTERNAL_URL_PATTERN = /url\s*\(\s*["']?\s*https?:\/\//gi;
  * @returns {{ sanitized: string, warnings: string[], blocked: string[] }}
  */
 export function sanitizeCss(css, options = {}) {
-    const { allowExternalUrls = false, strict = true } = options;
+  const { allowExternalUrls = false, strict = true } = options
 
-    if (!css || typeof css !== 'string') {
-        return { sanitized: '', warnings: [], blocked: [] };
+  if (!css || typeof css !== 'string') {
+    return { sanitized: '', warnings: [], blocked: [] }
+  }
+
+  let sanitized = css
+  const warnings = []
+  const blocked = []
+
+  // Check and remove dangerous patterns
+  for (const pattern of DANGEROUS_PATTERNS) {
+    const matches = sanitized.match(pattern)
+    if (matches) {
+      blocked.push(`Blocked: ${matches[0]}`)
+      sanitized = sanitized.replace(pattern, '/* BLOCKED */')
     }
+  }
 
-    let sanitized = css;
-    const warnings = [];
-    const blocked = [];
-
-    // Check and remove dangerous patterns
-    for (const pattern of DANGEROUS_PATTERNS) {
-        const matches = sanitized.match(pattern);
-        if (matches) {
-            blocked.push(`Blocked: ${matches[0]}`);
-            sanitized = sanitized.replace(pattern, '/* BLOCKED */');
-        }
+  // Handle external URLs
+  if (!allowExternalUrls) {
+    const externalMatches = sanitized.match(EXTERNAL_URL_PATTERN)
+    if (externalMatches) {
+      if (strict) {
+        blocked.push(`Blocked external URL: ${externalMatches[0]}`)
+        sanitized = sanitized.replace(EXTERNAL_URL_PATTERN, 'url(/* BLOCKED */')
+      } else {
+        warnings.push('CSS contains external URLs which may pose a security risk')
+      }
     }
+  }
 
-    // Handle external URLs
-    if (!allowExternalUrls) {
-        const externalMatches = sanitized.match(EXTERNAL_URL_PATTERN);
-        if (externalMatches) {
-            if (strict) {
-                blocked.push(`Blocked external URL: ${externalMatches[0]}`);
-                sanitized = sanitized.replace(EXTERNAL_URL_PATTERN, 'url(/* BLOCKED */');
-            } else {
-                warnings.push('CSS contains external URLs which may pose a security risk');
-            }
-        }
-    }
+  // Remove any null bytes
+  sanitized = sanitized.replace(/\0/g, '')
 
-    // Remove any null bytes
-    sanitized = sanitized.replace(/\0/g, '');
+  // Limit CSS length to prevent DoS
+  const MAX_CSS_LENGTH = 50000
+  if (sanitized.length > MAX_CSS_LENGTH) {
+    warnings.push(`CSS truncated from ${sanitized.length} to ${MAX_CSS_LENGTH} characters`)
+    sanitized = sanitized.substring(0, MAX_CSS_LENGTH)
+  }
 
-    // Limit CSS length to prevent DoS
-    const MAX_CSS_LENGTH = 50000;
-    if (sanitized.length > MAX_CSS_LENGTH) {
-        warnings.push(`CSS truncated from ${sanitized.length} to ${MAX_CSS_LENGTH} characters`);
-        sanitized = sanitized.substring(0, MAX_CSS_LENGTH);
-    }
-
-    return { sanitized, warnings, blocked };
+  return { sanitized, warnings, blocked }
 }
 
 /**
@@ -107,41 +108,41 @@ export function sanitizeCss(css, options = {}) {
  * @returns {{ valid: boolean, errors: string[] }}
  */
 export function validateCss(css) {
-    const errors = [];
+  const errors = []
 
-    if (!css || typeof css !== 'string') {
-        return { valid: true, errors: [] };
-    }
+  if (!css || typeof css !== 'string') {
+    return { valid: true, errors: [] }
+  }
 
-    // Check balanced braces
-    const openBraces = (css.match(/{/g) || []).length;
-    const closeBraces = (css.match(/}/g) || []).length;
+  // Check balanced braces
+  const openBraces = (css.match(/{/g) || []).length
+  const closeBraces = (css.match(/}/g) || []).length
 
-    if (openBraces !== closeBraces) {
-        errors.push(`Unbalanced braces: ${openBraces} opening, ${closeBraces} closing`);
-    }
+  if (openBraces !== closeBraces) {
+    errors.push(`Unbalanced braces: ${openBraces} opening, ${closeBraces} closing`)
+  }
 
-    // Check balanced parentheses
-    const openParens = (css.match(/\(/g) || []).length;
-    const closeParens = (css.match(/\)/g) || []).length;
+  // Check balanced parentheses
+  const openParens = (css.match(/\(/g) || []).length
+  const closeParens = (css.match(/\)/g) || []).length
 
-    if (openParens !== closeParens) {
-        errors.push(`Unbalanced parentheses: ${openParens} opening, ${closeParens} closing`);
-    }
+  if (openParens !== closeParens) {
+    errors.push(`Unbalanced parentheses: ${openParens} opening, ${closeParens} closing`)
+  }
 
-    // Check balanced quotes
-    const singleQuotes = (css.match(/'/g) || []).length;
-    const doubleQuotes = (css.match(/"/g) || []).length;
+  // Check balanced quotes
+  const singleQuotes = (css.match(/'/g) || []).length
+  const doubleQuotes = (css.match(/"/g) || []).length
 
-    if (singleQuotes % 2 !== 0) {
-        errors.push('Unbalanced single quotes');
-    }
+  if (singleQuotes % 2 !== 0) {
+    errors.push('Unbalanced single quotes')
+  }
 
-    if (doubleQuotes % 2 !== 0) {
-        errors.push('Unbalanced double quotes');
-    }
+  if (doubleQuotes % 2 !== 0) {
+    errors.push('Unbalanced double quotes')
+  }
 
-    return { valid: errors.length === 0, errors };
+  return { valid: errors.length === 0, errors }
 }
 
 /**
@@ -151,21 +152,21 @@ export function validateCss(css) {
  * @returns {boolean} - True if dangerous patterns found
  */
 export function hasDangerousPatterns(css) {
-    if (!css) return false;
+  if (!css) return false
 
-    for (const pattern of DANGEROUS_PATTERNS) {
-        if (pattern.test(css)) {
-            return true;
-        }
-        // Reset regex lastIndex after test
-        pattern.lastIndex = 0;
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(css)) {
+      return true
     }
+    // Reset regex lastIndex after test
+    pattern.lastIndex = 0
+  }
 
-    return false;
+  return false
 }
 
 export default {
-    sanitizeCss,
-    validateCss,
-    hasDangerousPatterns
-};
+  sanitizeCss,
+  validateCss,
+  hasDangerousPatterns
+}
