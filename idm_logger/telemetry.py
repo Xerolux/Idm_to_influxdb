@@ -6,12 +6,11 @@ import logging
 import requests
 import json
 import threading
-import schedule
 import base64
 import hmac
 import hashlib
 from cryptography.fernet import Fernet
-from datetime import datetime, timedelta
+from datetime import datetime
 from .config import config
 from .update_manager import get_current_version
 
@@ -56,36 +55,45 @@ class TelemetryManager:
         config.set("telemetry.last_manual_download", self.last_manual_download)
         config.save()
 
-    def start(self):
+    def start(self, scheduler=None):
         if self.running:
             return
 
         self.running = True
 
-        # Schedule jobs
-        # Run submission every 24 hours (e.g., at 02:00)
-        schedule.every().day.at("02:00").do(self.submit_data_job)
+        if scheduler:
+            try:
+                # Schedule jobs using APScheduler
+                # Run submission every 24 hours (e.g., at 02:00)
+                # Check if job exists to avoid duplicates if re-added?
+                # APScheduler replace_existing=True usually handles it if id matches.
 
-        # Run model check every 24 hours (e.g., at 04:00)
-        schedule.every().day.at("04:00").do(self.check_model_job)
+                scheduler.add_job(
+                    func=self.submit_data_job,
+                    trigger='cron',
+                    hour=2,
+                    minute=0,
+                    id='telemetry_submit',
+                    replace_existing=True
+                )
 
-        # Also run checks shortly after startup (randomized delay to avoid stampedes)
-        # We'll do this in the run loop logic or just let the scheduler handle it.
-        # For immediate feedback, maybe we rely on manual trigger or frontend check.
-
-        self.thread = threading.Thread(target=self._run_loop, daemon=True)
-        self.thread.start()
-        logger.info("Telemetry Manager started")
+                # Run model check every 24 hours (e.g., at 04:00)
+                scheduler.add_job(
+                    func=self.check_model_job,
+                    trigger='cron',
+                    hour=4,
+                    minute=0,
+                    id='telemetry_check',
+                    replace_existing=True
+                )
+                logger.info("Telemetry Manager scheduled jobs (APScheduler)")
+            except Exception as e:
+                logger.error(f"Failed to schedule telemetry jobs: {e}")
+        else:
+            logger.warning("No scheduler provided to Telemetry Manager. Automatic tasks disabled.")
 
     def stop(self):
         self.running = False
-        if self.thread:
-            self.thread.join(timeout=2)
-
-    def _run_loop(self):
-        while self.running:
-            schedule.run_pending()
-            time.sleep(1)
 
     def get_status(self):
         """Return current telemetry status."""
@@ -158,8 +166,7 @@ class TelemetryManager:
                 logger.error(f"Failed to query metrics: {response.status_code}")
                 return False
 
-            data_points = []
-            measurement_map = {} # timestamp -> {metric: value}
+            measurement_map = {}  # timestamp -> {metric: value}
 
             # Process stream
             count = 0
@@ -193,7 +200,7 @@ class TelemetryManager:
                         measurement_map[ts_key][metric_name] = v
                         count += 1
 
-                except Exception as e:
+                except Exception:
                     continue
 
             logger.info(f"Processed {count} data points into {len(measurement_map)} records.")
@@ -277,13 +284,15 @@ class TelemetryManager:
             if not status.get("eligible"):
                 msg = status.get("reason_de", status.get("reason", "Nicht berechtigt"))
                 logger.info(f"Model check: Not eligible - {msg}")
-                if manual: raise Exception(msg)
+                if manual:
+                    raise Exception(msg)
                 return False
 
             if not status.get("model_available"):
                 msg = status.get("reason_de", status.get("reason", "Kein Modell verfügbar"))
                 logger.info(f"Model check: {msg}")
-                if manual: raise Exception(msg)
+                if manual:
+                    raise Exception(msg)
                 return False
 
             if not status.get("update_available") and not manual:
@@ -346,7 +355,8 @@ class TelemetryManager:
 
         except Exception as e:
             logger.error(f"Model update failed: {e}")
-            if manual: raise e
+            if manual:
+                raise e
             return False
 
 

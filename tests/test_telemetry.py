@@ -2,7 +2,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import json
-import time
 import base64
 import hmac
 import hashlib
