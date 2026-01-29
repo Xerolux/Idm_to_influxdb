@@ -163,7 +163,9 @@ def upload_model():
 
         # Reload
         if load_model_state():
-            return jsonify({"success": True, "message": "Model updated and reloaded"}), 200
+            return jsonify(
+                {"success": True, "message": "Model updated and reloaded"}
+            ), 200
         else:
             return jsonify({"error": "Failed to load uploaded model"}), 500
 

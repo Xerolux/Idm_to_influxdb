@@ -2287,9 +2287,16 @@ def submit_telemetry_data():
     try:
         success = telemetry_manager.submit_data(hours=24)
         if success:
-            return jsonify({"success": True, "message": "Daten erfolgreich übermittelt"})
+            return jsonify(
+                {"success": True, "message": "Daten erfolgreich übermittelt"}
+            )
         else:
-            return jsonify({"success": False, "message": "Übermittlung fehlgeschlagen (siehe Logs)"}), 500
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "Übermittlung fehlgeschlagen (siehe Logs)",
+                }
+            ), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2300,9 +2307,13 @@ def check_telemetry_model():
     try:
         updated = telemetry_manager.download_and_install_model(manual=True)
         if updated:
-            return jsonify({"success": True, "message": "Modell erfolgreich aktualisiert"})
+            return jsonify(
+                {"success": True, "message": "Modell erfolgreich aktualisiert"}
+            )
         else:
-            return jsonify({"success": True, "message": "Kein Update erforderlich oder verfügbar"})
+            return jsonify(
+                {"success": True, "message": "Kein Update erforderlich oder verfügbar"}
+            )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

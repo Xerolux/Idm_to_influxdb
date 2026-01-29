@@ -12,6 +12,7 @@ with patch("idm_logger.telemetry.config") as mock_config:
     mock_config.get.return_value = "mock_value"
     from idm_logger.telemetry import TelemetryManager, DEFAULT_ENCRYPTION_KEY
 
+
 class TestTelemetry(unittest.TestCase):
     def setUp(self):
         self.tm = TelemetryManager()
@@ -29,15 +30,27 @@ class TestTelemetry(unittest.TestCase):
             "telemetry.auth_token": "token",
             "metrics.url": "http://vm:8428/write",
             "installation_id": "uuid",
-            "hp_model": "TestModel"
+            "hp_model": "TestModel",
         }.get(k, d)
 
         # Mock VM Export response (stream of JSON lines)
         mock_response_vm = MagicMock()
         mock_response_vm.status_code = 200
         mock_response_vm.iter_lines.return_value = [
-            json.dumps({"metric": {"__name__": "idm_heatpump_temp"}, "values": [20.5], "timestamps": [1000]}).encode(),
-            json.dumps({"metric": {"__name__": "idm_heatpump_power"}, "values": [1000], "timestamps": [1000]}).encode()
+            json.dumps(
+                {
+                    "metric": {"__name__": "idm_heatpump_temp"},
+                    "values": [20.5],
+                    "timestamps": [1000],
+                }
+            ).encode(),
+            json.dumps(
+                {
+                    "metric": {"__name__": "idm_heatpump_power"},
+                    "values": [1000],
+                    "timestamps": [1000],
+                }
+            ).encode(),
         ]
 
         # Mock Server Submit response
@@ -51,16 +64,16 @@ class TestTelemetry(unittest.TestCase):
         success = self.tm.submit_data()
 
         self.assertTrue(success)
-        mock_requests.get.assert_called() # VM Query
-        mock_requests.post.assert_called() # Server Submit
+        mock_requests.get.assert_called()  # VM Query
+        mock_requests.post.assert_called()  # Server Submit
 
         # Check payload
         args, kwargs = mock_requests.post.call_args
         self.assertEqual(args[0], "http://test-server/api/v1/submit")
-        payload = kwargs['json']
-        self.assertEqual(payload['installation_id'], "uuid")
-        self.assertEqual(len(payload['data']), 1) # 1 timestamp bucket
-        self.assertEqual(payload['data'][0]['temp'], 20.5)
+        payload = kwargs["json"]
+        self.assertEqual(payload["installation_id"], "uuid")
+        self.assertEqual(len(payload["data"]), 1)  # 1 timestamp bucket
+        self.assertEqual(payload["data"][0]["temp"], 20.5)
 
     @patch("idm_logger.telemetry.requests")
     @patch("idm_logger.telemetry.config")
@@ -69,7 +82,7 @@ class TestTelemetry(unittest.TestCase):
             "installation_id": "uuid",
             "hp_model": "TestModel",
             "telemetry.server_url": "http://test-server",
-            "internal_api_key": "secret"
+            "internal_api_key": "secret",
         }.get(k, d)
 
         # 1. Check Eligibility Response
@@ -78,7 +91,7 @@ class TestTelemetry(unittest.TestCase):
         mock_resp_check.json.return_value = {
             "eligible": True,
             "model_available": True,
-            "update_available": True
+            "update_available": True,
         }
 
         # 2. Prepare Encrypted Model
@@ -96,7 +109,7 @@ class TestTelemetry(unittest.TestCase):
         envelope = {
             "payload": payload_b64,
             "metadata": metadata,
-            "signature": signature
+            "signature": signature,
         }
 
         mock_resp_download = MagicMock()
@@ -118,8 +131,8 @@ class TestTelemetry(unittest.TestCase):
 
         # Verify Upload
         args, kwargs = mock_requests.post.call_args
-        self.assertIn("file", kwargs['files'])
-        uploaded_filename, uploaded_data = kwargs['files']['file']
+        self.assertIn("file", kwargs["files"])
+        uploaded_filename, uploaded_data = kwargs["files"]["file"]
         self.assertEqual(uploaded_filename, "model_state.pkl")
         self.assertEqual(uploaded_data, original_data)
 
@@ -129,5 +142,6 @@ class TestTelemetry(unittest.TestCase):
             self.tm.download_and_install_model(manual=True)
         self.assertIn("Limit", str(cm.exception))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -70,27 +70,29 @@ class TelemetryManager:
 
                 scheduler.add_job(
                     func=self.submit_data_job,
-                    trigger='cron',
+                    trigger="cron",
                     hour=2,
                     minute=0,
-                    id='telemetry_submit',
-                    replace_existing=True
+                    id="telemetry_submit",
+                    replace_existing=True,
                 )
 
                 # Run model check every 24 hours (e.g., at 04:00)
                 scheduler.add_job(
                     func=self.check_model_job,
-                    trigger='cron',
+                    trigger="cron",
                     hour=4,
                     minute=0,
-                    id='telemetry_check',
-                    replace_existing=True
+                    id="telemetry_check",
+                    replace_existing=True,
                 )
                 logger.info("Telemetry Manager scheduled jobs (APScheduler)")
             except Exception as e:
                 logger.error(f"Failed to schedule telemetry jobs: {e}")
         else:
-            logger.warning("No scheduler provided to Telemetry Manager. Automatic tasks disabled.")
+            logger.warning(
+                "No scheduler provided to Telemetry Manager. Automatic tasks disabled."
+            )
 
     def stop(self):
         self.running = False
@@ -154,7 +156,7 @@ class TelemetryManager:
         params = {
             "match[]": '{__name__=~"idm_heatpump_.*"}',
             "start": start_ts,
-            "end": end_ts
+            "end": end_ts,
         }
 
         # Note: export API returns JSON stream (one object per line)
@@ -179,7 +181,11 @@ class TelemetryManager:
                     # OR format: {"metric":..., "value":..., "timestamps":...} depending on version/flags?
                     # VM export API usually returns: {"metric":{"__name__":"name", ...}, "values":[...], "timestamps":[...]}
 
-                    metric_name = record.get("metric", {}).get("__name__", "").replace("idm_heatpump_", "")
+                    metric_name = (
+                        record.get("metric", {})
+                        .get("__name__", "")
+                        .replace("idm_heatpump_", "")
+                    )
                     values = record.get("values", [])
                     timestamps = record.get("timestamps", [])
 
@@ -203,7 +209,9 @@ class TelemetryManager:
                 except Exception:
                     continue
 
-            logger.info(f"Processed {count} data points into {len(measurement_map)} records.")
+            logger.info(
+                f"Processed {count} data points into {len(measurement_map)} records."
+            )
 
             if not measurement_map:
                 logger.warning("No data found to submit.")
@@ -218,29 +226,36 @@ class TelemetryManager:
 
             headers = {
                 "Authorization": f"Bearer {auth_token}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             success_count = 0
 
             for i in range(0, len(payload_data), BATCH_SIZE):
-                batch = payload_data[i:i + BATCH_SIZE]
+                batch = payload_data[i : i + BATCH_SIZE]
 
                 payload = {
                     "installation_id": config.get("installation_id"),
                     "heatpump_model": config.get("hp_model", "Unknown"),
                     "version": get_current_version(),
-                    "data": batch
+                    "data": batch,
                 }
 
                 try:
-                    res = requests.post(f"{server_url}/api/v1/submit", json=payload, headers=headers, timeout=30)
+                    res = requests.post(
+                        f"{server_url}/api/v1/submit",
+                        json=payload,
+                        headers=headers,
+                        timeout=30,
+                    )
                     if res.status_code in (200, 204):
                         success_count += 1
                     else:
-                        logger.error(f"Submit batch {i//BATCH_SIZE + 1} failed: {res.status_code} - {res.text}")
+                        logger.error(
+                            f"Submit batch {i // BATCH_SIZE + 1} failed: {res.status_code} - {res.text}"
+                        )
                 except Exception as e:
-                    logger.error(f"Submit batch {i//BATCH_SIZE + 1} error: {e}")
+                    logger.error(f"Submit batch {i // BATCH_SIZE + 1} error: {e}")
 
             if success_count == total_batches:
                 config.set("telemetry.last_submission", int(time.time()))
@@ -248,7 +263,9 @@ class TelemetryManager:
                 logger.info("Telemetry submission completed successfully.")
                 return True
             else:
-                logger.warning(f"Telemetry submission partially failed ({success_count}/{total_batches} batches).")
+                logger.warning(
+                    f"Telemetry submission partially failed ({success_count}/{total_batches} batches)."
+                )
                 return False
 
         except Exception as e:
@@ -263,7 +280,9 @@ class TelemetryManager:
         if manual:
             if self.manual_downloads_today >= 3:
                 logger.warning("Manual download limit reached.")
-                raise Exception("Tägliches Limit für manuelle Downloads erreicht (3/Tag).")
+                raise Exception(
+                    "Tägliches Limit für manuelle Downloads erreicht (3/Tag)."
+                )
 
         server_url = config.get("telemetry.server_url", "https://collector.xerolux.de")
         installation_id = config.get("installation_id")
@@ -289,7 +308,9 @@ class TelemetryManager:
                 return False
 
             if not status.get("model_available"):
-                msg = status.get("reason_de", status.get("reason", "Kein Modell verfügbar"))
+                msg = status.get(
+                    "reason_de", status.get("reason", "Kein Modell verfügbar")
+                )
                 logger.info(f"Model check: {msg}")
                 if manual:
                     raise Exception(msg)
@@ -305,7 +326,9 @@ class TelemetryManager:
             headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
 
             download_url = f"{server_url}/api/v1/model/download"
-            resp = requests.get(download_url, params=params, headers=headers, timeout=60)
+            resp = requests.get(
+                download_url, params=params, headers=headers, timeout=60
+            )
             resp.raise_for_status()
 
             # 3. Decrypt and Verify
@@ -333,7 +356,7 @@ class TelemetryManager:
 
             # 4. Upload to ML Service
             logger.info("Uploading model to ML Service...")
-            files = {'file': ('model_state.pkl', decrypted_data)}
+            files = {"file": ("model_state.pkl", decrypted_data)}
 
             # Add internal secret header if configured
             ml_headers = {}
@@ -341,7 +364,9 @@ class TelemetryManager:
             if internal_key:
                 ml_headers["X-Internal-Secret"] = internal_key
 
-            upload_resp = requests.post(ML_SERVICE_UPLOAD_URL, files=files, headers=ml_headers, timeout=30)
+            upload_resp = requests.post(
+                ML_SERVICE_UPLOAD_URL, files=files, headers=ml_headers, timeout=30
+            )
 
             if upload_resp.status_code == 200:
                 logger.info("Model installed successfully.")
