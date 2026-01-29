@@ -431,6 +431,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import { useConfirm } from 'primevue/useconfirm';

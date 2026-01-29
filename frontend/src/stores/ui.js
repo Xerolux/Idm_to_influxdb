@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 import { defineStore } from 'pinia';
 
 const editModeStorageKey = 'dashboard_edit_mode';

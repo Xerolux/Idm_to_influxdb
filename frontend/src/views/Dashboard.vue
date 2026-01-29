@@ -5,6 +5,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import DashboardManager from '../components/DashboardManager.vue';
 </script>
 

@@ -1,3 +1,4 @@
+# Xerolux 2026
 """
 WebSocket Handler for real-time data updates.
 

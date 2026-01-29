@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * Debounce utility function
  * @param {Function} func - The function to debounce

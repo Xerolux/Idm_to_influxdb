@@ -70,6 +70,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import Card from 'primevue/card';

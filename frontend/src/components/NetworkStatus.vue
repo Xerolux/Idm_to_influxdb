@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 const isBrowserOnline = ref(navigator.onLine);

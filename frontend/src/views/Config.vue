@@ -27,41 +27,41 @@
                 <div class="p-6 overflow-y-auto flex-grow">
                     <!-- Verbindung -->
                     <div v-if="activeCategory === 'connection'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">Verbindung & Daten</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">Verbindung & Daten</h2>
 
                         <Fieldset legend="IDM Wärmepumpe" :toggleable="true">
                              <div class="flex flex-col gap-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-2">
-                                        <label>Host / IP</label>
+                                        <label class="text-gray-200">Host / IP</label>
                                         <InputText v-model="config.idm.host" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Port</label>
+                                        <label class="text-gray-200">Port</label>
                                         <InputNumber v-model="config.idm.port" :useGrouping="false" class="w-full" />
                                     </div>
                                 </div>
 
                                 <div class="flex flex-col gap-2">
-                                    <label class="font-bold">Aktivierte Heizkreise</label>
-                                    <div class="flex flex-wrap gap-4 p-3 border border-gray-700 rounded bg-gray-900/50">
+                                    <label class="font-bold text-gray-200">Aktivierte Heizkreise</label>
+                                    <div class="flex flex-wrap gap-4 p-3 border border-surface-700 rounded bg-surface-900/50">
                                         <div class="flex items-center gap-2">
                                             <Checkbox v-model="config.idm.circuits" inputId="circuitA" value="A" disabled />
-                                            <label for="circuitA" class="opacity-50">Heizkreis A (Fest)</label>
+                                            <label for="circuitA" class="opacity-50 text-gray-300">Heizkreis A (Fest)</label>
                                         </div>
                                         <div v-for="c in ['B', 'C', 'D', 'E', 'F', 'G']" :key="c" class="flex items-center gap-2">
                                             <Checkbox v-model="config.idm.circuits" :inputId="'circuit'+c" :value="c" />
-                                            <label :for="'circuit'+c">Heizkreis {{ c }}</label>
+                                            <label :for="'circuit'+c" class="text-gray-300">Heizkreis {{ c }}</label>
                                         </div>
                                     </div>
                                 </div>
 
                                  <div class="flex flex-col gap-2">
-                                    <label class="font-bold">Zonenmodule</label>
-                                    <div class="flex flex-wrap gap-4 p-3 border border-gray-700 rounded bg-gray-900/50">
+                                    <label class="font-bold text-gray-200">Zonenmodule</label>
+                                    <div class="flex flex-wrap gap-4 p-3 border border-surface-700 rounded bg-surface-900/50">
                                         <div v-for="z in 10" :key="z" class="flex items-center gap-2">
                                             <Checkbox v-model="config.idm.zones" :inputId="'zone'+(z-1)" :value="(z-1)" />
-                                            <label :for="'zone'+(z-1)">Zone {{ z }}</label>
+                                            <label :for="'zone'+(z-1)" class="text-gray-300">Zone {{ z }}</label>
                                         </div>
                                     </div>
                                 </div>
@@ -71,24 +71,24 @@
                         <Fieldset legend="Datenbank (VictoriaMetrics)" :toggleable="true">
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <label>Write URL</label>
+                                    <label class="text-gray-200">Write URL</label>
                                     <InputText v-model="config.metrics.url" class="w-full" />
-                                    <small class="text-gray-300">Standard: http://victoriametrics:8428/write</small>
+                                    <small class="text-gray-400">Standard: http://victoriametrics:8428/write</small>
                                 </div>
                             </div>
                         </Fieldset>
 
                          <Fieldset legend="Datenerfassung" :toggleable="true">
                             <div class="flex flex-col gap-4">
-                                <div class="flex items-center gap-2 p-3 bg-gray-800 rounded border border-gray-700">
+                                <div class="flex items-center gap-2 p-3 bg-surface-800 rounded border border-surface-700">
                                     <Checkbox v-model="config.logging.realtime_mode" binary inputId="realtime_mode" />
                                     <div class="flex flex-col">
-                                         <label for="realtime_mode" class="font-bold cursor-pointer">Echtzeit-Modus</label>
+                                         <label for="realtime_mode" class="font-bold cursor-pointer text-gray-200">Echtzeit-Modus</label>
                                          <span class="text-sm text-gray-400">Aktualisierung im Sekundentakt (Hohe Last)</span>
                                     </div>
                                 </div>
                                 <div class="flex flex-col gap-2" v-if="!config.logging.realtime_mode">
-                                    <label>Abfrage-Intervall (Sekunden)</label>
+                                    <label class="text-gray-200">Abfrage-Intervall (Sekunden)</label>
                                     <InputNumber v-model="config.logging.interval" :min="1" :max="3600" :useGrouping="false" class="w-full md:w-1/2" />
                                     <small class="text-gray-400">Standard: 60 Sekunden</small>
                                 </div>
@@ -98,7 +98,7 @@
 
                     <!-- MQTT -->
                     <div v-if="activeCategory === 'mqtt'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">MQTT & Integration</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">MQTT & Integration</h2>
 
                         <Fieldset legend="MQTT Publishing" :toggleable="false">
                             <template #legend>
@@ -111,44 +111,44 @@
                             <div v-if="config.mqtt.enabled" class="flex flex-col gap-6 mt-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-2">
-                                        <label>Broker Adresse</label>
+                                        <label class="text-gray-200">Broker Adresse</label>
                                         <InputText v-model="config.mqtt.broker" placeholder="mqtt.example.com" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Port</label>
+                                        <label class="text-gray-200">Port</label>
                                         <InputNumber v-model="config.mqtt.port" :useGrouping="false" :min="1" :max="65535" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Benutzername</label>
+                                        <label class="text-gray-200">Benutzername</label>
                                         <InputText v-model="config.mqtt.username" placeholder="Optional" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Passwort</label>
+                                        <label class="text-gray-200">Passwort</label>
                                         <InputText v-model="mqttPassword" type="password" placeholder="••••••" class="w-full" />
                                     </div>
                                 </div>
 
-                                <div class="border-t border-gray-700 pt-4">
+                                <div class="border-t border-surface-700 pt-4">
                                     <div class="flex items-center gap-2 mb-3">
                                         <Checkbox v-model="config.mqtt.use_tls" binary inputId="mqtt_tls" />
-                                        <label for="mqtt_tls" class="font-bold cursor-pointer">TLS/SSL Verschlüsselung</label>
+                                        <label for="mqtt_tls" class="font-bold cursor-pointer text-gray-200">TLS/SSL Verschlüsselung</label>
                                     </div>
                                     <div v-if="config.mqtt.use_tls" class="ml-8 mb-4">
                                         <div class="flex flex-col gap-2">
-                                            <label class="text-sm">CA-Zertifikat Pfad (optional)</label>
+                                            <label class="text-sm text-gray-200">CA-Zertifikat Pfad (optional)</label>
                                             <InputText v-model="config.mqtt.tls_ca_cert" placeholder="/path/to/ca.crt" class="w-full" />
                                             <small class="text-gray-400">Für selbst-signierte Zertifikate. Leer lassen für System-CA.</small>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-700 pt-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-surface-700 pt-4">
                                     <div class="flex flex-col gap-2">
-                                        <label>Topic Präfix</label>
+                                        <label class="text-gray-200">Topic Präfix</label>
                                         <InputText v-model="config.mqtt.topic_prefix" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>QoS Level</label>
+                                        <label class="text-gray-200">QoS Level</label>
                                         <SelectButton v-model="config.mqtt.qos" :options="[0, 1, 2]" aria-labelledby="basic" class="w-full" />
                                     </div>
                                 </div>
@@ -159,7 +159,7 @@
                                         <label for="ha_discovery" class="font-bold text-green-400 cursor-pointer">Home Assistant Auto-Discovery</label>
                                     </div>
                                     <div v-if="config.mqtt.ha_discovery_enabled" class="ml-8">
-                                        <label class="text-sm">Discovery Präfix</label>
+                                        <label class="text-sm text-gray-200">Discovery Präfix</label>
                                         <InputText v-model="config.mqtt.ha_discovery_prefix" class="w-full mt-1" />
                                     </div>
                                 </div>
@@ -172,7 +172,7 @@
 
                     <!-- Benachrichtigungen -->
                     <div v-if="activeCategory === 'notifications'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">Benachrichtigungen</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">Benachrichtigungen</h2>
 
                         <Fieldset legend="Signal Messenger" :toggleable="true">
                             <template #legend>
@@ -184,17 +184,17 @@
 
                             <div v-if="config.signal.enabled" class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <label>Sender Nummer</label>
+                                    <label class="text-gray-200">Sender Nummer</label>
                                     <InputText v-model="config.signal.sender" placeholder="+49..." class="w-full md:w-1/2" />
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <label>Empfänger (Pro Zeile eine Nummer)</label>
+                                    <label class="text-gray-200">Empfänger (Pro Zeile eine Nummer)</label>
                                     <Textarea v-model="signalRecipientsText" rows="3" class="w-full font-mono" />
                                 </div>
-                                <div class="flex flex-col gap-2 border-t border-gray-700 pt-4 mt-2">
-                                    <label class="text-sm font-bold">Erweitert</label>
+                                <div class="flex flex-col gap-2 border-t border-surface-700 pt-4 mt-2">
+                                    <label class="text-sm font-bold text-gray-200">Erweitert</label>
                                     <div class="flex flex-col gap-2">
-                                        <label class="text-xs">Signal CLI Pfad</label>
+                                        <label class="text-xs text-gray-300">Signal CLI Pfad</label>
                                         <InputText v-model="config.signal.cli_path" placeholder="signal-cli" class="w-full md:w-1/2" />
                                         <small class="text-gray-400">Standard: signal-cli (im PATH)</small>
                                     </div>
@@ -212,11 +212,11 @@
                             </template>
                             <div v-if="config.telegram.enabled" class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <label>Bot Token</label>
+                                    <label class="text-gray-200">Bot Token</label>
                                     <InputText v-model="config.telegram.bot_token" type="password" class="w-full md:w-1/2" />
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <label>Chat IDs (Kommagetrennt)</label>
+                                    <label class="text-gray-200">Chat IDs (Kommagetrennt)</label>
                                     <InputText v-model="telegramChatIdsText" class="w-full md:w-1/2" />
                                 </div>
                             </div>
@@ -231,7 +231,7 @@
                             </template>
                             <div v-if="config.discord.enabled" class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <label>Webhook URL</label>
+                                    <label class="text-gray-200">Webhook URL</label>
                                     <InputText v-model="config.discord.webhook_url" type="password" class="w-full" />
                                 </div>
                             </div>
@@ -247,28 +247,28 @@
                             <div v-if="config.email.enabled" class="flex flex-col gap-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div class="flex flex-col gap-2">
-                                        <label>SMTP Server</label>
+                                        <label class="text-gray-200">SMTP Server</label>
                                         <InputText v-model="config.email.smtp_server" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Port</label>
+                                        <label class="text-gray-200">Port</label>
                                         <InputNumber v-model="config.email.smtp_port" :useGrouping="false" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Benutzername</label>
+                                        <label class="text-gray-200">Benutzername</label>
                                         <InputText v-model="config.email.username" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Passwort</label>
+                                        <label class="text-gray-200">Passwort</label>
                                         <InputText v-model="emailPassword" type="password" class="w-full" />
                                     </div>
                                     <div class="flex flex-col gap-2">
-                                        <label>Absender Adresse</label>
+                                        <label class="text-gray-200">Absender Adresse</label>
                                         <InputText v-model="config.email.sender" class="w-full" />
                                     </div>
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <label>Empfänger (Kommagetrennt)</label>
+                                    <label class="text-gray-200">Empfänger (Kommagetrennt)</label>
                                     <InputText v-model="emailRecipientsText" class="w-full" />
                                 </div>
                             </div>
@@ -277,7 +277,7 @@
 
                     <!-- AI -->
                     <div v-if="activeCategory === 'ai'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">KI-Analyse</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">KI-Analyse</h2>
 
                         <Fieldset legend="KI & Anomalieerkennung" :toggleable="true">
                             <template #legend>
@@ -295,34 +295,34 @@
                                      </div>
                                  </div>
 
-                                 <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-4">
-                                     <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
+                                 <div class="bg-surface-800 p-4 rounded border border-surface-700 mt-4">
+                                     <h4 class="font-bold text-lg mb-2 flex items-center gap-2 text-white">
                                          <i class="pi pi-chart-line"></i> Service Status
                                      </h4>
                                      <div v-if="aiStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                         <div class="flex justify-between border-b border-gray-700 py-2">
+                                         <div class="flex justify-between border-b border-surface-700 py-2">
                                              <span class="text-gray-400">Service:</span>
-                                             <span class="font-mono">{{ aiStatus.service || 'Unbekannt' }}</span>
+                                             <span class="font-mono text-white">{{ aiStatus.service || 'Unbekannt' }}</span>
                                          </div>
-                                         <div class="flex justify-between border-b border-gray-700 py-2">
+                                         <div class="flex justify-between border-b border-surface-700 py-2">
                                              <span class="text-gray-400">Status:</span>
                                              <span class="font-bold" :class="aiStatus.online ? 'text-green-400' : 'text-red-400'">
                                                  {{ aiStatus.online ? 'Online' : 'Offline / Keine Daten' }}
                                              </span>
                                          </div>
-                                         <div class="flex justify-between border-b border-gray-700 py-2">
+                                         <div class="flex justify-between border-b border-surface-700 py-2">
                                              <span class="text-gray-400">Letzter Score:</span>
-                                             <span class="font-mono text-lg">{{ aiStatus.score ? aiStatus.score.toFixed(4) : '0.0000' }}</span>
+                                             <span class="font-mono text-lg text-white">{{ aiStatus.score ? aiStatus.score.toFixed(4) : '0.0000' }}</span>
                                          </div>
-                                         <div class="flex justify-between border-b border-gray-700 py-2">
+                                         <div class="flex justify-between border-b border-surface-700 py-2">
                                              <span class="text-gray-400">Aktuelle Anomalie:</span>
                                              <span class="font-bold" :class="aiStatus.is_anomaly ? 'text-red-500' : 'text-green-500'">
                                                  {{ aiStatus.is_anomaly ? 'JA' : 'NEIN' }}
                                              </span>
                                          </div>
-                                          <div class="flex justify-between border-b border-gray-700 py-2">
+                                          <div class="flex justify-between border-b border-surface-700 py-2">
                                              <span class="text-gray-400">Letztes Update:</span>
-                                             <span class="font-mono">{{ aiStatus.last_update ? new Date(aiStatus.last_update * 1000).toLocaleString() : '-' }}</span>
+                                             <span class="font-mono text-white">{{ aiStatus.last_update ? new Date(aiStatus.last_update * 1000).toLocaleString() : '-' }}</span>
                                          </div>
                                      </div>
                                      <div v-else class="text-center py-4 text-gray-500">
@@ -335,18 +335,18 @@
 
                     <!-- Security -->
                     <div v-if="activeCategory === 'security'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">Sicherheit</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">Sicherheit</h2>
 
                          <Fieldset legend="Webzugriff" :toggleable="true">
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <label>Admin Passwort</label>
+                                    <label class="text-gray-200">Admin Passwort</label>
                                     <Button label="Passwort ändern" icon="pi pi-key" severity="secondary" outlined class="w-full md:w-auto self-start" @click="showPasswordDialog = true" />
                                 </div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <Checkbox v-model="config.web.write_enabled" binary inputId="write_access" />
                                     <div class="flex flex-col">
-                                        <label for="write_access" class="font-bold cursor-pointer">Schreibzugriff erlauben</label>
+                                        <label for="write_access" class="font-bold cursor-pointer text-gray-200">Schreibzugriff erlauben</label>
                                         <span class="text-sm text-gray-400">Erforderlich für manuelle Steuerung und Zeitpläne</span>
                                     </div>
                                 </div>
@@ -383,39 +383,39 @@
 
                     <!-- System -->
                     <div v-if="activeCategory === 'system'" class="flex flex-col gap-6">
-                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2">System & Wartung</h2>
+                        <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 text-white">System & Wartung</h2>
 
                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <!-- Update Status -->
-                            <div data-update-section class="bg-gray-800 rounded-lg p-4 border border-gray-700 flex flex-col gap-3">
-                                <h3 class="font-bold text-lg flex items-center gap-2">
+                            <div data-update-section class="bg-surface-800 rounded-lg p-4 border border-surface-700 flex flex-col gap-3">
+                                <h3 class="font-bold text-lg flex items-center gap-2 text-white">
                                     <i class="pi pi-refresh"></i> Update Status
                                 </h3>
-                                 <div class="flex items-center justify-between bg-gray-900/50 p-3 rounded">
+                                 <div class="flex items-center justify-between bg-surface-900/50 p-3 rounded">
                                      <div>
-                                         <div class="text-sm text-gray-400">Installierte Version</div>
-                                         <div class="font-mono">{{ updateStatus.current_version || 'v0.0.0' }}</div>
+                                         <div class="text-sm text-gray-300">Installierte Version</div>
+                                         <div class="font-mono text-white">{{ updateStatus.current_version || 'v0.0.0' }}</div>
                                      </div>
                                      <div class="text-right">
-                                         <div class="text-sm text-gray-400">Verfügbare Version</div>
+                                         <div class="text-sm text-gray-300">Verfügbare Version</div>
                                          <div class="font-mono text-green-400">{{ updateStatus.latest_version || 'Checking...' }}</div>
                                      </div>
                                  </div>
 
                                  <!-- Docker Image Status -->
-                                 <div v-if="updateStatus.docker" class="bg-gray-900/50 p-3 rounded mt-2">
+                                 <div v-if="updateStatus.docker" class="bg-surface-900/50 p-3 rounded mt-2">
                                      <div class="flex items-center gap-2 mb-2">
                                          <i class="pi pi-box text-blue-400"></i>
-                                         <span class="text-sm font-bold">Docker Images</span>
+                                         <span class="text-sm font-bold text-white">Docker Images</span>
                                          <span v-if="updateStatus.docker.updates_available" class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Updates verfügbar</span>
                                      </div>
                                      <div class="grid grid-cols-1 gap-2 text-xs">
                                          <div v-for="(img, name) in updateStatus.docker.images" :key="name"
                                               class="flex items-center justify-between p-2 rounded"
-                                              :class="img.update_available ? 'bg-blue-900/30 border border-blue-600/50' : 'bg-gray-800'">
+                                              :class="img.update_available ? 'bg-blue-900/30 border border-blue-600/50' : 'bg-surface-800'">
                                              <div class="flex items-center gap-2">
                                                  <i :class="img.update_available ? 'pi pi-arrow-up text-blue-400' : 'pi pi-check text-green-400'"></i>
-                                                 <span class="font-mono">{{ name }}</span>
+                                                 <span class="font-mono text-gray-100">{{ name }}</span>
                                              </div>
                                              <div class="text-right">
                                                  <span v-if="img.update_available" class="text-blue-300">Update verfügbar</span>
@@ -437,10 +437,10 @@
                                  </div>
 
                                  <!-- Watchtower Info -->
-                                 <div class="bg-gray-900/50 p-3 rounded mt-2">
+                                 <div class="bg-surface-900/50 p-3 rounded mt-2">
                                      <div class="flex items-center gap-2 mb-2">
                                          <i class="pi pi-sync text-green-400"></i>
-                                         <span class="text-sm font-bold">Automatische Updates</span>
+                                         <span class="text-sm font-bold text-gray-200">Automatische Updates</span>
                                      </div>
                                      <p class="text-xs text-gray-400 mb-2">
                                          Watchtower prüft täglich um <span class="text-green-400 font-mono">03:00 Uhr</span> auf neue Docker Images und aktualisiert automatisch.
@@ -454,18 +454,18 @@
                             </div>
 
                             <!-- Backup Actions -->
-                            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 flex flex-col gap-3">
-                                 <h3 class="font-bold text-lg flex items-center gap-2">
+                            <div class="bg-surface-800 rounded-lg p-4 border border-surface-700 flex flex-col gap-3">
+                                 <h3 class="font-bold text-lg flex items-center gap-2 text-white">
                                     <i class="pi pi-database"></i> Backup
                                 </h3>
                                 <div class="flex flex-col gap-2 mb-2">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                              <Checkbox v-model="config.backup.enabled" binary inputId="auto_backup" />
-                                             <label for="auto_backup" class="font-bold text-sm">Automatisches Backup</label>
+                                             <label for="auto_backup" class="font-bold text-sm text-white">Automatisches Backup</label>
                                         </div>
                                     </div>
-                                    <div v-if="config.backup.enabled" class="grid grid-cols-2 gap-2 text-sm bg-gray-900/30 p-2 rounded">
+                                    <div v-if="config.backup.enabled" class="grid grid-cols-2 gap-2 text-sm bg-surface-900/30 p-2 rounded">
                                          <div class="flex flex-col">
                                              <label class="text-xs text-gray-400">Intervall (Std)</label>
                                              <InputNumber v-model="config.backup.interval" :min="1" :max="168" class="p-inputtext-sm" />
@@ -476,7 +476,7 @@
                                          </div>
                                           <div class="col-span-2 flex items-center gap-2 mt-1">
                                              <Checkbox v-model="config.backup.auto_upload" binary inputId="backup_upload" :disabled="!config.webdav.enabled" />
-                                             <label for="backup_upload" class="text-xs" :class="{'opacity-50': !config.webdav.enabled}">Automatisch in Cloud hochladen</label>
+                                             <label for="backup_upload" class="text-xs text-gray-200" :class="{'opacity-50': !config.webdav.enabled}">Automatisch in Cloud hochladen</label>
                                         </div>
                                     </div>
                                 </div>
@@ -489,8 +489,8 @@
                                 <Button v-if="selectedFile" label="Wiederherstellen starten" severity="warning" class="w-full mt-2" @click="restoreFromFile" />
 
                                  <div class="mt-2 max-h-40 overflow-y-auto">
-                                    <div v-for="backup in backups" :key="backup.filename" class="flex justify-between items-center p-2 hover:bg-gray-700 rounded text-sm border-b border-gray-700 last:border-0">
-                                        <span class="truncate">{{ backup.filename }}</span>
+                                    <div v-for="backup in backups" :key="backup.filename" class="flex justify-between items-center p-2 hover:bg-surface-700 rounded text-sm border-b border-surface-700 last:border-0">
+                                        <span class="truncate text-gray-200">{{ backup.filename }}</span>
                                         <div class="flex gap-1">
                                             <Button icon="pi pi-cloud-upload" text size="small" @click="uploadToCloud(backup.filename)" title="Upload to WebDAV" />
                                             <Button icon="pi pi-download" text size="small" @click="downloadBackup(backup.filename)" />
@@ -499,22 +499,22 @@
                                     </div>
                                  </div>
 
-                                 <div class="border-t border-gray-700 pt-3 mt-2">
+                                 <div class="border-t border-surface-700 pt-3 mt-2">
                                      <div class="flex items-center gap-2 mb-2">
                                         <Checkbox v-model="config.webdav.enabled" binary inputId="webdav_enabled" />
-                                        <label for="webdav_enabled" class="font-bold cursor-pointer">Cloud Backup (WebDAV/Nextcloud)</label>
+                                        <label for="webdav_enabled" class="font-bold cursor-pointer text-white">Cloud Backup (WebDAV/Nextcloud)</label>
                                     </div>
                                     <div v-if="config.webdav.enabled" class="flex flex-col gap-2">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs">URL</label>
+                                            <label class="text-xs text-gray-300">URL</label>
                                             <InputText v-model="config.webdav.url" placeholder="https://cloud.example.com/remote.php/dav/files/user/" class="p-inputtext-sm w-full" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs">Benutzername</label>
+                                            <label class="text-xs text-gray-300">Benutzername</label>
                                             <InputText v-model="config.webdav.username" class="p-inputtext-sm w-full" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs">Passwort</label>
+                                            <label class="text-xs text-gray-300">Passwort</label>
                                             <InputText v-model="webdavPassword" type="password" class="p-inputtext-sm w-full" />
                                         </div>
                                     </div>
@@ -522,7 +522,7 @@
                             </div>
 
                              <!-- Service Control -->
-                             <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 flex flex-col gap-3 xl:col-span-2">
+                             <div class="bg-surface-800 rounded-lg p-4 border border-surface-700 flex flex-col gap-3 xl:col-span-2">
                                 <h3 class="font-bold text-lg flex items-center gap-2 text-red-400">
                                     <i class="pi pi-power-off"></i> Danger Zone
                                 </h3>
@@ -567,7 +567,7 @@
                     <i class="pi pi-exclamation-triangle text-red-500 text-2xl"></i>
                     <div class="flex flex-col gap-2">
                         <span class="font-bold text-lg">Bist du dir absolut sicher?</span>
-                        <p class="text-gray-300">
+                        <p class="text-surface-300">
                             Diese Aktion löscht <span class="font-bold text-red-400">ALLE</span> Daten dauerhaft aus der Datenbank.
                         </p>
                     </div>
@@ -588,7 +588,7 @@
                         <i class="pi pi-info-circle"></i>
                         <span class="font-bold">Automatische Updates</span>
                     </div>
-                    <p class="text-sm text-gray-300">
+                    <p class="text-sm text-surface-300">
                         Watchtower aktualisiert Docker Images automatisch täglich um 3:00 Uhr.
                         Manuelle Updates sind nur nötig, wenn Sie nicht warten möchten.
                     </p>
@@ -599,17 +599,17 @@
                         <i class="pi pi-terminal text-green-400"></i>
                         Manuelles Update via Terminal
                     </h4>
-                    <div class="bg-gray-900 p-3 rounded font-mono text-sm text-green-400 overflow-x-auto">
-                        <div class="text-gray-500"># Zum Installationsverzeichnis wechseln</div>
+                    <div class="bg-surface-900 p-3 rounded font-mono text-sm text-green-400 overflow-x-auto">
+                        <div class="text-surface-500"># Zum Installationsverzeichnis wechseln</div>
                         <div>cd /opt/idm-metrics-collector</div>
-                        <div class="mt-2 text-gray-500"># Neue Images herunterladen</div>
+                        <div class="mt-2 text-surface-500"># Neue Images herunterladen</div>
                         <div>docker compose pull</div>
-                        <div class="mt-2 text-gray-500"># Container neu starten</div>
+                        <div class="mt-2 text-surface-500"># Container neu starten</div>
                         <div>docker compose up -d</div>
                     </div>
                 </div>
 
-                <div class="text-xs text-gray-400">
+                <div class="text-xs text-surface-400">
                     <i class="pi pi-lightbulb mr-1"></i>
                     Nach dem Update wird die Seite automatisch neu geladen sobald der Container wieder erreichbar ist.
                 </div>
@@ -625,6 +625,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
 import Fieldset from 'primevue/fieldset';

@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 

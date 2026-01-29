@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * CSS Sanitizer - Removes potentially dangerous CSS constructs
  *

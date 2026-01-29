@@ -47,6 +47,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, onUnmounted } from 'vue';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';

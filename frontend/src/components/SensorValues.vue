@@ -36,6 +36,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
 import { useWebSocket } from '../utils/websocket.js';

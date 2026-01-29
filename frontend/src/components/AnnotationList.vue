@@ -87,6 +87,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, computed } from 'vue';
 import Button from 'primevue/button';
 import AnnotationDialog from './AnnotationDialog.vue';

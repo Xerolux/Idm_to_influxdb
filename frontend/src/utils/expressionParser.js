@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * Expression Parser for mathematical operations on query results.
  *

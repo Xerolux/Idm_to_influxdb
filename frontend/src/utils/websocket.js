@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * WebSocket Client for real-time metric updates.
  *

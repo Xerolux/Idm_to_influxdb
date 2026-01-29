@@ -161,6 +161,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import Toast from 'primevue/toast';

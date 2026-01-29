@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 import { ref } from 'vue'
 
 defineProps({

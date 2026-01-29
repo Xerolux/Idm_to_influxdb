@@ -18,6 +18,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import Card from 'primevue/card';
 import TechnicianCodeGenerator from '../components/TechnicianCodeGenerator.vue';
 </script>

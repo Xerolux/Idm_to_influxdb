@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 import { defineProps, defineEmits, computed } from 'vue';
 
 const props = defineProps({

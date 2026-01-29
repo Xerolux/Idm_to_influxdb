@@ -33,6 +33,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted } from 'vue';
 import Select from 'primevue/select';
 import MultiSelect from 'primevue/multiselect';

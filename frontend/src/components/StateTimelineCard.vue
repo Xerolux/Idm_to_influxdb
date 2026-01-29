@@ -79,6 +79,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';

@@ -27,6 +27,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { computed } from 'vue';
 
 const props = defineProps({

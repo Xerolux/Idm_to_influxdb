@@ -75,6 +75,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';

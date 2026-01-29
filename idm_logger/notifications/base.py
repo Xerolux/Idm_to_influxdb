@@ -1,3 +1,4 @@
+# Xerolux 2026
 # SPDX-License-Identifier: MIT
 from abc import ABC, abstractmethod
 import logging

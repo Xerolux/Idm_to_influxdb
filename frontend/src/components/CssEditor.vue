@@ -101,6 +101,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, watch, computed } from 'vue';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';

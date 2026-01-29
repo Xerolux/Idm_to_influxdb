@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * Chart Templates for IDM Metrics Collector
  *

@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 </script>
 
 <template>

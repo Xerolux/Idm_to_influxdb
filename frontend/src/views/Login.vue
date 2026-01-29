@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';

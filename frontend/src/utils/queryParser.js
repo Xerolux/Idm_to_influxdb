@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 /**
  * Query Parser for Variable Substitution
  *

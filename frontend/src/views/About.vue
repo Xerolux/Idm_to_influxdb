@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 </script>
@@ -45,6 +46,25 @@ import Button from 'primevue/button';
                                 <a href="https://www.buymeacoffee.com/xerolux" target="_blank" rel="noopener">
                                     <Button label="Spenden / Donate" icon="pi pi-coffee" severity="warning" />
                                 </a>
+                            </div>
+                        </div>
+
+                        <!-- Current Topics -->
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">Aktuelle Themen & Daten</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded border border-surface-200 dark:border-surface-700">
+                                    <h4 class="font-bold mb-1 text-surface-900 dark:text-surface-0">Energiewende</h4>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">
+                                        Optimierung des Eigenverbrauchs durch intelligente PV-Integration und flexible Tarife.
+                                    </p>
+                                </div>
+                                <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded border border-surface-200 dark:border-surface-700">
+                                    <h4 class="font-bold mb-1 text-surface-900 dark:text-surface-0">KI-Steuerung</h4>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">
+                                        Selbstlernende Algorithmen zur Vorhersage von Wärmebedarf und Anomalieerkennung.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

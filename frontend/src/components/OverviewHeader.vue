@@ -45,6 +45,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import OverviewCard from './OverviewCard.vue';

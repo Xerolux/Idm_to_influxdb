@@ -1,3 +1,4 @@
+/* Xerolux 2026 */
 import eslintPluginVue from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
 

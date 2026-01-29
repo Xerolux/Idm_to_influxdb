@@ -80,6 +80,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 

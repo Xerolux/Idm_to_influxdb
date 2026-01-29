@@ -238,6 +238,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, computed, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';

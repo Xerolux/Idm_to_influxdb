@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+// Xerolux 2026
 import { ref, onMounted, watch } from 'vue';
 import {
   Chart as ChartJS,
