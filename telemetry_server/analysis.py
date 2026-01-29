@@ -29,8 +29,8 @@ def get_community_averages(
 
     try:
         # 1. Get sample size (approximate number of active installations for this model in window)
-        # count(count_over_time(heatpump_metrics{model="AERO_SLM"}[24h]))
-        count_query = f'count(count_over_time(heatpump_metrics{{model="{safe_model}"}}[{window}]))'
+        # count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", model="AERO_SLM"}[24h])))
+        count_query = f'count(count by (installation_id) (count_over_time({{__name__=~"heatpump_metrics_.*", model="{safe_model}"}}[{window}])))'
 
         response = requests.get(VM_QUERY_URL, params={"query": count_query}, timeout=5)
         if response.status_code == 200:

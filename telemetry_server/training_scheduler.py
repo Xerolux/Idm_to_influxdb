@@ -42,7 +42,11 @@ def run_training_job():
                 try:
                     from scripts.export_model import export_model
 
-                    export_model(output_file, MODEL_DIR)
+                    final_output_file = os.path.join(
+                        MODEL_DIR, f"{safe_model_name}.enc"
+                    )
+                    export_model(input_file=output_file, output_file=final_output_file)
+
                     # Clean up raw pickle
                     if os.path.exists(output_file):
                         os.remove(output_file)
