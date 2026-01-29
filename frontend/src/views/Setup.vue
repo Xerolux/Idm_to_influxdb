@@ -170,6 +170,16 @@ onMounted(async () => {
 })
 
 const submitSetup = async () => {
+  if (!form.value.hp_model) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Ungültig',
+      detail: 'Bitte wähle ein Wärmepumpen-Modell aus',
+      life: 3000
+    })
+    return
+  }
+
   if (form.value.password.length < 6) {
     toast.add({
       severity: 'warn',

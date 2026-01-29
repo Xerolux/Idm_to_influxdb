@@ -273,7 +273,7 @@ class Config:
         defaults = {
             "installation_id": None,
             "hp_manufacturer": "IDM",
-            "hp_model": "AERO ALM 6-15",
+            "hp_model": None,  # Will trigger prompt if missing
             "idm": {"host": "", "port": 502, "circuits": ["A"], "zones": []},
             "metrics": {
                 "url": DOCKER_DEFAULTS["metrics"]["url"],

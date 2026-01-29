@@ -11,6 +11,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import AppFooter from './AppFooter.vue'
 import NetworkStatus from './NetworkStatus.vue'
+import ModelMigrationDialog from './ModelMigrationDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -166,6 +167,7 @@ onUnmounted(() => {
     :class="isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'"
   >
     <NetworkStatus />
+    <ModelMigrationDialog />
 
     <!-- Update Available Banner -->
     <div
