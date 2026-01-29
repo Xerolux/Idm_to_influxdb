@@ -10,26 +10,30 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 class TestMLAlertAnnotation(unittest.TestCase):
     def setUp(self):
-        # Clean up modules
+        # Save original modules to restore later
+        self._original_modules = sys.modules.copy()
+
+        # Clean up modules to force reload with mocks
         for mod in list(sys.modules.keys()):
             if mod.startswith("idm_logger"):
                 del sys.modules[mod]
 
         # Mock modules
+        mock_db_module = MagicMock()
+        mock_db_object = MagicMock()
+        mock_db_object.get_setting.return_value = None
+        mock_db_module.db = mock_db_object
+
         self.modules_patcher = patch.dict(
             sys.modules,
             {
-                "idm_logger.db": MagicMock(),
+                "idm_logger.db": mock_db_module,
                 "idm_logger.mqtt": MagicMock(),
                 "idm_logger.scheduler": MagicMock(),
                 "idm_logger.modbus": MagicMock(),
             },
         )
         self.modules_patcher.start()
-
-        # Import config with json.loads patched to avoid db error
-        with patch("json.loads", return_value={}):
-            pass
 
         # Patch config instance
         self.config_patcher = patch("idm_logger.config.config")
@@ -56,6 +60,14 @@ class TestMLAlertAnnotation(unittest.TestCase):
     def tearDown(self):
         self.config_patcher.stop()
         self.modules_patcher.stop()
+
+        # Restore original modules
+        # We must preserve modules that were loaded during the test if needed,
+        # but for isolation it's better to revert to original state.
+        # However, simply assigning sys.modules doesn't work well if references are held.
+        # We need to update the dict in place.
+        sys.modules.clear()
+        sys.modules.update(self._original_modules)
 
     def test_alert_creates_annotation(self):
         payload = {
