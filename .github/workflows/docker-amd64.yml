@@ -1,5 +1,5 @@
 # Xerolux 2026
-name: Build and publish IDM Metrics Collector Docker image (AMD64)
+name: Build and publish IDM Metrics Collector Docker image
 
 on:
   push:
@@ -57,13 +57,12 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/idm-metrics-collector
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
-            type=raw,value=latest-amd64,enable=${{ github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
-            type=raw,value=${{ inputs.version }}-amd64,enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=ref,event=pr,suffix=-amd64
+            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=ref,event=pr
           labels: |
-            org.opencontainers.image.description=Modern dashboard for IDM Heatpumps. Monitoring, control and automation for IDM Navigator 2.0. (AMD64 Build)
+            org.opencontainers.image.description=Modern dashboard for IDM Heatpumps. Monitoring, control and automation for IDM Navigator 2.0.
           annotations: |
-            org.opencontainers.image.description=Modern dashboard for IDM Heatpumps. Monitoring, control and automation for IDM Navigator 2.0. (AMD64 Build)
+            org.opencontainers.image.description=Modern dashboard for IDM Heatpumps. Monitoring, control and automation for IDM Navigator 2.0.
 
       - name: Get short SHA
         id: vars
@@ -93,5 +92,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:latest-amd64
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:latest
           cache-to: type=inline
