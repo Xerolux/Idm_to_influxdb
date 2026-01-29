@@ -1,7 +1,11 @@
 <script setup>
 // Xerolux 2026
+import { ref } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
+import PrivacyPolicyDialog from '../components/PrivacyPolicyDialog.vue'
+
+const privacyDialog = ref(null)
 </script>
 
 <template>
@@ -44,13 +48,13 @@ import Button from 'primevue/button'
                 >
                   <Button label="GitHub Repository" icon="pi pi-github" severity="secondary" />
                 </a>
-                <a
-                  href="https://github.com/Xerolux/idm-metrics-collector/blob/main/LICENSE"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <Button label="MIT Lizenz" icon="pi pi-file" severity="secondary" outlined />
-                </a>
+                <Button
+                  label="Datenschutz & Lizenz"
+                  icon="pi pi-shield"
+                  severity="secondary"
+                  outlined
+                  @click="privacyDialog.open()"
+                />
                 <a href="https://www.buymeacoffee.com/xerolux" target="_blank" rel="noopener">
                   <Button label="Spenden / Donate" icon="pi pi-coffee" severity="warning" />
                 </a>
@@ -113,5 +117,6 @@ import Button from 'primevue/button'
         </template>
       </Card>
     </div>
+    <PrivacyPolicyDialog ref="privacyDialog" />
   </div>
 </template>
