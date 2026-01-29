@@ -1,3 +1,4 @@
+# Xerolux 2026
 import unittest
 from unittest.mock import patch
 from idm_logger.web import app

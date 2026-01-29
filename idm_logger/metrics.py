@@ -1,3 +1,4 @@
+# Xerolux 2026
 # SPDX-License-Identifier: MIT
 import logging
 import requests
@@ -95,12 +96,25 @@ class MetricsWriter:
             except Exception as e:
                 logger.error(f"Error flushing metrics on exit: {e}")
 
+    def _escape_tag(self, value):
+        """Escape special characters for InfluxDB line protocol tags."""
+        if not value:
+            return "unknown"
+        return str(value).replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+
     def _send_data(self, data: Union[Dict, List[Dict]]) -> bool:
         """Internal method to send data to VictoriaMetrics (executed in worker thread)."""
         # data can be a single dict (legacy call) or a list of dicts (batch)
 
         items = data if isinstance(data, list) else [data]
         lines = []
+
+        # Prepare tags from config
+        inst_id = self._escape_tag(config.get("installation_id"))
+        model = self._escape_tag(config.get("hp_model"))
+        manufacturer = self._escape_tag(config.get("hp_manufacturer", "IDM"))
+
+        tags = f",installation_id={inst_id},model={model},manufacturer={manufacturer}"
 
         for measurements in items:
             measurement_name = "idm_heatpump"
@@ -120,7 +134,7 @@ class MetricsWriter:
             if fields:
                 field_str = ",".join(fields)
                 # Timestamp is handled by VictoriaMetrics on ingestion
-                lines.append(f"{measurement_name} {field_str}")
+                lines.append(f"{measurement_name}{tags} {field_str}")
 
         if not lines:
             return False

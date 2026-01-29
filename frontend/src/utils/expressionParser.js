@@ -1,3 +1,4 @@
+// Xerolux 2026
 /**
  * Expression Parser for mathematical operations on query results.
  *
@@ -18,31 +19,31 @@
  * @returns {Object} - { valid: boolean, error: string }
  */
 export function validateExpression(expression) {
-    if (!expression || !expression.trim()) {
-        return { valid: false, error: 'Expression is empty' };
-    }
+  if (!expression || !expression.trim()) {
+    return { valid: false, error: 'Expression is empty' }
+  }
 
-    // Check for balanced parentheses
-    const parenCount = (expression.match(/\(/g) || []).length - (expression.match(/\)/g) || []).length;
-    if (parenCount !== 0) {
-        const extra = parenCount > 0 ? '(' : ')';
-        return {
-            valid: false,
-            error: `Unbalanced parentheses: ${Math.abs(parenCount)} extra ${extra}`
-        };
+  // Check for balanced parentheses
+  const parenCount = (expression.match(/\(/g) || []).length - (expression.match(/\)/g) || []).length
+  if (parenCount !== 0) {
+    const extra = parenCount > 0 ? '(' : ')'
+    return {
+      valid: false,
+      error: `Unbalanced parentheses: ${Math.abs(parenCount)} extra ${extra}`
     }
+  }
 
-    // Check for invalid characters (only allow alphanumeric, operators, parentheses, commas, dots, spaces)
-    if (!/^[\w\s+\-*/().,]+$/.test(expression)) {
-        return { valid: false, error: 'Expression contains invalid characters' };
-    }
+  // Check for invalid characters (only allow alphanumeric, operators, parentheses, commas, dots, spaces)
+  if (!/^[\w\s+\-*/().,]+$/.test(expression)) {
+    return { valid: false, error: 'Expression contains invalid characters' }
+  }
 
-    // Check for consecutive operators
-    if (/[^\w\s][^\w\s]/.test(expression.replace(/\s/g, ''))) {
-        return { valid: false, error: 'Invalid operator sequence' };
-    }
+  // Check for consecutive operators
+  if (/[^\w\s][^\w\s]/.test(expression.replace(/\s/g, ''))) {
+    return { valid: false, error: 'Invalid operator sequence' }
+  }
 
-    return { valid: true, error: '' };
+  return { valid: true, error: '' }
 }
 
 /**
@@ -52,9 +53,9 @@ export function validateExpression(expression) {
  * @returns {Array<string>} - List of query labels referenced in the expression
  */
 export function parseExpression(expression) {
-    // Extract all standalone uppercase letters (A, B, C, etc.)
-    const matches = expression.match(/\b([A-Z])\b/g) || [];
-    return [...new Set(matches)];
+  // Extract all standalone uppercase letters (A, B, C, etc.)
+  const matches = expression.match(/\b([A-Z])\b/g) || []
+  return [...new Set(matches)]
 }
 
 /**
@@ -67,30 +68,30 @@ export function parseExpression(expression) {
  * @returns {number|null} - The calculated value or null if any query has no value at this timestamp
  */
 export function evaluateExpression(expression, timestamp, queryData) {
-    const queryLabels = parseExpression(expression);
+  const queryLabels = parseExpression(expression)
 
-    // Get the value for each query at this timestamp
-    const queryValues = {};
-    for (const label of queryLabels) {
-        if (!queryData[label]) {
-            return null;
-        }
-
-        const value = queryData[label].find(([ts]) => ts === timestamp)?.[1];
-        if (value === undefined) {
-            return null;
-        }
-
-        queryValues[label] = value;
+  // Get the value for each query at this timestamp
+  const queryValues = {}
+  for (const label of queryLabels) {
+    if (!queryData[label]) {
+      return null
     }
 
-    // Evaluate the expression with these values
-    try {
-        return evaluateWithValues(expression, queryValues);
-    } catch (error) {
-        console.error(`Error evaluating expression '${expression}':`, error);
-        return null;
+    const value = queryData[label].find(([ts]) => ts === timestamp)?.[1]
+    if (value === undefined) {
+      return null
     }
+
+    queryValues[label] = value
+  }
+
+  // Evaluate the expression with these values
+  try {
+    return evaluateWithValues(expression, queryValues)
+  } catch (error) {
+    console.error(`Error evaluating expression '${expression}':`, error)
+    return null
+  }
 }
 
 /**
@@ -101,45 +102,45 @@ export function evaluateExpression(expression, timestamp, queryData) {
  * @returns {number} - The calculated value
  */
 function evaluateWithValues(expression, values) {
-    // Replace query references with their values
-    let expr = expression;
-    for (const [label, value] of Object.entries(values)) {
-        // Use word boundaries to avoid partial replacements
-        const regex = new RegExp(`\\b${label}\\b`, 'g');
-        expr = expr.replace(regex, value.toString());
-    }
+  // Replace query references with their values
+  let expr = expression
+  for (const [label, value] of Object.entries(values)) {
+    // Use word boundaries to avoid partial replacements
+    const regex = new RegExp(`\\b${label}\\b`, 'g')
+    expr = expr.replace(regex, value.toString())
+  }
 
-    // Replace functions with Python equivalents
-    // avg(A,B,C) -> (A+B+C)/3
-    expr = expr.replace(/avg\s*\(([^)]+)\)/g, (match, args) => {
-        const argList = args.split(',').map(a => a.trim());
-        return `(${argList.join('+')})/${argList.length}`;
-    });
+  // Replace functions with Python equivalents
+  // avg(A,B,C) -> (A+B+C)/3
+  expr = expr.replace(/avg\s*\(([^)]+)\)/g, (match, args) => {
+    const argList = args.split(',').map((a) => a.trim())
+    return `(${argList.join('+')})/${argList.length}`
+  })
 
-    // sum(A,B) -> (A+B)
-    expr = expr.replace(/sum\s*\(([^)]+)\)/g, (match, args) => {
-        const argList = args.split(',').map(a => a.trim());
-        return `(${argList.join('+')})`;
-    });
+  // sum(A,B) -> (A+B)
+  expr = expr.replace(/sum\s*\(([^)]+)\)/g, (match, args) => {
+    const argList = args.split(',').map((a) => a.trim())
+    return `(${argList.join('+')})`
+  })
 
-    // min(A,B) -> Math.min(A,B)
-    expr = expr.replace(/min\s*\(([^)]+)\)/g, (match, args) => {
-        return `Math.min(${args})`;
-    });
+  // min(A,B) -> Math.min(A,B)
+  expr = expr.replace(/min\s*\(([^)]+)\)/g, (match, args) => {
+    return `Math.min(${args})`
+  })
 
-    // max(A,B) -> Math.max(A,B)
-    expr = expr.replace(/max\s*\(([^)]+)\)/g, (match, args) => {
-        return `Math.max(${args})`;
-    });
+  // max(A,B) -> Math.max(A,B)
+  expr = expr.replace(/max\s*\(([^)]+)\)/g, (match, args) => {
+    return `Math.max(${args})`
+  })
 
-    // Safe evaluation using Function constructor (safer than eval)
-    try {
-        const func = new Function('return ' + expr);
-        const result = func();
-        return parseFloat(result);
-    } catch (error) {
-        throw new Error(`Failed to evaluate expression '${expr}': ${error.message}`);
-    }
+  // Safe evaluation using Function constructor (safer than eval)
+  try {
+    const func = new Function('return ' + expr)
+    const result = func()
+    return parseFloat(result)
+  } catch (error) {
+    throw new Error(`Failed to evaluate expression '${expr}': ${error.message}`)
+  }
 }
 
 /**
@@ -150,24 +151,24 @@ function evaluateWithValues(expression, values) {
  * @returns {Array} - List of [timestamp, value] pairs
  */
 export function evaluateExpressionSeries(expression, queryData) {
-    // Get all unique timestamps from all queries
-    const allTimestamps = new Set();
-    for (const data of Object.values(queryData)) {
-        for (const [ts] of data) {
-            allTimestamps.add(ts);
-        }
+  // Get all unique timestamps from all queries
+  const allTimestamps = new Set()
+  for (const data of Object.values(queryData)) {
+    for (const [ts] of data) {
+      allTimestamps.add(ts)
     }
+  }
 
-    // Evaluate expression at each timestamp
-    const results = [];
-    for (const timestamp of Array.from(allTimestamps).sort((a, b) => a - b)) {
-        const value = evaluateExpression(expression, timestamp, queryData);
-        if (value !== null) {
-            results.push([timestamp, value]);
-        }
+  // Evaluate expression at each timestamp
+  const results = []
+  for (const timestamp of Array.from(allTimestamps).sort((a, b) => a - b)) {
+    const value = evaluateExpression(expression, timestamp, queryData)
+    if (value !== null) {
+      results.push([timestamp, value])
     }
+  }
 
-    return results;
+  return results
 }
 
 /**
@@ -176,18 +177,18 @@ export function evaluateExpressionSeries(expression, queryData) {
  * @returns {Array<Object>} - List of example expressions with descriptions
  */
 export function getExpressionExamples() {
-    return [
-        { expression: 'A/B', description: 'Divide A by B' },
-        { expression: 'A*100', description: 'Multiply A by 100' },
-        { expression: '(A+B)/2', description: 'Average of A and B' },
-        { expression: 'avg(A,B,C)', description: 'Average of A, B, and C' },
-        { expression: '(A-B)*100/B', description: 'Percentage difference' },
-        { expression: 'sum(A,B,C)', description: 'Sum of A, B, and C' },
-        { expression: 'min(A,B)', description: 'Minimum of A and B' },
-        { expression: 'max(A,B)', description: 'Maximum of A and B' },
-        { expression: '(A+B+C)/3', description: 'Average using operators' },
-        { expression: 'A*0.5+B*0.5', description: 'Weighted average (50% A, 50% B)' }
-    ];
+  return [
+    { expression: 'A/B', description: 'Divide A by B' },
+    { expression: 'A*100', description: 'Multiply A by 100' },
+    { expression: '(A+B)/2', description: 'Average of A and B' },
+    { expression: 'avg(A,B,C)', description: 'Average of A, B, and C' },
+    { expression: '(A-B)*100/B', description: 'Percentage difference' },
+    { expression: 'sum(A,B,C)', description: 'Sum of A, B, and C' },
+    { expression: 'min(A,B)', description: 'Minimum of A and B' },
+    { expression: 'max(A,B)', description: 'Maximum of A and B' },
+    { expression: '(A+B+C)/3', description: 'Average using operators' },
+    { expression: 'A*0.5+B*0.5', description: 'Weighted average (50% A, 50% B)' }
+  ]
 }
 
 /**
@@ -196,7 +197,7 @@ export function getExpressionExamples() {
  * @returns {string} - Help text for expressions
  */
 export function getExpressionHelp() {
-    return `
+  return `
 Mathematical Expressions Help:
 
 Operators:
@@ -225,5 +226,5 @@ Note:
   - Division by zero returns null
   - Invalid expressions return null
   - Use parentheses to control operation order
-`;
+`
 }

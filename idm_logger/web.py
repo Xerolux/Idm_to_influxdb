@@ -1,3 +1,4 @@
+# Xerolux 2026
 # SPDX-License-Identifier: MIT
 from flask import (
     Flask,
@@ -17,6 +18,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from .technician_auth import calculate_codes
 from .config import config
 from .sensor_addresses import SensorFeatures
+from .const import HEAT_PUMP_MODELS, HEAT_PUMP_MANUFACTURERS
 from .log_handler import memory_handler
 from .backup import backup_manager, BACKUP_DIR
 from .mqtt import mqtt_publisher
@@ -551,6 +553,12 @@ def setup():
             config.data["idm"]["circuits"] = data["circuits"]
         if "zones" in data:
             config.data["idm"]["zones"] = data["zones"]
+
+        if "hp_model" in data:
+            if data["hp_model"] in HEAT_PUMP_MODELS:
+                config.data["hp_model"] = data["hp_model"]
+            else:
+                return jsonify({"error": "Ungültiges Wärmepumpen-Modell"}), 400
 
         if "metrics" not in config.data:
             config.data["metrics"] = {}
@@ -1276,6 +1284,18 @@ def health_check():
     ), 200
 
 
+@app.route("/api/info")
+def public_info():
+    """Public info endpoint for setup wizard."""
+    return jsonify(
+        {
+            "version": get_current_version(),
+            "heat_pump_models": HEAT_PUMP_MODELS,
+            "heat_pump_manufacturers": HEAT_PUMP_MANUFACTURERS,
+        }
+    ), 200
+
+
 @app.route("/api/status")
 def status_check():
     """Detailed status endpoint."""
@@ -1323,8 +1343,35 @@ def share_logs():
     """Upload logs to paste service and return share link."""
     try:
         logs = memory_handler.get_logs()
+
+        # System Info Header
+        inst_id = config.get("installation_id", "Unknown")
+        model = config.get("hp_model", "Unknown")
+        manufacturer = config.get("hp_manufacturer", "Unknown")
+        version = get_current_version()
+
+        header = [
+            "=== IDM Logger System Report ===",
+            f"Installation ID: {inst_id}",
+            f"Manufacturer: {manufacturer}",
+            f"Model: {model}",
+            f"Version: {version}",
+            f"Generated: {datetime.now().isoformat()}",
+            "================================",
+            "",
+            "--- Current Data Snapshot ---",
+        ]
+
+        # Add current data snapshot
+        with data_lock:
+            for k, v in current_data.items():
+                header.append(f"{k}: {v}")
+
+        header.append("")
+        header.append("--- Logs ---")
+
         # Format logs for text file
-        lines = []
+        lines = header
         for log in logs:
             line = f"[{log['timestamp']}] {log['level']}: {log['message']}"
             lines.append(line)
@@ -1363,12 +1410,21 @@ def config_page():
             "token_source": "environment"
             if os.environ.get("METRICS_URL")
             else "database",
+            "heat_pump_models": HEAT_PUMP_MODELS,
+            "heat_pump_manufacturers": HEAT_PUMP_MANUFACTURERS,
         }
         return jsonify(response)
 
     if request.method == "POST":
         data = request.get_json()
         try:
+            # Heat pump info
+            if "hp_model" in data:
+                if data["hp_model"] in HEAT_PUMP_MODELS:
+                    config.data["hp_model"] = data["hp_model"]
+                else:
+                    return jsonify({"error": "Ungültiges Wärmepumpen-Modell"}), 400
+
             # IDM Host - validate hostname/IP
             if "idm_host" in data:
                 valid, err = _validate_host(data["idm_host"])

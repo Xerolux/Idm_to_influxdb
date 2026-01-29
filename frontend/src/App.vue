@@ -1,4 +1,5 @@
 <script setup>
+// Xerolux 2026
 </script>
 
 <template>
@@ -7,5 +8,4 @@
   </div>
 </template>
 
-<style>
-</style>
+<style></style>

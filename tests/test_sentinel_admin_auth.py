@@ -1,3 +1,4 @@
+# Xerolux 2026
 import os
 from unittest.mock import patch, MagicMock
 import sys

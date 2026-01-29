@@ -1,223 +1,267 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+// Xerolux 2026
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from "../stores/auth";
-import { useUiStore } from "../stores/ui";
-import { useI18n } from 'vue-i18n';
-import axios from 'axios';
-import Menubar from 'primevue/menubar';
-import Button from 'primevue/button';
-import Select from 'primevue/select';
-import AppFooter from './AppFooter.vue';
-import NetworkStatus from './NetworkStatus.vue';
+import { useAuthStore } from '../stores/auth'
+import { useUiStore } from '../stores/ui'
+import { useI18n } from 'vue-i18n'
+import axios from 'axios'
+import Menubar from 'primevue/menubar'
+import Button from 'primevue/button'
+import Select from 'primevue/select'
+import AppFooter from './AppFooter.vue'
+import NetworkStatus from './NetworkStatus.vue'
+import ModelMigrationDialog from './ModelMigrationDialog.vue'
 
-const router = useRouter();
-const auth = useAuthStore();
-const ui = useUiStore();
-const { t, locale } = useI18n();
+const router = useRouter()
+const auth = useAuthStore()
+const ui = useUiStore()
+const { t, locale } = useI18n()
 
 // Update notification state
-const updateAvailable = ref(false);
-const updateInfo = ref(null);
-const showUpdateBanner = ref(true);
+const updateAvailable = ref(false)
+const updateInfo = ref(null)
+const showUpdateBanner = ref(true)
 
-const editModeIcon = computed(() => (ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock'));
-const editModeSeverity = computed(() => (ui.editMode ? 'success' : 'secondary'));
+const editModeIcon = computed(() => (ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock'))
+const editModeSeverity = computed(() => (ui.editMode ? 'success' : 'secondary'))
 
 const languages = ref([
-    { label: 'Deutsch', value: 'de' },
-    { label: 'English', value: 'en' }
-]);
-const currentLang = ref('de');
+  { label: 'Deutsch', value: 'de' },
+  { label: 'English', value: 'en' }
+])
+const currentLang = ref('de')
 
 watch(currentLang, (newLang) => {
-    locale.value = newLang;
-});
+  locale.value = newLang
+})
 
-const isDark = computed(() => ui.darkMode);
+const isDark = computed(() => ui.darkMode)
 
 const toggleTheme = () => {
-    ui.toggleDarkMode();
-};
+  ui.toggleDarkMode()
+}
 
 const items = computed(() => [
-    {
-        label: t('dashboard'),
-        icon: 'pi pi-home',
-        command: () => router.push('/')
-    },
-    {
-        label: t('control'),
-        icon: 'pi pi-sliders-h',
-        command: () => router.push('/control')
-    },
-    {
-        label: t('schedule'),
-        icon: 'pi pi-calendar',
-        command: () => router.push('/schedule')
-    },
-    {
-        label: t('alerts'),
-        icon: 'pi pi-bell',
-        command: () => router.push('/alerts')
-    },
-    {
-        label: t('logs'),
-        icon: 'pi pi-list',
-        command: () => router.push('/logs')
-    },
-    {
-        label: t('config'),
-        icon: 'pi pi-cog',
-        command: () => router.push('/config')
-    },
-    // Uncomment to enable Grafana link in navigation
-    // {
-    //     label: 'Grafana',
-    //     icon: 'pi pi-chart-line',
-    //     command: () => {
-    //         const hostname = window.location.hostname;
-    //         window.open(`http://${hostname}:3001`, '_blank', 'noopener');
-    //     }
-    // },
-    {
-        label: t('codegen'),
-        icon: 'pi pi-lock',
-        command: () => router.push('/tools')
-    },
-    {
-        label: t('about'),
-        icon: 'pi pi-info-circle',
-        command: () => router.push('/about')
-    },
-    {
-        label: ui.editMode ? 'Bearbeiten beenden' : 'Bearbeiten',
-        icon: ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock',
-        command: () => ui.toggleEditMode()
-    }
-]);
+  {
+    label: t('dashboard'),
+    icon: 'pi pi-home',
+    command: () => router.push('/')
+  },
+  {
+    label: t('control'),
+    icon: 'pi pi-sliders-h',
+    command: () => router.push('/control')
+  },
+  {
+    label: t('schedule'),
+    icon: 'pi pi-calendar',
+    command: () => router.push('/schedule')
+  },
+  {
+    label: t('alerts'),
+    icon: 'pi pi-bell',
+    command: () => router.push('/alerts')
+  },
+  {
+    label: t('logs'),
+    icon: 'pi pi-list',
+    command: () => router.push('/logs')
+  },
+  {
+    label: t('config'),
+    icon: 'pi pi-cog',
+    command: () => router.push('/config')
+  },
+  // Uncomment to enable Grafana link in navigation
+  // {
+  //     label: 'Grafana',
+  //     icon: 'pi pi-chart-line',
+  //     command: () => {
+  //         const hostname = window.location.hostname;
+  //         window.open(`http://${hostname}:3001`, '_blank', 'noopener');
+  //     }
+  // },
+  {
+    label: t('codegen'),
+    icon: 'pi pi-lock',
+    command: () => router.push('/tools')
+  },
+  {
+    label: t('about'),
+    icon: 'pi pi-info-circle',
+    command: () => router.push('/about')
+  },
+  {
+    label: ui.editMode ? 'Bearbeiten beenden' : 'Bearbeiten',
+    icon: ui.editMode ? 'pi pi-lock-open' : 'pi pi-lock',
+    command: () => ui.toggleEditMode()
+  }
+])
 
 const logout = async () => {
-    await auth.logout();
-    router.push('/login');
+  await auth.logout()
+  router.push('/login')
 }
 
 // Check for updates
 const checkForUpdates = async () => {
-    try {
-        const res = await axios.get('/api/check-update');
-        if (res.data.update_available) {
-            updateAvailable.value = true;
-            updateInfo.value = res.data;
-        }
-    } catch (e) {
-        console.error('Update check failed:', e);
+  try {
+    const res = await axios.get('/api/check-update')
+    if (res.data.update_available) {
+      updateAvailable.value = true
+      updateInfo.value = res.data
     }
-};
+  } catch (e) {
+    console.error('Update check failed:', e)
+  }
+}
 
 const goToUpdate = () => {
-    router.push('/config');
-    // Scroll to update section after navigation
-    setTimeout(() => {
-        const updateSection = document.querySelector('[data-update-section]');
-        if (updateSection) {
-            updateSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, 100);
-};
+  router.push('/config')
+  // Scroll to update section after navigation
+  setTimeout(() => {
+    const updateSection = document.querySelector('[data-update-section]')
+    if (updateSection) {
+      updateSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, 100)
+}
 
 const dismissUpdateBanner = () => {
-    showUpdateBanner.value = false;
-};
+  showUpdateBanner.value = false
+}
 
-let timer;
+let timer
 const resetTimer = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-        logout();
-    }, 300000); // 5 minutes
-};
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    logout()
+  }, 300000) // 5 minutes
+}
 
 onMounted(() => {
-    ui.init();
-    // Apply dark mode on mount
-    if (ui.darkMode) {
-        document.documentElement.classList.add('my-app-dark');
-    }
-    const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetTimer));
-    resetTimer();
+  ui.init()
+  // Apply dark mode on mount
+  if (ui.darkMode) {
+    document.documentElement.classList.add('my-app-dark')
+  }
+  const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart']
+  events.forEach((event) => window.addEventListener(event, resetTimer))
+  resetTimer()
 
-    // Check for updates on app load
-    checkForUpdates();
-});
+  // Check for updates on app load
+  checkForUpdates()
+})
 
 onUnmounted(() => {
-    const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => window.removeEventListener(event, resetTimer));
-    clearTimeout(timer);
-});
+  const events = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart']
+  events.forEach((event) => window.removeEventListener(event, resetTimer))
+  clearTimeout(timer)
+})
 </script>
 
 <template>
-    <div class="flex flex-col min-h-screen transition-colors duration-200" :class="isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'">
-        <NetworkStatus />
+  <div
+    class="flex flex-col min-h-screen transition-colors duration-200"
+    :class="isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'"
+  >
+    <NetworkStatus />
+    <ModelMigrationDialog />
 
-        <!-- Update Available Banner -->
-        <div v-if="updateAvailable && showUpdateBanner"
-             class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 flex items-center justify-between cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all"
-             @click="goToUpdate">
-            <div class="flex items-center gap-3">
-                <i class="pi pi-sync text-lg"></i>
-                <span class="font-medium">
-                    Update verfügbar!
-                    <span v-if="updateInfo?.docker?.updates_available" class="hidden sm:inline">
-                        - Neue Docker Images
-                    </span>
-                    <span v-if="updateInfo?.latest_version" class="hidden md:inline">
-                        ({{ updateInfo.latest_version }})
-                    </span>
-                </span>
-                <span class="text-blue-200 text-sm hidden lg:inline">
-                    <i class="pi pi-clock mr-1"></i>Auto-Update täglich 03:00
-                </span>
-            </div>
-            <button @click.stop="dismissUpdateBanner" class="p-1 hover:bg-blue-500 rounded transition-colors" title="Ausblenden">
-                <i class="pi pi-times"></i>
-            </button>
-        </div>
-
-        <Menubar :model="items" breakpoint="1280px" class="rounded-none border-0 border-b !border-gray-700 !bg-gray-800">
-             <template #start>
-               <span class="text-lg sm:text-xl font-bold px-2 sm:px-4 text-white">IDM Metrics Collector</span>
-            </template>
-            <template #item="{ item, props }">
-                <a v-ripple class="flex items-center gap-2 px-2 sm:px-3 py-2 hover:bg-gray-700 rounded cursor-pointer transition-colors text-gray-200" v-bind="props.action">
-                    <i :class="item.icon" class="text-sm sm:text-base"></i>
-                    <span class="text-sm sm:text-base">{{ item.label }}</span>
-                </a>
-            </template>
-            <template #end>
-                <div class="flex items-center gap-1 sm:gap-2 mr-2 sm:mr-4">
-                     <Select v-model="currentLang" :options="languages" optionLabel="label" optionValue="value" class="w-20 sm:w-24 !text-sm" size="small" />
-
-                    <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" text rounded severity="secondary" @click="toggleTheme" class="w-8 h-8 sm:w-auto sm:h-auto" />
-
-                    <Button
-                        :label="ui.editMode ? '' : ''"
-                        :icon="editModeIcon"
-                        :severity="editModeSeverity"
-                        text
-                        class="p-1 sm:p-2"
-                        @click="ui.toggleEditMode"
-                    />
-<Button icon="pi pi-power-off" severity="danger" text @click="logout" class="p-1 sm:p-2" />
-                </div>
-            </template>
-        </Menubar>
-        <main class="flex-grow container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 lg:py-8">
-             <router-view></router-view>
-        </main>
-        <AppFooter />
+    <!-- Update Available Banner -->
+    <div
+      v-if="updateAvailable && showUpdateBanner"
+      class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 flex items-center justify-between cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all"
+      @click="goToUpdate"
+    >
+      <div class="flex items-center gap-3">
+        <i class="pi pi-sync text-lg"></i>
+        <span class="font-medium">
+          Update verfügbar!
+          <span v-if="updateInfo?.docker?.updates_available" class="hidden sm:inline">
+            - Neue Docker Images
+          </span>
+          <span v-if="updateInfo?.latest_version" class="hidden md:inline">
+            ({{ updateInfo.latest_version }})
+          </span>
+        </span>
+        <span class="text-blue-200 text-sm hidden lg:inline">
+          <i class="pi pi-clock mr-1"></i>Auto-Update täglich 03:00
+        </span>
+      </div>
+      <button
+        @click.stop="dismissUpdateBanner"
+        class="p-1 hover:bg-blue-500 rounded transition-colors"
+        title="Ausblenden"
+      >
+        <i class="pi pi-times"></i>
+      </button>
     </div>
+
+    <Menubar
+      :model="items"
+      breakpoint="1280px"
+      class="rounded-none border-0 border-b !border-gray-700 !bg-gray-800"
+    >
+      <template #start>
+        <span class="text-lg sm:text-xl font-bold px-2 sm:px-4 text-white"
+          >IDM Metrics Collector</span
+        >
+      </template>
+      <template #item="{ item, props }">
+        <a
+          v-ripple
+          class="flex items-center gap-2 px-2 sm:px-3 py-2 hover:bg-gray-700 rounded cursor-pointer transition-colors text-gray-200"
+          v-bind="props.action"
+        >
+          <i :class="item.icon" class="text-sm sm:text-base"></i>
+          <span class="text-sm sm:text-base">{{ item.label }}</span>
+        </a>
+      </template>
+      <template #end>
+        <div class="flex items-center gap-1 sm:gap-2 mr-2 sm:mr-4">
+          <Select
+            v-model="currentLang"
+            :options="languages"
+            optionLabel="label"
+            optionValue="value"
+            class="w-20 sm:w-24 !text-sm"
+            size="small"
+          />
+
+          <Button
+            :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+            text
+            rounded
+            severity="secondary"
+            @click="toggleTheme"
+            class="w-8 h-8 sm:w-auto sm:h-auto"
+          />
+
+          <Button
+            :label="ui.editMode ? '' : ''"
+            :icon="editModeIcon"
+            :severity="editModeSeverity"
+            text
+            class="p-1 sm:p-2"
+            @click="ui.toggleEditMode"
+          />
+          <Button
+            icon="pi pi-power-off"
+            severity="danger"
+            text
+            @click="logout"
+            class="p-1 sm:p-2"
+          />
+        </div>
+      </template>
+    </Menubar>
+    <main
+      class="flex-grow container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-6 lg:py-8"
+    >
+      <router-view></router-view>
+    </main>
+    <AppFooter />
+  </div>
 </template>

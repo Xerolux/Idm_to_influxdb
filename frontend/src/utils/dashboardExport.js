@@ -1,3 +1,4 @@
+// Xerolux 2026
 /**
  * Dashboard Export Utility
  *
@@ -5,9 +6,9 @@
  * Also exports metrics data as CSV, Excel, or JSON
  */
 
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import axios from 'axios';
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+import axios from 'axios'
 
 /**
  * Export a DOM element as PNG image
@@ -16,30 +17,30 @@ import axios from 'axios';
  * @returns {Promise<Blob>} - PNG image blob
  */
 export async function exportAsPNG(element, options = {}) {
-    const {
-        scale = 2, // Higher scale = better quality
-        backgroundColor = '#ffffff',
-        logging = false,
-    } = options;
+  const {
+    scale = 2, // Higher scale = better quality
+    backgroundColor = '#ffffff',
+    logging = false
+  } = options
 
-    try {
-        const canvas = await html2canvas(element, {
-            scale,
-            backgroundColor,
-            logging,
-            useCORS: true, // Allow cross-origin images
-            allowTaint: true,
-        });
+  try {
+    const canvas = await html2canvas(element, {
+      scale,
+      backgroundColor,
+      logging,
+      useCORS: true, // Allow cross-origin images
+      allowTaint: true
+    })
 
-        return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
-                resolve(blob);
-            }, 'image/png');
-        });
-    } catch (error) {
-        console.error('PNG export failed:', error);
-        throw new Error('Export fehlgeschlagen: ' + error.message);
-    }
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob)
+      }, 'image/png')
+    })
+  } catch (error) {
+    console.error('PNG export failed:', error)
+    throw new Error('Export fehlgeschlagen: ' + error.message)
+  }
 }
 
 /**
@@ -49,65 +50,58 @@ export async function exportAsPNG(element, options = {}) {
  * @returns {Promise<Blob>} - PDF document blob
  */
 export async function exportAsPDF(element, options = {}) {
-    const {
-        // filename = 'dashboard',
-        format = 'a4',
-        orientation = 'landscape',
-        scale = 2,
-        quality = 0.95,
-    } = options;
+  const {
+    // filename = 'dashboard',
+    format = 'a4',
+    orientation = 'landscape',
+    scale = 2,
+    quality = 0.95
+  } = options
 
-    try {
-        // First capture as canvas
-        const canvas = await html2canvas(element, {
-            scale,
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
-        });
+  try {
+    // First capture as canvas
+    const canvas = await html2canvas(element, {
+      scale,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    })
 
-        // Calculate PDF dimensions
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
+    // Calculate PDF dimensions
+    const imgWidth = canvas.width
+    const imgHeight = canvas.height
 
-        // A4 landscape dimensions in mm
-        const pdfWidth = 297;
-        const pdfHeight = 210;
+    // A4 landscape dimensions in mm
+    const pdfWidth = 297
+    const pdfHeight = 210
 
-        // Calculate ratio to fit PDF page
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const finalWidth = imgWidth * ratio;
-        const finalHeight = imgHeight * ratio;
+    // Calculate ratio to fit PDF page
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+    const finalWidth = imgWidth * ratio
+    const finalHeight = imgHeight * ratio
 
-        // Create PDF
-        const pdf = new jsPDF({
-            orientation,
-            unit: 'mm',
-            format,
-        });
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation,
+      unit: 'mm',
+      format
+    })
 
-        // Add image to PDF (centered)
-        const x = (pdfWidth - finalWidth) / 2;
-        const y = (pdfHeight - finalHeight) / 2;
+    // Add image to PDF (centered)
+    const x = (pdfWidth - finalWidth) / 2
+    const y = (pdfHeight - finalHeight) / 2
 
-        pdf.addImage(
-            canvas.toDataURL('image/jpeg', quality),
-            'JPEG',
-            x,
-            y,
-            finalWidth,
-            finalHeight
-        );
+    pdf.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', x, y, finalWidth, finalHeight)
 
-        return new Promise((resolve) => {
-            pdf.getBlob((blob) => {
-                resolve(blob);
-            });
-        });
-    } catch (error) {
-        console.error('PDF export failed:', error);
-        throw new Error('PDF Export fehlgeschlagen: ' + error.message);
-    }
+    return new Promise((resolve) => {
+      pdf.getBlob((blob) => {
+        resolve(blob)
+      })
+    })
+  } catch (error) {
+    console.error('PDF export failed:', error)
+    throw new Error('PDF Export fehlgeschlagen: ' + error.message)
+  }
 }
 
 /**
@@ -117,18 +111,18 @@ export async function exportAsPDF(element, options = {}) {
  * @param {string} mimeType - The MIME type
  */
 export function downloadBlob(blob, filename, mimeType) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.type = mimeType;
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.type = mimeType
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 
-    // Clean up
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+  // Clean up
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
 /**
@@ -139,24 +133,24 @@ export function downloadBlob(blob, filename, mimeType) {
  * @returns {Promise<void>}
  */
 export async function exportDashboard(element, format, dashboardName = 'Dashboard') {
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const sanitizedName = dashboardName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const filename = `${sanitizedName}_${timestamp}`;
+  const timestamp = new Date().toISOString().slice(0, 10)
+  const sanitizedName = dashboardName.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+  const filename = `${sanitizedName}_${timestamp}`
 
-    try {
-        if (format === 'png') {
-            const blob = await exportAsPNG(element);
-            downloadBlob(blob, `${filename}.png`, 'image/png');
-        } else if (format === 'pdf') {
-            const blob = await exportAsPDF(element);
-            downloadBlob(blob, `${filename}.pdf`, 'application/pdf');
-        } else {
-            throw new Error(`Unsupported format: ${format}`);
-        }
-    } catch (error) {
-        console.error('Dashboard export failed:', error);
-        throw error;
+  try {
+    if (format === 'png') {
+      const blob = await exportAsPNG(element)
+      downloadBlob(blob, `${filename}.png`, 'image/png')
+    } else if (format === 'pdf') {
+      const blob = await exportAsPDF(element)
+      downloadBlob(blob, `${filename}.pdf`, 'application/pdf')
+    } else {
+      throw new Error(`Unsupported format: ${format}`)
     }
+  } catch (error) {
+    console.error('Dashboard export failed:', error)
+    throw error
+  }
 }
 
 /**
@@ -166,63 +160,59 @@ export async function exportDashboard(element, format, dashboardName = 'Dashboar
  * @returns {Promise<Blob>} - PNG image blob
  */
 export async function exportChartsGrid(elements, options = {}) {
-    const {
-        columns = 2,
-        padding = 20,
-        scale = 2,
-    } = options;
+  const { columns = 2, padding = 20, scale = 2 } = options
 
-    try {
-        // Capture all charts
-        const canvases = await Promise.all(
-            elements.map((el) =>
-                html2canvas(el, {
-                    scale,
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: true,
-                })
-            )
-        );
+  try {
+    // Capture all charts
+    const canvases = await Promise.all(
+      elements.map((el) =>
+        html2canvas(el, {
+          scale,
+          logging: false,
+          useCORS: true,
+          allowTaint: true
+        })
+      )
+    )
 
-        // Calculate grid dimensions
-        const rows = Math.ceil(elements.length / columns);
-        const chartWidth = canvases[0].width;
-        const chartHeight = canvases[0].height;
+    // Calculate grid dimensions
+    const rows = Math.ceil(elements.length / columns)
+    const chartWidth = canvases[0].width
+    const chartHeight = canvases[0].height
 
-        const gridWidth = chartWidth * columns + padding * (columns + 1);
-        const gridHeight = chartHeight * rows + padding * (rows + 1);
+    const gridWidth = chartWidth * columns + padding * (columns + 1)
+    const gridHeight = chartHeight * rows + padding * (rows + 1)
 
-        // Create combined canvas
-        const gridCanvas = document.createElement('canvas');
-        gridCanvas.width = gridWidth;
-        gridCanvas.height = gridHeight;
-        const ctx = gridCanvas.getContext('2d');
+    // Create combined canvas
+    const gridCanvas = document.createElement('canvas')
+    gridCanvas.width = gridWidth
+    gridCanvas.height = gridHeight
+    const ctx = gridCanvas.getContext('2d')
 
-        // White background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, gridWidth, gridHeight);
+    // White background
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, gridWidth, gridHeight)
 
-        // Draw each chart in grid
-        canvases.forEach((canvas, index) => {
-            const col = index % columns;
-            const row = Math.floor(index / columns);
+    // Draw each chart in grid
+    canvases.forEach((canvas, index) => {
+      const col = index % columns
+      const row = Math.floor(index / columns)
 
-            const x = padding + col * (chartWidth + padding);
-            const y = padding + row * (chartHeight + padding);
+      const x = padding + col * (chartWidth + padding)
+      const y = padding + row * (chartHeight + padding)
 
-            ctx.drawImage(canvas, x, y);
-        });
+      ctx.drawImage(canvas, x, y)
+    })
 
-        return new Promise((resolve) => {
-            gridCanvas.toBlob((blob) => {
-                resolve(blob);
-            }, 'image/png');
-        });
-    } catch (error) {
-        console.error('Grid export failed:', error);
-        throw new Error('Grid Export fehlgeschlagen: ' + error.message);
-    }
+    return new Promise((resolve) => {
+      gridCanvas.toBlob((blob) => {
+        resolve(blob)
+      }, 'image/png')
+    })
+  } catch (error) {
+    console.error('Grid export failed:', error)
+    throw new Error('Grid Export fehlgeschlagen: ' + error.message)
+  }
 }
 
 /**
@@ -237,80 +227,84 @@ export async function exportChartsGrid(elements, options = {}) {
  * @returns {Promise<void>}
  */
 export async function exportMetricsData(options) {
-    const {
-        format = 'csv',
-        metrics = 'all',
+  const {
+    format = 'csv',
+    metrics = 'all',
+    start,
+    end,
+    step = '1m',
+    dashboard_name = 'metrics'
+  } = options
+
+  if (!start || !end) {
+    throw new Error('Start and end timestamps are required')
+  }
+
+  try {
+    // Call backend API
+    const response = await axios.post(
+      '/api/export/data',
+      {
+        format,
+        metrics,
         start,
         end,
-        step = '1m',
-        dashboard_name = 'metrics'
-    } = options;
+        step,
+        dashboard_name
+      },
+      {
+        responseType: 'blob', // Important for file download
+        timeout: 120000 // 2 minutes timeout for large exports
+      }
+    )
 
-    if (!start || !end) {
-        throw new Error('Start and end timestamps are required');
+    // Create download link
+    const blob = new Blob([response.data], {
+      type: response.headers['content-type']
+    })
+
+    // Extract filename from Content-Disposition header or generate one
+    let filename = `${dashboard_name}_export.${format}`
+    const contentDisposition = response.headers['content-disposition']
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '')
+      }
     }
 
-    try {
-        // Call backend API
-        const response = await axios.post('/api/export/data', {
-            format,
-            metrics,
-            start,
-            end,
-            step,
-            dashboard_name
-        }, {
-            responseType: 'blob', // Important for file download
-            timeout: 120000 // 2 minutes timeout for large exports
-        });
+    // Download file
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
-        // Create download link
-        const blob = new Blob([response.data], {
-            type: response.headers['content-type']
-        });
-
-        // Extract filename from Content-Disposition header or generate one
-        let filename = `${dashboard_name}_export.${format}`;
-        const contentDisposition = response.headers['content-disposition'];
-        if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-            if (filenameMatch && filenameMatch[1]) {
-                filename = filenameMatch[1].replace(/['"]/g, '');
-            }
-        }
-
-        // Download file
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Clean up
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-    } catch (error) {
-        console.error('Data export failed:', error);
-        if (error.response && error.response.data) {
-            // Try to extract error message from blob
-            try {
-                const text = await error.response.data.text();
-                const errorData = JSON.parse(text);
-                throw new Error(errorData.error || 'Export failed');
-            } catch {
-                throw new Error('Export failed: ' + error.message);
-            }
-        }
-        throw new Error('Export failed: ' + error.message);
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+  } catch (error) {
+    console.error('Data export failed:', error)
+    if (error.response && error.response.data) {
+      // Try to extract error message from blob
+      try {
+        const text = await error.response.data.text()
+        const errorData = JSON.parse(text)
+        throw new Error(errorData.error || 'Export failed')
+      } catch {
+        throw new Error('Export failed: ' + error.message)
+      }
     }
+    throw new Error('Export failed: ' + error.message)
+  }
 }
 
 export default {
-    exportAsPNG,
-    exportAsPDF,
-    exportDashboard,
-    exportChartsGrid,
-    downloadBlob,
-    exportMetricsData,
-};
+  exportAsPNG,
+  exportAsPDF,
+  exportDashboard,
+  exportChartsGrid,
+  downloadBlob,
+  exportMetricsData
+}
