@@ -356,7 +356,12 @@ class BackupManager:
             container_name = "idm-ml-service"
             try:
                 # Copy model_state.pkl
-                cmd = ["docker", "cp", f"{container_name}:/app/data/model_state.pkl", str(ml_backup_dir / "model_state.pkl")]
+                cmd = [
+                    "docker",
+                    "cp",
+                    f"{container_name}:/app/data/model_state.pkl",
+                    str(ml_backup_dir / "model_state.pkl"),
+                ]
                 subprocess.run(cmd, capture_output=True, check=True)
                 logger.info("ML model state copied from container")
             except Exception as e:
@@ -757,11 +762,20 @@ class BackupManager:
                 logger.info("Restoring ML model state...")
                 container_name = "idm-ml-service"
                 # Copy to container
-                cmd = ["docker", "cp", str(model_file), f"{container_name}:/app/data/model_state.pkl"]
+                cmd = [
+                    "docker",
+                    "cp",
+                    str(model_file),
+                    f"{container_name}:/app/data/model_state.pkl",
+                ]
                 subprocess.run(cmd, capture_output=True, check=True)
 
                 # Restart ML service
-                subprocess.run(["docker", "restart", container_name], capture_output=True, check=False)
+                subprocess.run(
+                    ["docker", "restart", container_name],
+                    capture_output=True,
+                    check=False,
+                )
                 logger.info("ML service restored and restarted")
                 return True
             return False

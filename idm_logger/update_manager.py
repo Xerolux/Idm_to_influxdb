@@ -380,6 +380,7 @@ def _parse_version(version: str) -> Optional[Tuple[int, int, int, int, int]]:
 
         if suffix:
             import re
+
             match = re.match(r"([a-zA-Z]+)(\d+)?", suffix)
             if match:
                 num = int(match.group(2)) if match.group(2) else 0
