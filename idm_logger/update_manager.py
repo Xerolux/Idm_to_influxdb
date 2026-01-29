@@ -302,8 +302,8 @@ def perform_docker_update(compose_path: Optional[str] = None) -> None:
     if not compose_path:
         raise RuntimeError(
             "docker-compose.yml nicht gefunden. "
-            "Bitte geben Sie den Pfad an oder führen Sie das Update "
-            "im Verzeichnis mit docker-compose.yml aus."
+            "Automatisches Update nicht möglich. Bitte verwenden Sie Watchtower "
+            "oder führen Sie 'docker compose pull && docker compose up -d' manuell aus."
         )
 
     logger.info(f"Performing Docker update in {compose_path}...")
@@ -328,11 +328,9 @@ def perform_docker_update(compose_path: Optional[str] = None) -> None:
     if pull_result.returncode != 0:
         raise RuntimeError(f"Docker pull failed: {pull_result.stderr}")
 
-    # Restart containers
+    # Restart containers using up -d (recreates changed containers)
+    # Important: Do NOT use 'down' as it kills the container running this script!
     logger.info("Restarting containers...")
-    subprocess.run(
-        compose_cmd + ["down"], capture_output=True, timeout=60, cwd=compose_path
-    )
     subprocess.run(
         compose_cmd + ["up", "-d"], capture_output=True, timeout=120, cwd=compose_path
     )
@@ -432,6 +430,18 @@ def is_update_allowed(update_type: str, target: str) -> bool:
     return update_type == target
 
 
+def get_latest_github_release() -> Optional[str]:
+    """Check GitHub API for latest release tag."""
+    try:
+        url = f"{GITHUB_API_BASE}/releases/latest"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            return resp.json().get("tag_name")
+    except Exception as e:
+        logger.debug(f"GitHub release check failed: {e}")
+    return None
+
+
 def check_for_update() -> Dict[str, Any]:
     current_version = get_current_version()
 
@@ -439,13 +449,31 @@ def check_for_update() -> Dict[str, Any]:
     docker_status = check_docker_updates()
 
     update_available = docker_status.get("updates_available", False)
+    latest_version = "latest"
+    update_type = "patch"
+    release_notes = "Neues Docker Image verfügbar (ghcr.io)"
 
-    if update_available:
-        release_notes = "Neues Docker Image verfügbar (ghcr.io)"
-        # We assume patch update if we only have digest changes
-        update_type = "patch"
-        latest_version = "latest"
-    else:
+    if not update_available:
+        # If no docker update detected (or docker check failed), try GitHub fallback
+        # This ensures users without docker socket still get notifications
+        if not docker_status["docker_available"]:
+            gh_version = get_latest_github_release()
+            if gh_version:
+                # Compare versions
+                # Handle 'v' prefix
+                norm_current = current_version.lstrip("v")
+                norm_gh = gh_version.lstrip("v")
+
+                if norm_gh != norm_current:
+                    # Check if it's really newer? We assume latest release is newer than current if strings differ
+                    # and current is not "unknown"
+                    if current_version != "unknown":
+                        update_available = True
+                        latest_version = gh_version
+                        release_notes = f"Neue Version verfügbar: {gh_version}"
+                        update_type = get_update_type(current_version, gh_version)
+
+    if not update_available:
         release_notes = "System ist aktuell"
         update_type = "none"
         latest_version = current_version
@@ -482,7 +510,8 @@ def perform_update(repo_path: Optional[str] = None, docker_only: bool = False) -
             return
         else:
             raise RuntimeError(
-                "Update fehlgeschlagen: Weder Git-Repository noch Docker verfügbar."
+                "Update fehlgeschlagen: Weder Git-Repository noch Docker verfügbar. "
+                "Bitte verwenden Sie Watchtower oder aktualisieren Sie manuell."
             )
 
     git_dir = Path(repo_path) / ".git"
@@ -526,10 +555,7 @@ def perform_update(repo_path: Optional[str] = None, docker_only: bool = False) -
         compose_cmd + ["pull"], capture_output=True, timeout=300, cwd=repo_path
     )
 
-    subprocess.run(
-        compose_cmd + ["down"], capture_output=True, timeout=60, cwd=repo_path
-    )
-
+    # Do NOT use 'down' here either
     subprocess.run(
         compose_cmd + ["up", "-d"], capture_output=True, timeout=120, cwd=repo_path
     )
