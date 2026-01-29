@@ -39,9 +39,12 @@ class TestWebSocketHandler:
         mock_req = MagicMock()
         mock_req.sid = "test_sid"
 
-        # Patch idm_logger.websocket_handler.join_room because it is imported into that module
+        # Patch flask_socketio.join_room directly to ensure it catches all calls
+        # AND patch idm_logger.websocket_handler.join_room because it might have been imported already
+        mock_join_room = MagicMock()
         with (
-            patch("idm_logger.websocket_handler.join_room") as mock_join_room,
+            patch("flask_socketio.join_room", mock_join_room),
+            patch("idm_logger.websocket_handler.join_room", mock_join_room),
             patch("idm_logger.websocket_handler.emit"),
         ):
             handler = WebSocketHandler(mock_app, mock_socketio)
@@ -57,6 +60,15 @@ class TestWebSocketHandler:
 
         # Call the handler inside a request context
         with app.test_request_context("/"):
+            # Mock the socketio instance in app.extensions to prevent real join_room calls
+            # This handles the case where patch() fails to intercept the call
+            if 'socketio' in app.extensions:
+                original_socketio = app.extensions['socketio']
+                app.extensions['socketio'] = MagicMock()
+            else:
+                original_socketio = None
+                app.extensions['socketio'] = MagicMock()
+
             # Mock the sid which is accessed via request.sid
             # However, since we patched 'request' in the handler fixture to be a MagicMock,
             # the handler code using `request.sid` will use the mock.
@@ -77,8 +89,16 @@ class TestWebSocketHandler:
             from flask import request as flask_request
 
             flask_request.sid = "test_sid"
+            flask_request.namespace = "/"
 
-            subscribe_handler(data)
+            try:
+                subscribe_handler(data)
+            finally:
+                # Restore original socketio
+                if original_socketio:
+                    app.extensions['socketio'] = original_socketio
+                else:
+                    del app.extensions['socketio']
 
         # Verify join_room was called for each metric
         handler.mock_join_room.assert_any_call("metric1")

@@ -66,8 +66,9 @@ class MutableRow:
 
 
 class Scheduler:
-    def __init__(self, modbus_client):
+    def __init__(self, modbus_client, database=None):
         self.modbus_client = modbus_client
+        self.db = database or db
         self.jobs = []
         self.lock = threading.Lock()
         self.running = False
@@ -75,7 +76,7 @@ class Scheduler:
 
     def load(self):
         with self.lock:
-            self.jobs = [MutableRow(row) for row in db.get_jobs()]
+            self.jobs = [MutableRow(row) for row in self.db.get_jobs()]
             # Convert JSON string days to list
             for job in self.jobs:
                 if isinstance(job.get("days"), str):
@@ -94,19 +95,19 @@ class Scheduler:
                 job["enabled"] = True
 
             # DB insert
-            db.add_job(job)
+            self.db.add_job(job)
 
             # Update memory
             self.jobs.append(job)
 
     def delete_job(self, job_id):
         with self.lock:
-            db.delete_job(job_id)
+            self.db.delete_job(job_id)
             self.jobs = [j for j in self.jobs if j.get("id") != job_id]
 
     def update_job(self, job_id, new_data):
         with self.lock:
-            db.update_job(job_id, new_data)
+            self.db.update_job(job_id, new_data)
             for job in self.jobs:
                 if job.get("id") == job_id:
                     job.update(new_data)
@@ -166,7 +167,7 @@ class Scheduler:
 
             # Batch update DB outside the loop (but still essentially part of the process)
             if updates:
-                db.update_jobs_last_run(updates)
+                self.db.update_jobs_last_run(updates)
 
         except Exception as e:
             logger.error(f"Scheduler loop error: {e}")

@@ -8,12 +8,7 @@ from idm_logger.scheduler import Scheduler, MutableRow
 class TestSchedulerRowHandling(unittest.TestCase):
     def setUp(self):
         self.modbus_mock = MagicMock()
-        # Patch db.db used in scheduler
-        self.db_patcher = patch("idm_logger.scheduler.db")
-        self.mock_db = self.db_patcher.start()
-
-    def tearDown(self):
-        self.db_patcher.stop()
+        self.mock_db = MagicMock()
 
     def test_load_handles_rows_and_mutability(self):
         # Create a real sqlite3.Row object to simulate DB return
@@ -37,7 +32,7 @@ class TestSchedulerRowHandling(unittest.TestCase):
         self.mock_db.get_jobs.return_value = [row]
 
         # Init scheduler (calls load)
-        scheduler = Scheduler(self.modbus_mock)
+        scheduler = Scheduler(self.modbus_mock, database=self.mock_db)
 
         # Verify jobs loaded
         self.assertEqual(len(scheduler.jobs), 1)
@@ -80,7 +75,7 @@ class TestSchedulerRowHandling(unittest.TestCase):
 
         self.mock_db.get_jobs.return_value = [row]
 
-        scheduler = Scheduler(self.modbus_mock)
+        scheduler = Scheduler(self.modbus_mock, database=self.mock_db)
 
         # 2. Add API job (dict)
         api_job = {

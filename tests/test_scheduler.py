@@ -7,16 +7,12 @@ from idm_logger.scheduler import Scheduler
 class TestScheduler(unittest.TestCase):
     def setUp(self):
         self.modbus_mock = MagicMock()
-        # Patch db.db used in scheduler
-        self.db_patcher = patch("idm_logger.scheduler.db")
-        self.mock_db = self.db_patcher.start()
+        self.mock_db = MagicMock()
+        self.mock_db.get_jobs.return_value = []
 
-        self.scheduler = Scheduler(self.modbus_mock)
+        self.scheduler = Scheduler(self.modbus_mock, database=self.mock_db)
         # Clear jobs loaded from mock db
         self.scheduler.jobs = []
-
-    def tearDown(self):
-        self.db_patcher.stop()
 
     def test_process_jobs_batching(self):
         # Use a fixed time for testing to avoid day mismatch issues
