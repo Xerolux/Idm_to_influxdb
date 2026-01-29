@@ -11,6 +11,31 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2">
               <label class="font-bold text-blue-400">IDM Wärmepumpe</label>
+
+              <div class="flex flex-col gap-2">
+                <label>Hersteller</label>
+                <Dropdown
+                  v-model="form.hp_manufacturer"
+                  :options="manufacturers"
+                  placeholder="Hersteller wählen"
+                  class="w-full"
+                  disabled
+                />
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label>Modell</label>
+                <Dropdown
+                  v-model="form.hp_model"
+                  :options="models"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Modell wählen"
+                  class="w-full"
+                  filter
+                />
+              </div>
+
               <div class="flex flex-col gap-2">
                 <label>Host IP</label>
                 <InputText v-model="form.idm_host" placeholder="192.168.x.x" />
@@ -94,7 +119,7 @@
 
 <script setup>
 // Xerolux 2026
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
@@ -104,20 +129,44 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
 import Checkbox from 'primevue/checkbox'
+import Dropdown from 'primevue/dropdown'
 import { useToast } from 'primevue/usetoast'
 import AppFooter from '../components/AppFooter.vue'
 
 const router = useRouter()
 const toast = useToast()
 const loading = ref(false)
+const models = ref([])
+const manufacturers = ref(['IDM'])
 
 const form = ref({
   idm_host: '',
   idm_port: 502,
+  hp_manufacturer: 'IDM',
+  hp_model: null,
   circuits: ['A'],
   zones: [],
   metrics_url: 'http://victoriametrics:8428/write',
   password: ''
+})
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/info')
+    if (res.data.heat_pump_models) {
+      models.value = res.data.heat_pump_models.map((m) => ({ label: m, value: m }))
+    }
+    if (res.data.heat_pump_manufacturers) {
+      manufacturers.value = res.data.heat_pump_manufacturers
+    }
+  } catch (e) {
+    console.error('Failed to load info', e)
+    // Fallback if API fails
+    models.value = [
+      { label: 'AERO ALM 6-15', value: 'AERO ALM 6-15' },
+      { label: 'Other', value: 'Other' }
+    ]
+  }
 })
 
 const submitSetup = async () => {
