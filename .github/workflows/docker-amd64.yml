@@ -56,6 +56,7 @@ jobs:
             ghcr.io/${{ github.repository }}
             ${{ secrets.DOCKER_USERNAME }}/idm-metrics-collector
           tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=latest-amd64,enable=${{ github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=${{ inputs.version }}-amd64,enable=${{ github.event_name == 'workflow_dispatch' }}
             type=ref,event=pr,suffix=-amd64
