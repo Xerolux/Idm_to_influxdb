@@ -212,3 +212,27 @@ class ValveStateStorageBypass(_SensorEnum):
     @classmethod
     def _missing_(cls, value) -> Any:
         return cls.STORAGE if value is None else None
+
+
+HEAT_PUMP_MANUFACTURERS = ["IDM"]
+
+HEAT_PUMP_MODELS = [
+    "AERO ALM 2-8",
+    "AERO ALM 4-12",
+    "AERO ALM 6-15",
+    "AERO ALM 10-24",
+    "AERO ALM 10-50 MAX",
+    "AERO SLM 3-11",
+    "AERO SLM 3-17",
+    "AERO SLM 6-17",
+    "TERRA SW 6-17",
+    "TERRA SW 8-22",
+    "TERRA SW 10-28",
+    "iPUMP T 2-8",
+    "iPUMP T 3-13",
+    "iPUMP A 2-7",
+    "iPUMP A 3-11",
+    "iPUMP ALM 2-8",
+    "iPUMP ALM 4-12",
+    "Other",
+]

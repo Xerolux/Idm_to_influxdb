@@ -41,6 +41,36 @@
 
             <Fieldset legend="IDM Wärmepumpe" :toggleable="true">
               <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                  <label class="font-bold text-sm text-gray-400">Installation</label>
+                  <div class="flex items-center gap-2">
+                    <div class="p-inputgroup flex-1">
+                      <span class="p-inputgroup-addon">ID</span>
+                      <InputText v-model="config.installation_id" readonly class="w-full font-mono bg-gray-800" />
+                      <Button icon="pi pi-copy" severity="secondary" @click="() => { navigator.clipboard.writeText(config.installation_id); toast.add({severity:'info', summary:'Kopiert', detail:'ID in Zwischenablage kopiert', life:2000}) }" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label>Modell</label>
+                    <Dropdown
+                      v-model="config.hp_model"
+                      :options="models"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Modell wählen"
+                      class="w-full"
+                      filter
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label>Hersteller</label>
+                    <InputText :value="config.hp_manufacturer || 'IDM'" disabled class="w-full" />
+                  </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
                     <label>Host / IP</label>
@@ -963,10 +993,13 @@ import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import SelectButton from 'primevue/selectbutton'
+import Dropdown from 'primevue/dropdown'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 
 const config = ref({
+  installation_id: '',
+  hp_model: '',
   idm: { host: '', port: 502, circuits: ['A'], zones: [] },
   metrics: { url: '' },
   web: { write_enabled: false },
@@ -1033,6 +1066,8 @@ const loading = ref(true)
 const saving = ref(false)
 const toast = useToast()
 const confirm = useConfirm()
+const models = ref([])
+const manufacturers = ref([])
 
 let aiStatusInterval = null
 
@@ -1088,6 +1123,19 @@ onMounted(async () => {
       currentClientIP.value = ipRes.data.client_ip || 'Unbekannt'
     } catch (e) {
       console.error('Failed to get client IP', e)
+    }
+
+    // Load models
+    try {
+      const infoRes = await axios.get('/api/info')
+      if (infoRes.data.heat_pump_models) {
+        models.value = infoRes.data.heat_pump_models.map((m) => ({ label: m, value: m }))
+      }
+      if (infoRes.data.heat_pump_manufacturers) {
+        manufacturers.value = infoRes.data.heat_pump_manufacturers
+      }
+    } catch (e) {
+      console.error('Failed to get info', e)
     }
 
     // Load backups
@@ -1228,6 +1276,7 @@ const saveConfig = async () => {
     const payload = {
       idm_host: config.value.idm.host,
       idm_port: config.value.idm.port,
+      hp_model: config.value.hp_model,
       circuits: config.value.idm.circuits,
       zones: config.value.idm.zones,
       metrics_url: config.value.metrics.url,

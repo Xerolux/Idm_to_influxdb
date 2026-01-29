@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import uuid
 from cryptography.fernet import Fernet, InvalidToken
 from werkzeug.security import generate_password_hash, check_password_hash
 from .db import db
@@ -26,6 +27,12 @@ class Config:
         self.key = self._load_or_create_key()
         self.cipher = Fernet(self.key)
         self.data = self._load_data()
+
+        # Ensure installation_id exists
+        if not self.data.get("installation_id"):
+            self.data["installation_id"] = str(uuid.uuid4())
+            self.save()
+
         # Apply environment variable overrides
         self._apply_env_overrides()
 
@@ -264,6 +271,9 @@ class Config:
 
     def _load_data(self):
         defaults = {
+            "installation_id": None,
+            "hp_manufacturer": "IDM",
+            "hp_model": None,  # Will trigger prompt if missing
             "idm": {"host": "", "port": 502, "circuits": ["A"], "zones": []},
             "metrics": {
                 "url": DOCKER_DEFAULTS["metrics"]["url"],
