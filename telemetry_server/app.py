@@ -107,9 +107,7 @@ def get_data_pool_stats() -> Dict[str, Any]:
 
     try:
         # Count unique installations (last 30 days)
-        query_installations = (
-            'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
-        )
+        query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
         response = requests.get(
             VM_QUERY_URL, params={"query": query_installations}, timeout=5
         )
