@@ -150,7 +150,9 @@ def get_remote_image_digest(image_name: str, tag: str = "latest") -> Optional[st
         manifest_url = f"https://ghcr.io/v2/{repo}/manifests/{tag}"
         headers = {
             "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.docker.distribution.manifest.v2+json, "
+            "Accept": "application/vnd.docker.distribution.manifest.list.v2+json, "
+            "application/vnd.oci.image.index.v1+json, "
+            "application/vnd.docker.distribution.manifest.v2+json, "
             "application/vnd.oci.image.manifest.v1+json",
         }
         manifest_resp = requests.head(manifest_url, headers=headers, timeout=10)
@@ -432,138 +434,29 @@ def is_update_allowed(update_type: str, target: str) -> bool:
 
 def check_for_update() -> Dict[str, Any]:
     current_version = get_current_version()
-    # Always check against latest/main
 
-    # Also need repo path for git checks
-    repo_path = get_repo_path()
-
-    latest_version = ""
-    release_date = ""
-    release_notes = ""
-    update_available = False
-
-    try:
-        # Checks against main branch
-        git_worked = False
-        if repo_path:
-            try:
-                # Check git availability
-                subprocess.run(
-                    ["git", "--version"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=True,
-                )
-
-                subprocess.run(
-                    ["git", "fetch", "origin", "main"],
-                    timeout=10,
-                    cwd=repo_path,
-                    capture_output=True,
-                    check=True,
-                )
-                head = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], cwd=repo_path, text=True
-                ).strip()
-                remote = subprocess.check_output(
-                    ["git", "rev-parse", "origin/main"], cwd=repo_path, text=True
-                ).strip()
-
-                latest_version = f"dev-{remote[:7]}"
-                if head != remote:
-                    update_available = True
-                    release_notes = "Neue Version auf 'main' verfügbar"
-                else:
-                    release_notes = "System ist aktuell (latest)"
-                git_worked = True
-            except (
-                subprocess.CalledProcessError,
-                FileNotFoundError,
-                Exception,
-            ) as e:
-                logger.debug(f"Git check failed: {e}")
-
-        if not git_worked:
-            # Fallback to GitHub API for commits/main
-            try:
-                # Parse current hash from version 0.6.<hash>
-                current_hash = None
-                parts = current_version.split(".")
-                if len(parts) >= 3:
-                    current_hash = parts[-1]
-                    if ".at" in current_hash:
-                        current_hash = current_hash.split(".at")[-1]
-
-                resp = requests.get(f"{GITHUB_API_BASE}/commits/main", timeout=10)
-                resp.raise_for_status()
-                remote_data = resp.json()
-                remote_hash = remote_data["sha"]
-
-                # Try to fetch authoritative base version from GitHub
-                # First try local VERSION file, then remote, then hardcoded fallback
-                base_ver = get_file_version() or "1.0.3"
-                try:
-                    v_resp = requests.get(
-                        f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/VERSION",
-                        timeout=5,
-                    )
-                    if v_resp.status_code == 200:
-                        base_ver = v_resp.text.strip()
-                    else:
-                        # Fallback to local
-                        local_ver = get_file_version()
-                        if local_ver:
-                            base_ver = local_ver
-                            # Strip hash if present (assuming max 3 parts for base: X.Y.Z)
-                            parts = base_ver.split(".")
-                            if len(parts) > 3:
-                                base_ver = ".".join(parts[:3])
-                except Exception:
-                    local_ver = get_file_version()
-                    if local_ver:
-                        base_ver = local_ver
-                        parts = base_ver.split(".")
-                        if len(parts) > 3:
-                            base_ver = ".".join(parts[:3])
-
-                latest_version = f"{base_ver}.{remote_hash[:7]}"
-
-                if current_hash and not remote_hash.startswith(current_hash):
-                    update_available = True
-                    release_notes = f"Update: {remote_data.get('commit', {}).get('message', '').splitlines()[0]}"
-                elif not current_hash:
-                    # Can't determine current hash, assume update if version looks wrong
-                    update_available = True
-                else:
-                    release_notes = "System ist aktuell (latest)"
-
-            except Exception as e:
-                logger.warning(f"API check failed: {e}")
-                latest_version = "unknown"
-
-    except Exception as e:
-        logger.error(f"Update check failed: {e}")
-        return {"error": str(e)}
-
-    update_type = (
-        get_update_type(current_version, latest_version) if update_available else "none"
-    )
-
-    # Also check Docker image updates
+    # Check Docker image updates (Primary source)
     docker_status = check_docker_updates()
 
-    # Combine update availability
-    any_update_available = update_available or docker_status.get(
-        "updates_available", False
-    )
+    update_available = docker_status.get("updates_available", False)
+
+    if update_available:
+        release_notes = "Neues Docker Image verfügbar (ghcr.io)"
+        # We assume patch update if we only have digest changes
+        update_type = "patch"
+        latest_version = "latest"
+    else:
+        release_notes = "System ist aktuell"
+        update_type = "none"
+        latest_version = current_version
 
     return {
-        "update_available": any_update_available,
-        "git_update_available": update_available,
+        "update_available": update_available,
+        "git_update_available": False,  # Git checks disabled
         "update_type": update_type,
         "current_version": current_version,
         "latest_version": latest_version,
-        "release_date": release_date,
+        "release_date": "",
         "release_notes": release_notes,
         "docker": docker_status,
     }
