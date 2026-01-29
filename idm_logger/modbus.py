@@ -300,10 +300,26 @@ class ModbusClient:
                     self._read_block_individually(block, data)
                     continue
 
+                # Small delay between blocks to be nice to the device (especially if shared)
+                if block_idx > 0:
+                    time.sleep(0.05)
+
                 try:
-                    rr = self.client.read_holding_registers(
-                        start_addr, count=count, device_id=1
-                    )
+                    # Retry logic for busy devices
+                    rr = None
+                    for attempt in range(2):
+                        try:
+                            rr = self.client.read_holding_registers(
+                                start_addr, count=count, device_id=1
+                            )
+                            if not rr.isError():
+                                break
+                            time.sleep(0.2)  # Wait before retry
+                        except Exception as e:
+                            if attempt == 1:
+                                raise e
+                            time.sleep(0.2)
+
                     if rr.isError():
                         # Check if this is an illegal address error (exception code 2)
                         if hasattr(rr, "exception_code") and rr.exception_code == 2:
@@ -339,7 +355,8 @@ class ModbusClient:
                             logger.debug(f"Error decoding {sensor.name}: {e}")
 
                 except Exception as e:
-                    logger.error(
+                    # Don't close connection on read errors, just log and mark block
+                    logger.warning(
                         f"Exception reading block starting at {start_addr}: {e}"
                     )
                     self._stats["total_read_errors"] += 1
@@ -353,11 +370,14 @@ class ModbusClient:
                 self._stats["last_successful_read"] = time.time()
 
         except Exception as e:
+            # Fatal error (e.g. connection lost logic inside ensuring connection) should be handled there,
+            # but if we get here it's likely fatal.
             logger.error(f"Unhandled exception in read_sensors: {e}")
             self._stats["total_read_errors"] += 1
             self._stats["last_error"] = str(e)
             self.close()
-            raise  # Re-raise the exception to the caller
+            # Do NOT re-raise, allow the main loop to continue and try again next cycle
+            # raise
 
         return data
 
