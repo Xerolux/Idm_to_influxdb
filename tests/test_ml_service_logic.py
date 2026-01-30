@@ -25,10 +25,13 @@ class TestMLServiceLogic(unittest.TestCase):
         )
         self.env_patcher.start()
 
-        import ml_service.main as main
+        try:
+            import ml_service.main as main
 
-        importlib.reload(main)
-        self.main = main
+            importlib.reload(main)
+            self.main = main
+        except ImportError:
+            self.skipTest("ML Service dependencies not met")
 
         self.main.SENSORS = ["sensor1", "sensor2", "status_heat_pump"]
         # Mock models
