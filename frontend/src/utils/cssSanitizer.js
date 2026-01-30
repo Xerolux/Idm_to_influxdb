@@ -9,6 +9,8 @@
  * - Browser-specific exploits (-moz-binding, behavior)
  */
 
+import DOMPurify from 'dompurify';
+
 // Dangerous patterns that could execute code or load external resources
 const DANGEROUS_PATTERNS = [
   // JavaScript in URLs
@@ -34,10 +36,6 @@ const DANGEROUS_PATTERNS = [
   // HTML comments that might break out of style tag
   /<!--/g,
   /-->/g,
-
-  // Script injection attempts
-  /<\s*\/?script/gi,
-  /<\s*\/?style/gi,
 
   // Unicode escapes that might bypass filters
   /\\0{0,4}(4a|4A|6a|6A)/g // 'j' for javascript
@@ -66,7 +64,33 @@ export function sanitizeCss(css, options = {}) {
   const warnings = []
   const blocked = []
 
-  // Check and remove dangerous patterns
+  // 1. Sanitize Structure (DOMPurify) to prevent HTML injection/breakouts
+  // We wrap in <style> to use DOMPurify's HTML sanitization capabilities
+  try {
+    const cleanHtml = DOMPurify.sanitize(`<style>${sanitized}</style>`, {
+      FORCE_BODY: true,
+      ALLOWED_TAGS: ['style'],
+      ALLOWED_ATTR: []
+    });
+
+    // Extract text content using browser DOM if available
+    if (typeof document !== 'undefined') {
+      const div = document.createElement('div');
+      div.innerHTML = cleanHtml;
+      // Use textContent to get the pure CSS (decodes entities)
+      sanitized = div.textContent || '';
+    } else {
+      // Fallback for non-browser environments (e.g. tests)
+      // Extract content from <style> tags manually if DOM not available
+      const match = cleanHtml.match(/<style>([\s\S]*)<\/style>/i);
+      sanitized = match ? match[1] : '';
+    }
+  } catch (e) {
+    warnings.push('DOMPurify sanitization failed: ' + e.message);
+    // Fallback to original input but warn
+  }
+
+  // 2. Content Sanitization (Regex for CSS-specific attacks)
   for (const pattern of DANGEROUS_PATTERNS) {
     const matches = sanitized.match(pattern)
     if (matches) {

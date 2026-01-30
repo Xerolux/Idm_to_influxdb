@@ -15,6 +15,7 @@ from flasgger import Swagger
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 from .technician_auth import calculate_codes
 from .config import config
 from .sensor_addresses import SensorFeatures
@@ -2167,7 +2168,7 @@ def create_backup():
 @app.route("/api/backup/upload/<filename>", methods=["POST"])
 @login_required
 def upload_backup(filename):
-    if ".." in filename or "/" in filename or "\\" in filename:
+    if filename != secure_filename(filename):
         return jsonify({"error": "Ungültiger Dateiname"}), 400
 
     backup_path = Path(BACKUP_DIR) / filename
@@ -2191,7 +2192,7 @@ def list_backups():
 @app.route("/api/backup/download/<filename>", methods=["GET"])
 @login_required
 def download_backup(filename):
-    if ".." in filename or "/" in filename or "\\" in filename:
+    if filename != secure_filename(filename):
         return jsonify({"error": "Ungültiger Dateiname"}), 400
 
     backup_path = Path(BACKUP_DIR) / filename
@@ -2219,16 +2220,14 @@ def restore_backup():
         filename = data.get("filename")
         if not filename:
             return jsonify({"error": "Keine Backup-Datei angegeben"}), 400
-        if ".." in filename or "/" in filename or "\\" in filename:
+        if filename != secure_filename(filename):
             return jsonify({"error": "Ungültiger Dateiname"}), 400
         backup_path = Path(BACKUP_DIR) / filename
     else:
         file = request.files["file"]
         if file.filename == "":
             return jsonify({"error": "Keine Datei ausgewählt"}), 400
-        safe_filename = file.filename
-        if ".." in safe_filename or "/" in safe_filename or "\\" in safe_filename:
-            return jsonify({"error": "Ungültiger Dateiname"}), 400
+        safe_filename = secure_filename(file.filename)
         temp_path = Path(BACKUP_DIR) / f"temp_{safe_filename}"
         file.save(temp_path)
         backup_path = temp_path

@@ -3,6 +3,8 @@
 import logging
 import re
 import subprocess
+import shutil
+import os
 from typing import Iterable, List
 
 from .config import config
@@ -61,6 +63,20 @@ def send_signal_message(message: str) -> None:
     # Validate cli_path doesn't contain shell metacharacters
     if not re.match(r"^[a-zA-Z0-9_\-/\.]+$", cli_path):
         raise RuntimeError("Signal CLI Pfad enthält ungültige Zeichen.")
+
+    # Validate executable existence
+    if os.path.sep in cli_path:
+        # Absolute path check
+        if not os.path.isabs(cli_path):
+            raise RuntimeError("Signal CLI Pfad muss absolut sein (wenn nicht in PATH).")
+        if not os.path.isfile(cli_path):
+            raise RuntimeError(f"Signal CLI Executable nicht gefunden: {cli_path}")
+        if not os.access(cli_path, os.X_OK):
+            raise RuntimeError(f"Signal CLI Executable nicht ausführbar: {cli_path}")
+    else:
+        # Look up in PATH
+        if not shutil.which(cli_path):
+            raise RuntimeError(f"Signal CLI Befehl '{cli_path}' nicht im PATH gefunden.")
 
     command = [cli_path, "-u", sender, "send", "-m", message] + recipients
     logger.info(f"Sending Signal message to {len(recipients)} recipient(s)")

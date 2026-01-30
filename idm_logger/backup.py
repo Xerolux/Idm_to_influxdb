@@ -34,8 +34,8 @@ BACKUP_DIR.mkdir(exist_ok=True)
 # Track if default credentials warning was shown
 _default_creds_warned = False
 
-# Pattern for safe filenames (alphanumeric, dash, underscore only)
-_SAFE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]+$")
+# Pattern for safe filenames (alphanumeric, dash, underscore, dot)
+_SAFE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
 
 
 def _sanitize_filename(name: str, max_length: int = 100) -> str:
@@ -50,7 +50,7 @@ def _sanitize_filename(name: str, max_length: int = 100) -> str:
     sanitized = name.replace("/", "_").replace("\\", "_").replace("..", "_")
 
     # Keep only safe characters
-    sanitized = "".join(c if c.isalnum() or c in "-_" else "_" for c in sanitized)
+    sanitized = "".join(c if c.isalnum() or c in "-_." else "_" for c in sanitized)
 
     # Truncate if too long
     if len(sanitized) > max_length:
@@ -973,14 +973,14 @@ class BackupManager:
     @staticmethod
     def delete_backup(filename: str) -> Dict[str, Any]:
         """Delete a backup file."""
+        # Security check: ensure filename is safe
+        if not _SAFE_FILENAME_PATTERN.match(filename) or ".." in filename:
+             return {"success": False, "error": "Invalid filename"}
+
         backup_path = BACKUP_DIR / filename
 
         if not backup_path.exists():
             return {"success": False, "error": "Backup file not found"}
-
-        # Security check: ensure filename is safe
-        if ".." in filename or "/" in filename or "\\" in filename:
-            return {"success": False, "error": "Invalid filename"}
 
         try:
             backup_path.unlink()
