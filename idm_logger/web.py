@@ -1433,6 +1433,14 @@ def config_page():
                 else:
                     return jsonify({"error": "Ungültiges Wärmepumpen-Modell"}), 400
 
+            if "installation_id" in data:
+                try:
+                    import uuid
+                    uuid_obj = uuid.UUID(data["installation_id"])
+                    config.data["installation_id"] = str(uuid_obj)
+                except ValueError:
+                    return jsonify({"error": "Ungültige Installation ID (Muss UUID sein)"}), 400
+
             # IDM Host - validate hostname/IP
             if "idm_host" in data:
                 valid, err = _validate_host(data["idm_host"])
@@ -1657,6 +1665,14 @@ def config_page():
                 if "telemetry" not in config.data:
                     config.data["telemetry"] = {}
                 config.data["telemetry"]["auth_token"] = data["telemetry_auth_token"]
+            if "telemetry_server_url" in data:
+                if "telemetry" not in config.data:
+                    config.data["telemetry"] = {}
+                url = data["telemetry_server_url"]
+                valid, err = _validate_url(url)
+                if not valid:
+                    return jsonify({"error": f"Telemetry Server URL: {err}"}), 400
+                config.data["telemetry"]["server_url"] = url
 
             # Updates
             if "updates_enabled" in data:
