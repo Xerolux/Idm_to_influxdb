@@ -31,15 +31,13 @@ logger = logging.getLogger("telemetry-server")
 
 # Admin IDs (comma separated UUIDs)
 raw_admin_ids = os.environ.get("ADMIN_INSTALLATION_IDS", "")
-ADMIN_IDS = [
-    x.strip()
-    for x in raw_admin_ids.split(",")
-    if x.strip()
-]
+ADMIN_IDS = [x.strip() for x in raw_admin_ids.split(",") if x.strip()]
 
 logger.info(f"Loaded {len(ADMIN_IDS)} Admin IDs from environment")
 if not ADMIN_IDS and raw_admin_ids:
-    logger.warning(f"ADMIN_INSTALLATION_IDS was present but parsed to empty list. Raw: '{raw_admin_ids}'")
+    logger.warning(
+        "ADMIN_INSTALLATION_IDS was present but parsed to empty list. Check delimiters."
+    )
 
 # Model storage directory
 MODEL_DIR = os.environ.get("MODEL_DIR", "/app/models")
@@ -407,6 +405,7 @@ async def check_eligibility(
         # Check if Admin
         if installation_id in ADMIN_IDS:
             result["is_admin"] = True
+            logger.info(f"Admin access verified for {mask_ip(installation_id)}")
             # Fetch server stats for admins
             try:
                 # Reuse existing pool stats which are already in result['data_pool']
