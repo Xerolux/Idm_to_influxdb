@@ -23,12 +23,21 @@ VM_QUERY_URL = os.environ.get(
 )
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "change-me-to-something-secure")
 
+# Setup Logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("telemetry-server")
+
 # Admin IDs (comma separated UUIDs)
-ADMIN_IDS = [
-    x.strip()
-    for x in os.environ.get("ADMIN_INSTALLATION_IDS", "").split(",")
-    if x.strip()
-]
+raw_admin_ids = os.environ.get("ADMIN_INSTALLATION_IDS", "")
+ADMIN_IDS = [x.strip() for x in raw_admin_ids.split(",") if x.strip()]
+
+logger.info(f"Loaded {len(ADMIN_IDS)} Admin IDs from environment")
+if not ADMIN_IDS and raw_admin_ids:
+    logger.warning(
+        "ADMIN_INSTALLATION_IDS was present but parsed to empty list. Check delimiters."
+    )
 
 # Model storage directory
 MODEL_DIR = os.environ.get("MODEL_DIR", "/app/models")
@@ -41,12 +50,6 @@ MIN_DATA_POINTS_FOR_MODEL = int(os.environ.get("MIN_DATA_POINTS", "10000"))
 _rate_limit_store: Dict[str, List[float]] = defaultdict(list)
 RATE_LIMIT_REQUESTS = 100  # requests per window
 RATE_LIMIT_WINDOW = 60  # seconds
-
-# Setup Logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("telemetry-server")
 
 # Security: Disable Docs, ReDoc, and OpenAPI to prevent scanning
 app = FastAPI(
@@ -402,6 +405,7 @@ async def check_eligibility(
         # Check if Admin
         if installation_id in ADMIN_IDS:
             result["is_admin"] = True
+            logger.info(f"Admin access verified for {mask_ip(installation_id)}")
             # Fetch server stats for admins
             try:
                 # Reuse existing pool stats which are already in result['data_pool']
