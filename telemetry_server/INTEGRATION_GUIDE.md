@@ -154,11 +154,17 @@ The Telemetry Server supports a special "Admin" mode for specific installations.
 
 ### Server Configuration
 
-To grant admin privileges to one or more clients, set the `ADMIN_INSTALLATION_IDS` environment variable on the server (e.g., in `docker-compose.yml`):
+To grant admin privileges to one or more clients, create a `.env` file in the same directory as your `docker-compose.yml` and add the `ADMIN_INSTALLATION_IDS` variable. This list should be comma-separated.
 
+**.env** example:
+```ini
+ADMIN_INSTALLATION_IDS=550e8400-e29b-41d4-a716-446655440000,123e4567-e89b-12d3-a456-426614174000
+```
+
+The `docker-compose.yml` is already configured to read this variable:
 ```yaml
 environment:
-  - ADMIN_INSTALLATION_IDS=550e8400-e29b-41d4-a716-446655440000,123e4567-e89b-12d3-a456-426614174000
+  - ADMIN_INSTALLATION_IDS=${ADMIN_INSTALLATION_IDS:-}
 ```
 
 ### Client Behavior
