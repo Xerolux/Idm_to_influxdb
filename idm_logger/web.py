@@ -1481,10 +1481,20 @@ def config_page():
             if "mqtt_enabled" in data:
                 config.data["mqtt"]["enabled"] = bool(data["mqtt_enabled"])
             if "mqtt_broker" in data:
-                valid, err = _validate_host(data["mqtt_broker"])
-                if not valid:
-                    return jsonify({"error": f"MQTT Broker: {err}"}), 400
-                config.data["mqtt"]["broker"] = data["mqtt_broker"]
+                broker = data["mqtt_broker"]
+                is_enabled = config.data["mqtt"].get("enabled", False)
+
+                if not broker:
+                    if is_enabled:
+                        return jsonify(
+                            {"error": "MQTT Broker darf nicht leer sein"}
+                        ), 400
+                    config.data["mqtt"]["broker"] = ""
+                else:
+                    valid, err = _validate_host(broker)
+                    if not valid:
+                        return jsonify({"error": f"MQTT Broker: {err}"}), 400
+                    config.data["mqtt"]["broker"] = broker
             if "mqtt_port" in data:
                 try:
                     port = int(data["mqtt_port"])
@@ -2375,6 +2385,7 @@ def create_annotation():
             tags=data.get("tags", []),
             color=data.get("color", "#ef4444"),
             dashboard_id=data.get("dashboard_id"),
+            acknowledged=data.get("acknowledged", False),
         )
 
         return jsonify(annotation.to_dict()), 201
@@ -2417,6 +2428,7 @@ def update_annotation(annotation_id):
             text=data.get("text"),
             tags=data.get("tags"),
             color=data.get("color"),
+            acknowledged=data.get("acknowledged"),
         )
 
         if not annotation:

@@ -62,6 +62,14 @@
         />
         <div class="flex gap-2">
           <Button
+            v-if="unacknowledgedAnomalies.length > 0"
+            @click="showAlarmDialog = true"
+            icon="pi pi-bell"
+            severity="danger"
+            class="animate-pulse"
+            title="Aktive Warnungen"
+          />
+          <Button
             @click="showExportDialog = true"
             icon="pi pi-download"
             severity="secondary"
@@ -363,6 +371,41 @@
     </Dialog>
 
     <Dialog
+      v-model:visible="showAlarmDialog"
+      modal
+      header="Aktive Warnungen"
+      :style="{ width: '90vw', maxWidth: '600px' }"
+      :closable="true"
+    >
+      <div v-if="unacknowledgedAnomalies.length === 0" class="text-center py-4">
+        Keine aktiven Warnungen.
+      </div>
+      <div v-else class="space-y-3">
+        <div
+          v-for="anomaly in unacknowledgedAnomalies"
+          :key="anomaly.id"
+          class="p-3 border border-red-200 bg-red-50 rounded-lg flex flex-col gap-2"
+        >
+          <div class="flex justify-between items-start">
+            <span class="font-bold text-red-700">Anomalie erkannt</span>
+            <span class="text-xs text-red-500">
+              {{ new Date(anomaly.time * 1000).toLocaleString() }}
+            </span>
+          </div>
+          <p class="text-sm text-gray-800 whitespace-pre-line">{{ anomaly.text }}</p>
+          <div class="flex justify-end">
+            <Button
+              label="Quittieren"
+              size="small"
+              severity="danger"
+              @click="acknowledgeAnomaly(anomaly)"
+            />
+          </div>
+        </div>
+      </div>
+    </Dialog>
+
+    <Dialog
       v-model:visible="showVariablesDialog"
       modal
       header="Template Variables verwalten"
@@ -486,6 +529,9 @@ const dashboardElement = ref(null)
 const variables = ref([])
 const editingVariable = ref(null)
 const variableValues = ref({})
+
+const showAlarmDialog = ref(false)
+const unacknowledgedAnomalies = ref([])
 
 // Time range selector
 const timeRange = ref('24h')
@@ -879,6 +925,7 @@ const onGlobalDragEnd = () => {
 onMounted(() => {
   loadDashboards()
   loadVariables()
+  loadUnacknowledgedAnomalies()
   document.addEventListener('dragend', onGlobalDragEnd)
 })
 
@@ -923,6 +970,53 @@ const applyTemplate = async (template) => {
       summary: 'Fehler',
       detail: 'Vorlage konnte nicht angewendet werden',
       life: 5000
+    })
+  }
+}
+
+const loadUnacknowledgedAnomalies = async () => {
+  try {
+    const response = await axios.get('/api/annotations')
+    // Filter client-side for simplicity
+    unacknowledgedAnomalies.value = response.data.filter(
+      (a) => a.tags && a.tags.includes('anomaly') && !a.acknowledged
+    )
+
+    if (unacknowledgedAnomalies.value.length > 0) {
+      showAlarmDialog.value = true
+    }
+  } catch (error) {
+    console.error('Failed to load anomalies:', error)
+  }
+}
+
+const acknowledgeAnomaly = async (anomaly) => {
+  try {
+    await axios.put(`/api/annotations/${anomaly.id}`, {
+      acknowledged: true
+    })
+    // Remove from local list
+    unacknowledgedAnomalies.value = unacknowledgedAnomalies.value.filter(
+      (a) => a.id !== anomaly.id
+    )
+
+    if (unacknowledgedAnomalies.value.length === 0) {
+      showAlarmDialog.value = false
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Quittiert',
+      detail: 'Anomalie wurde quittiert',
+      life: 2000
+    })
+  } catch (error) {
+    console.error('Failed to acknowledge anomaly:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Konnte nicht quittiert werden',
+      life: 3000
     })
   }
 }
