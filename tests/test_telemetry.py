@@ -5,44 +5,49 @@ import json
 import base64
 import hmac
 import hashlib
-import os
-import sys
 
-# Add the project directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# -----------------------------------------------------------------------------
-# Mock idm_logger.config to avoid side effects during import
-# -----------------------------------------------------------------------------
-mock_config_module = MagicMock()
-sys.modules["idm_logger.config"] = mock_config_module
-
-# Mock the 'config' instance that telemetry imports
-mock_config_instance = MagicMock()
-mock_config_module.config = mock_config_instance
-
-# Mock Config class
-mock_config_module.Config = MagicMock(return_value=mock_config_instance)
-
-# Now we can safely import telemetry
-from idm_logger.telemetry import TelemetryManager, DEFAULT_ENCRYPTION_KEY  # noqa: E402
+from idm_logger.telemetry import TelemetryManager, DEFAULT_ENCRYPTION_KEY
+from idm_logger.config import config
 
 
 class TestTelemetry(unittest.TestCase):
     def setUp(self):
+        # Patch config methods to isolate tests and prevent disk I/O
+        self.patcher_get = patch.object(config, "get")
+        self.mock_get = self.patcher_get.start()
+        self.addCleanup(self.patcher_get.stop)
+
+        self.patcher_save = patch.object(config, "save")
+        self.mock_save = self.patcher_save.start()
+        self.addCleanup(self.patcher_save.stop)
+
+        self.patcher_set = patch.object(config, "set")
+        self.mock_set = self.patcher_set.start()
+        self.addCleanup(self.patcher_set.stop)
+
+        # Default behavior for get to allow TelemetryManager initialization
+        def default_get(key, default=None):
+            if key == "telemetry":
+                return {
+                    "manual_downloads_today": 0,
+                    "last_manual_download": 0,
+                    "is_admin": False,
+                    "server_stats": None,
+                }
+            return default
+
+        self.mock_get.side_effect = default_get
+
         self.tm = TelemetryManager()
-        # Reset rate limits
+
+        # Reset internal state
         self.tm.manual_downloads_today = 0
         self.tm.last_manual_download = 0
 
     @patch("idm_logger.telemetry.requests")
-    # We don't need to patch 'idm_logger.telemetry.config' anymore because
-    # we already mocked the module it imports from.
-    # However, existing tests rely on 'mock_config' argument.
-    # We can just use the globally mocked instance or patch it again for per-test isolation.
     def test_submit_data_success(self, mock_requests):
-        # Configure the global mock config for this test
-        mock_config_instance.get.side_effect = lambda k, d=None: {
+        # Configure the mock config for this test
+        self.mock_get.side_effect = lambda k, d=None: {
             "telemetry.enabled": True,
             "telemetry.server_url": "http://test-server",
             "telemetry.auth_token": "token",
@@ -50,6 +55,9 @@ class TestTelemetry(unittest.TestCase):
             "installation_id": "uuid",
             "hp_model": "TestModel",
         }.get(k, d)
+
+        # Reload state to pick up the config
+        self.tm._load_state()
 
         # Mock VM Export response
         mock_response_vm = MagicMock()
@@ -83,7 +91,7 @@ class TestTelemetry(unittest.TestCase):
 
     @patch("idm_logger.telemetry.requests")
     def test_submit_data_batching(self, mock_requests):
-        mock_config_instance.get.side_effect = lambda k, d=None: {
+        self.mock_get.side_effect = lambda k, d=None: {
             "telemetry.enabled": True,
             "telemetry.server_url": "http://test-server",
             "telemetry.auth_token": "token",
@@ -91,6 +99,8 @@ class TestTelemetry(unittest.TestCase):
             "installation_id": "uuid",
             "hp_model": "TestModel",
         }.get(k, d)
+
+        self.tm._load_state()
 
         # 250 records
         records = []
@@ -119,12 +129,14 @@ class TestTelemetry(unittest.TestCase):
 
     @patch("idm_logger.telemetry.requests")
     def test_download_model_success(self, mock_requests):
-        mock_config_instance.get.side_effect = lambda k, d=None: {
+        self.mock_get.side_effect = lambda k, d=None: {
             "installation_id": "uuid",
             "hp_model": "TestModel",
             "telemetry.server_url": "http://test-server",
             "internal_api_key": "secret",
         }.get(k, d)
+
+        self.tm._load_state()
 
         # Responses
         mock_resp_check = MagicMock()
@@ -137,7 +149,6 @@ class TestTelemetry(unittest.TestCase):
 
         # Encrypted Model
         try:
-            # We need cryptography here since we imported it (or rely on it being installed)
             from cryptography.fernet import Fernet
 
             key = DEFAULT_ENCRYPTION_KEY
@@ -146,7 +157,6 @@ class TestTelemetry(unittest.TestCase):
             encrypted_data = f.encrypt(original_data)
             payload_b64 = base64.b64encode(encrypted_data).decode("utf-8")
         except ImportError:
-            # Fallback if cryptography not installed (though we installed it)
             self.skipTest("cryptography module missing")
 
         metadata = {"filename": "model.pkl"}
@@ -184,11 +194,13 @@ class TestTelemetry(unittest.TestCase):
     @patch("idm_logger.telemetry.requests")
     def test_admin_status_update(self, mock_requests):
         """Test that is_admin status is correctly updated from server response."""
-        mock_config_instance.get.side_effect = lambda k, d=None: {
+        self.mock_get.side_effect = lambda k, d=None: {
             "installation_id": "uuid",
             "hp_model": "TestModel",
             "telemetry.server_url": "http://test-server",
         }.get(k, d)
+
+        self.tm._load_state()
 
         # Case 1: Server says is_admin = True
         mock_resp_check_true = MagicMock()

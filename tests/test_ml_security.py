@@ -2,6 +2,7 @@
 import unittest
 from unittest.mock import patch
 from idm_logger.web import app
+from idm_logger.config import config
 
 
 class TestMLSecurity(unittest.TestCase):
@@ -11,8 +12,8 @@ class TestMLSecurity(unittest.TestCase):
 
     def test_fail_closed_when_key_missing(self):
         """Test that the endpoint returns 503 when INTERNAL_API_KEY is not configured."""
-        # Patch Config.get class method to affect all instances
-        with patch("idm_logger.config.Config.get") as mock_get:
+        # Patch the config instance method directly
+        with patch.object(config, "get") as mock_get:
 
             def side_effect(key, default=None):
                 if key == "internal_api_key":
@@ -27,7 +28,7 @@ class TestMLSecurity(unittest.TestCase):
 
     def test_fail_auth_when_key_set_but_header_missing(self):
         """Test that the endpoint returns 401 when key is set but header is missing."""
-        with patch("idm_logger.config.Config.get") as mock_get:
+        with patch.object(config, "get") as mock_get:
 
             def side_effect(key, default=None):
                 if key == "internal_api_key":
@@ -42,7 +43,7 @@ class TestMLSecurity(unittest.TestCase):
 
     def test_success_when_key_and_header_match(self):
         """Test that the endpoint returns success when key matches header."""
-        with patch("idm_logger.config.Config.get") as mock_get:
+        with patch.object(config, "get") as mock_get:
 
             def side_effect(key, default=None):
                 if key == "internal_api_key":
