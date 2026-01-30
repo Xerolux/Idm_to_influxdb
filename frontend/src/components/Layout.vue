@@ -187,7 +187,7 @@ onUnmounted(() => {
           </span>
         </span>
         <span class="text-blue-200 text-sm hidden lg:inline">
-          <i class="pi pi-clock mr-1"></i>Auto-Update täglich 03:00
+          <i class="pi pi-info-circle mr-1"></i>Manuelles Update erforderlich
         </span>
       </div>
       <button
