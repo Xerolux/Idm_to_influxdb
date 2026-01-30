@@ -54,7 +54,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
-                    <label>Modell</label>
+                    <label class="font-bold text-sm text-gray-300">Modell</label>
                     <Dropdown
                       v-model="config.hp_model"
                       :options="models"
@@ -66,24 +66,24 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Hersteller</label>
+                    <label class="font-bold text-sm text-gray-300">Hersteller</label>
                     <InputText :value="config.hp_manufacturer || 'IDM'" disabled class="w-full" />
                   </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
-                    <label>Host / IP</label>
+                    <label class="font-bold text-sm text-gray-300">Host / IP</label>
                     <InputText v-model="config.idm.host" class="w-full" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Port</label>
+                    <label class="font-bold text-sm text-gray-300">Port</label>
                     <InputNumber v-model="config.idm.port" :useGrouping="false" class="w-full" />
                   </div>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                  <label class="font-bold">Aktivierte Heizkreise</label>
+                  <label class="font-bold text-sm text-gray-300">Aktivierte Heizkreise</label>
                   <div
                     class="flex flex-wrap gap-4 p-3 border border-gray-700 rounded bg-gray-900/50"
                   >
@@ -102,13 +102,13 @@
                       class="flex items-center gap-2"
                     >
                       <Checkbox v-model="config.idm.circuits" :inputId="'circuit' + c" :value="c" />
-                      <label :for="'circuit' + c">Heizkreis {{ c }}</label>
+                      <label :for="'circuit' + c" class="text-gray-300">Heizkreis {{ c }}</label>
                     </div>
                   </div>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                  <label class="font-bold">Zonenmodule</label>
+                  <label class="font-bold text-sm text-gray-300">Zonenmodule</label>
                   <div
                     class="flex flex-wrap gap-4 p-3 border border-gray-700 rounded bg-gray-900/50"
                   >
@@ -118,7 +118,7 @@
                         :inputId="'zone' + (z - 1)"
                         :value="z - 1"
                       />
-                      <label :for="'zone' + (z - 1)">Zone {{ z }}</label>
+                      <label :for="'zone' + (z - 1)" class="text-gray-300">Zone {{ z }}</label>
                     </div>
                   </div>
                 </div>
@@ -128,7 +128,7 @@
             <Fieldset legend="Datenbank (VictoriaMetrics)" :toggleable="true">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label>Write URL</label>
+                  <label class="font-bold text-sm text-gray-300">Write URL</label>
                   <InputText v-model="config.metrics.url" class="w-full" />
                   <small class="text-gray-300">Standard: http://victoriametrics:8428/write</small>
                 </div>
@@ -149,7 +149,7 @@
                   </div>
                 </div>
                 <div class="flex flex-col gap-2" v-if="!config.logging.realtime_mode">
-                  <label>Abfrage-Intervall (Sekunden)</label>
+                  <label class="font-bold text-sm text-gray-300">Abfrage-Intervall (Sekunden)</label>
                   <InputNumber
                     v-model="config.logging.interval"
                     :min="1"
@@ -235,7 +235,7 @@
               <div v-if="config.mqtt.enabled" class="flex flex-col gap-6 mt-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
-                    <label>Broker Adresse</label>
+                    <label class="font-bold text-sm text-gray-300">Broker Adresse</label>
                     <InputText
                       v-model="config.mqtt.broker"
                       placeholder="mqtt.example.com"
@@ -243,7 +243,7 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Port</label>
+                    <label class="font-bold text-sm text-gray-300">Port</label>
                     <InputNumber
                       v-model="config.mqtt.port"
                       :useGrouping="false"
@@ -253,7 +253,7 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Benutzername</label>
+                    <label class="font-bold text-sm text-gray-300">Benutzername</label>
                     <InputText
                       v-model="config.mqtt.username"
                       placeholder="Optional"
@@ -261,7 +261,7 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Passwort</label>
+                    <label class="font-bold text-sm text-gray-300">Passwort</label>
                     <InputText
                       v-model="mqttPassword"
                       type="password"
@@ -295,11 +295,11 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-700 pt-4">
                   <div class="flex flex-col gap-2">
-                    <label>Topic Präfix</label>
+                    <label class="font-bold text-sm text-gray-300">Topic Präfix</label>
                     <InputText v-model="config.mqtt.topic_prefix" class="w-full" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>QoS Level</label>
+                    <label class="font-bold text-sm text-gray-300">QoS Level</label>
                     <SelectButton
                       v-model="config.mqtt.qos"
                       :options="[0, 1, 2]"
@@ -350,7 +350,7 @@
 
               <div v-if="config.signal.enabled" class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label>Sender Nummer</label>
+                  <label class="font-bold text-sm text-gray-300">Sender Nummer</label>
                   <InputText
                     v-model="config.signal.sender"
                     placeholder="+49..."
@@ -358,7 +358,7 @@
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label>Empfänger (Pro Zeile eine Nummer)</label>
+                  <label class="font-bold text-sm text-gray-300">Empfänger (Pro Zeile eine Nummer)</label>
                   <Textarea v-model="signalRecipientsText" rows="3" class="w-full font-mono" />
                 </div>
                 <div class="flex flex-col gap-2 border-t border-gray-700 pt-4 mt-2">
@@ -393,7 +393,7 @@
               </template>
               <div v-if="config.telegram.enabled" class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label>Bot Token</label>
+                  <label class="font-bold text-sm text-gray-300">Bot Token</label>
                   <InputText
                     v-model="config.telegram.bot_token"
                     type="password"
@@ -401,7 +401,7 @@
                   />
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label>Chat IDs (Kommagetrennt)</label>
+                  <label class="font-bold text-sm text-gray-300">Chat IDs (Kommagetrennt)</label>
                   <InputText v-model="telegramChatIdsText" class="w-full md:w-1/2" />
                 </div>
               </div>
@@ -416,7 +416,7 @@
               </template>
               <div v-if="config.discord.enabled" class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label>Webhook URL</label>
+                  <label class="font-bold text-sm text-gray-300">Webhook URL</label>
                   <InputText v-model="config.discord.webhook_url" type="password" class="w-full" />
                 </div>
               </div>
@@ -432,11 +432,11 @@
               <div v-if="config.email.enabled" class="flex flex-col gap-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="flex flex-col gap-2">
-                    <label>SMTP Server</label>
+                    <label class="font-bold text-sm text-gray-300">SMTP Server</label>
                     <InputText v-model="config.email.smtp_server" class="w-full" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Port</label>
+                    <label class="font-bold text-sm text-gray-300">Port</label>
                     <InputNumber
                       v-model="config.email.smtp_port"
                       :useGrouping="false"
@@ -444,20 +444,20 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Benutzername</label>
+                    <label class="font-bold text-sm text-gray-300">Benutzername</label>
                     <InputText v-model="config.email.username" class="w-full" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Passwort</label>
+                    <label class="font-bold text-sm text-gray-300">Passwort</label>
                     <InputText v-model="emailPassword" type="password" class="w-full" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label>Absender Adresse</label>
+                    <label class="font-bold text-sm text-gray-300">Absender Adresse</label>
                     <InputText v-model="config.email.sender" class="w-full" />
                   </div>
                 </div>
                 <div class="flex flex-col gap-2">
-                  <label>Empfänger (Kommagetrennt)</label>
+                  <label class="font-bold text-sm text-gray-300">Empfänger (Kommagetrennt)</label>
                   <InputText v-model="emailRecipientsText" class="w-full" />
                 </div>
               </div>
@@ -544,7 +544,7 @@
             <Fieldset legend="Webzugriff" :toggleable="true">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label>Admin Passwort</label>
+                  <label class="font-bold text-sm text-gray-300">Admin Passwort</label>
                   <Button
                     label="Passwort ändern"
                     icon="pi pi-key"
@@ -691,23 +691,22 @@
                     <span>Neue Version verfügbar!</span>
                   </div>
                   <p class="text-xs text-gray-300">
-                    Watchtower aktualisiert automatisch täglich um 3:00 Uhr.
+                    Automatische Updates sind deaktiviert. Bitte führen Sie das Update manuell durch.
                   </p>
                 </div>
 
-                <!-- Watchtower Info -->
+                <!-- Update Info -->
                 <div class="bg-gray-900/50 p-3 rounded mt-2">
                   <div class="flex items-center gap-2 mb-2">
                     <i class="pi pi-sync text-green-400"></i>
-                    <span class="text-sm font-bold">Automatische Updates</span>
+                    <span class="text-sm font-bold">Manuelle Updates</span>
                   </div>
                   <p class="text-xs text-gray-300 mb-2">
-                    Watchtower prüft täglich um
-                    <span class="text-green-400 font-mono">03:00 Uhr</span> auf neue Docker Images
-                    und aktualisiert automatisch.
+                    Es werden keine automatischen Updates mehr durchgeführt.
+                    Neue Versionen müssen manuell über die Konsole installiert werden.
                   </p>
                   <Button
-                    label="Anleitung für manuelles Update"
+                    label="Anleitung anzeigen"
                     icon="pi pi-question-circle"
                     severity="secondary"
                     size="small"
@@ -980,11 +979,11 @@
     >
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-2">
-          <label>Neues Passwort</label>
+          <label class="font-bold text-sm text-gray-300">Neues Passwort</label>
           <InputText v-model="newPassword" type="password" class="w-full" />
         </div>
         <div class="flex flex-col gap-2">
-          <label>Bestätigen</label>
+          <label class="font-bold text-sm text-gray-300">Bestätigen</label>
           <InputText
             v-model="confirmPassword"
             type="password"
@@ -1041,18 +1040,18 @@
     <Dialog
       v-model:visible="showUpdateHelpDialog"
       modal
-      header="Manuelles Update"
+      header="Update Anleitung"
       :style="{ width: '500px' }"
     >
       <div class="flex flex-col gap-4">
         <div class="bg-blue-900/20 border border-blue-600/50 p-3 rounded">
           <div class="flex items-center gap-2 text-blue-300 mb-2">
             <i class="pi pi-info-circle"></i>
-            <span class="font-bold">Automatische Updates</span>
+            <span class="font-bold">Wichtiger Hinweis</span>
           </div>
           <p class="text-sm text-gray-300">
-            Watchtower aktualisiert Docker Images automatisch täglich um 3:00 Uhr. Manuelle Updates
-            sind nur nötig, wenn Sie nicht warten möchten.
+            Die automatische Aktualisierung (Watchtower) wurde entfernt.
+            Bitte führen Sie Updates manuell über die Konsole aus, um die neuesten Funktionen und Sicherheitsverbesserungen zu erhalten.
           </p>
         </div>
 
@@ -1356,6 +1355,9 @@ const loadStatus = async (showNotification = false) => {
           detail: detail,
           life: 10000
         })
+
+        // Show update dialog (Popup)
+        showUpdateHelpDialog.value = true
 
         // Remember that we saw this version
         localStorage.setItem('last_seen_update_version', currentLatest)
