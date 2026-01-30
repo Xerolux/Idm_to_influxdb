@@ -189,8 +189,32 @@
 
                 <div class="flex flex-col gap-2">
                   <label class="font-bold text-sm text-gray-300">Telemetry Server URL</label>
-                  <InputText v-model="config.telemetry.server_url" class="w-full" placeholder="https://collector.xerolux.de" />
-                  <small class="text-gray-400">Standard: https://collector.xerolux.de (Community Server). Ändern Sie dies nur für eigene Server-Instanzen.</small>
+                  <div
+                    class="p-2 bg-gray-900 rounded border border-gray-700 font-mono text-gray-400"
+                  >
+                    https://collector.xerolux.de
+                  </div>
+                  <small class="text-gray-400"
+                    >Standard: https://collector.xerolux.de (Community Server). Dieser
+                    Wert ist fest eingestellt.</small
+                  >
+                </div>
+
+                <!-- Admin Status Indicator -->
+                <div class="flex items-center gap-2" v-if="telemetryStatus">
+                  <span class="font-bold text-sm text-gray-300">Status:</span>
+                  <span
+                    v-if="telemetryStatus.is_admin"
+                    class="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 text-xs font-bold uppercase"
+                  >
+                    <i class="pi pi-crown mr-1"></i> Admin
+                  </span>
+                  <span
+                    v-else
+                    class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 text-xs font-bold uppercase"
+                  >
+                    <i class="pi pi-user mr-1"></i> Client
+                  </span>
                 </div>
 
                 <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-2">

@@ -390,7 +390,12 @@ class Config:
                     )
 
                 # Merge loaded data into defaults
-                return self._merge_dicts(defaults, data)
+                merged = self._merge_dicts(defaults, data)
+                # Enforce hardcoded URL
+                if "telemetry" not in merged:
+                    merged["telemetry"] = {}
+                merged["telemetry"]["server_url"] = "https://collector.xerolux.de"
+                return merged
             except json.JSONDecodeError:
                 pass
 
