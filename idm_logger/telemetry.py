@@ -151,8 +151,8 @@ class TelemetryManager:
         Query VictoriaMetrics for data and submit to server.
         """
         server_url = config.get("telemetry.server_url", "https://collector.xerolux.de")
-        # Use hardcoded shared token instead of user config
-        auth_token = SHARED_AUTH_TOKEN
+        # Use user config token if available, else shared token
+        auth_token = config.get("telemetry.auth_token") or SHARED_AUTH_TOKEN
 
         if not auth_token:
             logger.warning("Telemetry: No auth token configured. Skipping submission.")
@@ -347,8 +347,8 @@ class TelemetryManager:
 
             # 2. Download Model
             logger.info("Downloading community model...")
-            # Use hardcoded shared token
-            auth_token = SHARED_AUTH_TOKEN
+            # Use user config token if available, else shared token
+            auth_token = config.get("telemetry.auth_token") or SHARED_AUTH_TOKEN
             headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
 
             download_url = f"{server_url}/api/v1/model/download"
