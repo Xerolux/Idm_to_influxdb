@@ -187,13 +187,19 @@
                   </div>
                 </div>
 
+                <div class="flex flex-col gap-2">
+                  <label class="font-bold text-sm text-gray-300">Telemetry Server URL</label>
+                  <InputText v-model="config.telemetry.server_url" class="w-full" placeholder="https://collector.xerolux.de" />
+                  <small class="text-gray-400">Standard: https://collector.xerolux.de (Community Server). Ändern Sie dies nur für eigene Server-Instanzen.</small>
+                </div>
+
                 <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-2">
                   <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
                     <i class="pi pi-cloud"></i> Telemetrie Status
                   </h4>
                   <div v-if="telemetryStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-300">Server:</span>
+                      <span class="text-gray-300">Server (Verbunden):</span>
                       <span class="font-mono truncate max-w-[150px]">{{ telemetryStatus.server_url }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
@@ -1141,7 +1147,7 @@ const config = ref({
   },
   webdav: { enabled: false, url: '', username: '' },
   ai: { enabled: false, sensitivity: 3.0, model: 'rolling' },
-  telemetry: { enabled: true, auth_token: '' },
+  telemetry: { enabled: true, auth_token: '', server_url: '' },
   updates: { enabled: false, interval_hours: 12, mode: 'apply', target: 'all' },
   backup: { enabled: false, interval: 24, retention: 10, auto_upload: false }
 })
@@ -1506,6 +1512,7 @@ const saveConfig = async () => {
       ai_model: config.value.ai?.model || 'rolling',
       telemetry_enabled: config.value.telemetry?.enabled || false,
       telemetry_auth_token: config.value.telemetry?.auth_token || '',
+      telemetry_server_url: config.value.telemetry?.server_url || '',
       updates_enabled: config.value.updates?.enabled || false,
       updates_interval_hours: config.value.updates?.interval_hours || 12,
       updates_mode: config.value.updates?.mode || 'apply',
