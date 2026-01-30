@@ -225,7 +225,8 @@ class TelemetryManager:
             payload_data = list(measurement_map.values())
 
             # Batching (e.g. 5000 records per request)
-            BATCH_SIZE = 5000
+            # Reduced to 200 to avoid Nginx 413 Request Entity Too Large errors
+            BATCH_SIZE = 200
             total_batches = (len(payload_data) + BATCH_SIZE - 1) // BATCH_SIZE
 
             headers = {

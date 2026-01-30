@@ -77,6 +77,60 @@ class TestTelemetry(unittest.TestCase):
 
     @patch("idm_logger.telemetry.requests")
     @patch("idm_logger.telemetry.config")
+    def test_submit_data_batching(self, mock_config, mock_requests):
+        """Test that data is split into multiple batches if it exceeds BATCH_SIZE."""
+        mock_config.get.side_effect = lambda k, d=None: {
+            "telemetry.enabled": True,
+            "telemetry.server_url": "http://test-server",
+            "telemetry.auth_token": "token",
+            "metrics.url": "http://vm:8428/write",
+            "installation_id": "uuid",
+            "hp_model": "TestModel",
+        }.get(k, d)
+
+        # Mock VM Export response returning 250 records (each record is a unique timestamp)
+        # BATCH_SIZE is 200, so we expect 2 batches.
+        records = []
+        for i in range(250):
+            records.append(
+                json.dumps(
+                    {
+                        "metric": {"__name__": "idm_heatpump_temp"},
+                        "values": [i],
+                        "timestamps": [i * 1000],  # Unique timestamps to create unique buckets
+                    }
+                ).encode()
+            )
+
+        mock_response_vm = MagicMock()
+        mock_response_vm.status_code = 200
+        mock_response_vm.iter_lines.return_value = records
+
+        # Mock Server Submit response
+        mock_response_server = MagicMock()
+        mock_response_server.status_code = 200
+
+        mock_requests.get.return_value = mock_response_vm
+        mock_requests.post.return_value = mock_response_server
+
+        # Run
+        success = self.tm.submit_data()
+
+        self.assertTrue(success)
+
+        # Check that post was called twice
+        self.assertEqual(mock_requests.post.call_count, 2)
+
+        # Verify first batch size
+        args1, kwargs1 = mock_requests.post.call_args_list[0]
+        self.assertEqual(len(kwargs1["json"]["data"]), 200)
+
+        # Verify second batch size
+        args2, kwargs2 = mock_requests.post.call_args_list[1]
+        self.assertEqual(len(kwargs2["json"]["data"]), 50)
+
+    @patch("idm_logger.telemetry.requests")
+    @patch("idm_logger.telemetry.config")
     def test_download_model_success(self, mock_config, mock_requests):
         mock_config.get.side_effect = lambda k, d=None: {
             "installation_id": "uuid",
