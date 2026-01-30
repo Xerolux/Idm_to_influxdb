@@ -464,7 +464,8 @@ def check_for_update() -> Dict[str, Any]:
                 norm_current = current_version.lstrip("v")
                 norm_gh = gh_version.lstrip("v")
 
-                if norm_gh != norm_current:
+                # If current version starts with GH version (e.g. 1.0.4.abcdef vs 1.0.4), consider it up-to-date
+                if norm_gh != norm_current and not norm_current.startswith(norm_gh):
                     # Check if it's really newer? We assume latest release is newer than current if strings differ
                     # and current is not "unknown"
                     if current_version != "unknown":

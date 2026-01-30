@@ -634,7 +634,7 @@
                 <div class="flex items-center justify-between bg-gray-900/50 p-3 rounded">
                   <div>
                     <div class="text-sm text-gray-400">Installierte Version</div>
-                    <div class="font-mono">{{ updateStatus.current_version || 'v0.0.0' }}</div>
+                    <div class="font-mono text-gray-200">{{ updateStatus.current_version || 'v0.0.0' }}</div>
                   </div>
                   <div class="text-right">
                     <div class="text-sm text-gray-400">Verfügbare Version</div>
@@ -1277,24 +1277,33 @@ const loadStatus = async (showNotification = false) => {
 
     // Show notification popup if updates are available (on initial load)
     if (showNotification && updateRes.data.update_available) {
-      const dockerUpdates = updateRes.data.docker?.updates_available
-      const gitUpdates = updateRes.data.git_update_available
+      const lastSeen = localStorage.getItem('last_seen_update_version')
+      const currentLatest = updateRes.data.latest_version
 
-      let detail = 'Ein Update ist verfügbar!'
-      if (dockerUpdates && gitUpdates) {
-        detail = 'Neue Version und Docker Images verfügbar!'
-      } else if (dockerUpdates) {
-        detail = 'Neue Docker Images verfügbar!'
-      } else if (gitUpdates) {
-        detail = `Version ${updateRes.data.latest_version} verfügbar!`
+      // Only show if we haven't seen this version yet
+      if (lastSeen !== currentLatest) {
+        const dockerUpdates = updateRes.data.docker?.updates_available
+        const gitUpdates = updateRes.data.git_update_available
+
+        let detail = 'Ein Update ist verfügbar!'
+        if (dockerUpdates && gitUpdates) {
+          detail = 'Neue Version und Docker Images verfügbar!'
+        } else if (dockerUpdates) {
+          detail = 'Neue Docker Images verfügbar!'
+        } else if (gitUpdates) {
+          detail = `Version ${updateRes.data.latest_version} verfügbar!`
+        }
+
+        toast.add({
+          severity: 'info',
+          summary: 'Update verfügbar',
+          detail: detail,
+          life: 10000
+        })
+
+        // Remember that we saw this version
+        localStorage.setItem('last_seen_update_version', currentLatest)
       }
-
-      toast.add({
-        severity: 'info',
-        summary: 'Update verfügbar',
-        detail: detail,
-        life: 10000
-      })
     }
   } catch (e) {
     // Silent fail for status check
