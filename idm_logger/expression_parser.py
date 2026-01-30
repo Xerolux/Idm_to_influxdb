@@ -22,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 # Pre-compiled regex patterns for performance
 _VALID_CHARS_PATTERN = re.compile(r"^[\w\s+\-*/().,]+$")
-_FUNCTION_PATTERN = re.compile(r"(\w+)\s*\(")
-_INVALID_OPS_PATTERN = re.compile(r"([^\w\s])([^\w\s])")
 _QUERY_LABEL_PATTERN = re.compile(r"\b([A-Z])\b")
 
 
@@ -48,7 +46,7 @@ class SafeExpressionEvaluator(ast.NodeVisitor):
     }
 
     # Allowed function names
-    ALLOWED_FUNCTIONS = {"min", "max", "abs"}
+    ALLOWED_FUNCTIONS = {"min", "max", "abs", "sum", "avg"}
 
     def __init__(self):
         self.result = None
@@ -93,14 +91,25 @@ class SafeExpressionEvaluator(ast.NodeVisitor):
         if func_name not in self.ALLOWED_FUNCTIONS:
             raise ValueError(f"Function not allowed: {func_name}")
         args = [self.visit(arg) for arg in node.args]
+
         if func_name == "min":
+            if not args:
+                raise ValueError("min() requires at least one argument")
             return min(args)
         elif func_name == "max":
+            if not args:
+                raise ValueError("max() requires at least one argument")
             return max(args)
         elif func_name == "abs":
             if len(args) != 1:
                 raise ValueError("abs() takes exactly one argument")
             return abs(args[0])
+        elif func_name == "sum":
+            return sum(args)
+        elif func_name == "avg":
+            if not args:
+                raise ValueError("avg() requires at least one argument")
+            return sum(args) / len(args)
 
     def generic_visit(self, node):
         raise ValueError(f"Unsupported expression element: {type(node).__name__}")
@@ -164,17 +173,11 @@ class ExpressionParser:
         if not _VALID_CHARS_PATTERN.match(expression):
             return False, "Expression contains invalid characters"
 
-        # Check for valid function names
-        functions = _FUNCTION_PATTERN.findall(expression)
-        for func in functions:
-            if func not in self.FUNCTIONS and func not in self.OPERATORS:
-                # Might be a query reference, which is fine
-                pass
-
-        # Check for invalid operators
-        invalid_ops = _INVALID_OPS_PATTERN.findall(expression)
-        if invalid_ops:
-            return False, f"Invalid operator sequence: {invalid_ops[0]}"
+        # Validate syntax using AST parsing
+        try:
+            ast.parse(expression, mode="eval")
+        except SyntaxError as e:
+            return False, f"Syntax error: {e}"
 
         return True, ""
 
@@ -248,24 +251,8 @@ class ExpressionParser:
             # Use word boundaries to avoid partial replacements
             expr = re.sub(r"\b" + query_label + r"\b", str(value), expr)
 
-        # Replace functions with Python equivalents
-        # avg(A,B,C) -> (A+B+C)/3
-        for func_name in ["avg", "sum", "min", "max"]:
-            pattern = rf"{func_name}\s*\(([^)]+)\)"
-            matches = re.findall(pattern, expr)
-            for match in matches:
-                args = [arg.strip() for arg in match.split(",")]
-                if func_name == "avg":
-                    replacement = f"({'+'.join(args)})/{len(args)}"
-                elif func_name == "sum":
-                    replacement = f"({'+'.join(args)})"
-                elif func_name == "min":
-                    replacement = f"min({','.join(args)})"
-                elif func_name == "max":
-                    replacement = f"max({','.join(args)})"
-                expr = re.sub(
-                    rf"{func_name}\s*\({re.escape(match)}\)", replacement, expr
-                )
+        # Removed regex-based function replacement to prevent ReDoS
+        # Functions are now handled directly by SafeExpressionEvaluator
 
         # Safe evaluation using AST-based evaluator (no eval!)
         expr = expr.strip()

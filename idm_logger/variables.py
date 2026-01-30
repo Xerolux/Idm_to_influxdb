@@ -14,6 +14,7 @@ Types:
 from typing import List, Dict, Optional, Any
 import requests
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -239,48 +240,34 @@ class VariableManager:
         """
         Substitute variables in a query string.
 
-        Example:
-        query: "temp_{circuit}_current"
-        variable_values: {"circuit": "A"}
-        result: "temp_A_current"
-
-        Also supports $var syntax:
-        query: "$circuit_temp"
-        result: "A_temp"
+        Supports:
+        - ${var}
+        - $var
+        - {var} (Grafana style)
         """
-        import re
+        if not query or not variable_values:
+            return query
 
-        # Replace ${var} syntax first
-        pattern = r"\$\{([^}]+)\}"
+        # Combined regex for all formats
+        # Group 1: ${var} -> var is Group 1. Max 100 chars to prevent ReDoS.
+        # Group 2: $var   -> var is Group 2
+        # Group 3: {var}  -> var is Group 3
+        # We limit the length of the variable name to avoid performance issues on malicious inputs
+        pattern = r"\$\{([^}]{1,100})\}|\$([a-zA-Z_]\w{0,99})|\{([a-zA-Z_]\w{0,99})\}"
 
         def replacer(match):
-            var_name = match.group(1)
-            if var_name in variable_values:
+            # Find which group matched
+            var_name = match.group(1) or match.group(2) or match.group(3)
+
+            # Special case for {var} which might be part of PromQL like {job="foo"}
+            # The regex {([a-zA-Z_]\w*)} might match {job} but PromQL uses {job=".."}
+            # If the variable exists in our map, we replace it.
+            # If not, we keep the original text to avoid breaking PromQL queries.
+
+            if var_name and var_name in variable_values:
                 return str(variable_values[var_name])
+
             return match.group(0)
 
-        query = re.sub(pattern, replacer, query)
-
-        # Then replace $var syntax (word boundary to avoid partial replacements)
-        pattern = r"\$([a-zA-Z_][a-zA-Z0-9_]*)"
-
-        def replacer_simple(match):
-            var_name = match.group(1)
-            if var_name in variable_values:
-                return str(variable_values[var_name])
-            return match.group(0)
-
-        query = re.sub(pattern, replacer_simple, query)
-
-        # Replace {var} syntax (Grafana style)
-        pattern = r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}"
-
-        def replacer_grafana(match):
-            var_name = match.group(1)
-            if var_name in variable_values:
-                return str(variable_values[var_name])
-            return match.group(0)
-
-        query = re.sub(pattern, replacer_grafana, query)
-
-        return query
+        # Pre-compiled patterns are cached by re module, but explicit is better
+        return re.sub(pattern, replacer, query)

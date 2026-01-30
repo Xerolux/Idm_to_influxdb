@@ -134,6 +134,8 @@ def validate_model_name(model_name: Optional[str]) -> Optional[str]:
     # Allow alphanumeric, underscore, hyphen, dot, space, parentheses
     if not re.match(r"^[a-zA-Z0-9_\-\. \(\)]+$", model_name):
         raise HTTPException(status_code=400, detail="Invalid model name format")
+    if ".." in model_name:
+        raise HTTPException(status_code=400, detail="Invalid model name format")
     return model_name
 
 
@@ -462,7 +464,7 @@ async def check_eligibility(
 
         if model:
             # Look for model-specific file
-            safe_model_name = model.replace(" ", "_").replace("/", "_")
+            safe_model_name = os.path.basename(model).replace(" ", "_")
             model_file = model_dir / f"{safe_model_name}.enc"
             metadata_file = model_dir / f"{safe_model_name}_metadata.json"
             if not model_file.exists():
@@ -552,7 +554,7 @@ async def download_model(
         model_file = None
 
         if model:
-            safe_model_name = model.replace(" ", "_").replace("/", "_")
+            safe_model_name = os.path.basename(model).replace(" ", "_")
             model_file = model_dir / f"{safe_model_name}.enc"
             if not model_file.exists():
                 model_file = model_dir / "community_model.enc"

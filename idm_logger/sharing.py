@@ -59,10 +59,7 @@ class ShareToken:
         # Support legacy SHA256 hashes during migration
         if self.password_hash.startswith("pbkdf2:"):
             return check_password_hash(self.password_hash, password)
-        # Legacy SHA256 fallback - will be upgraded on next password set
-        import hashlib
-
-        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash
+        return False
 
     def is_expired(self) -> bool:
         """Check if the token has expired."""
@@ -116,6 +113,9 @@ class SharingManager:
                 )
                 token.access_count = token_data.get("access_count", 0)
                 token.last_accessed = token_data.get("last_accessed")
+                # Restore password hash from storage if available (since password is not stored)
+                if "password_hash" in token_data:
+                    token.password_hash = token_data["password_hash"]
                 self.tokens[token.token_id] = token
 
             logger.info(f"Loaded {len(self.tokens)} share tokens")
