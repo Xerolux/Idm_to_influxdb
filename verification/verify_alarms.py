@@ -1,12 +1,20 @@
 import time
 from playwright.sync_api import sync_playwright, expect
 
+
 def test_alarms(page):
     print("Setting up routes...")
     # Mock API responses
-    page.route("**/api/auth/check", lambda route: route.fulfill(json={"authenticated": True}))
+    page.route(
+        "**/api/auth/check", lambda route: route.fulfill(json={"authenticated": True})
+    )
     page.route("**/api/variables", lambda route: route.fulfill(json=[]))
-    page.route("**/api/dashboards", lambda route: route.fulfill(json=[{"id": "d1", "name": "Test Dashboard", "charts": []}]))
+    page.route(
+        "**/api/dashboards",
+        lambda route: route.fulfill(
+            json=[{"id": "d1", "name": "Test Dashboard", "charts": []}]
+        ),
+    )
 
     # Mock annotations with an anomaly
     anomaly = {
@@ -16,7 +24,7 @@ def test_alarms(page):
         "tags": ["ai", "anomaly"],
         "color": "#ef4444",
         "dashboard_id": None,
-        "acknowledged": False
+        "acknowledged": False,
     }
 
     def handle_annotations(route):
@@ -64,8 +72,10 @@ def test_alarms(page):
     # Screenshot 2: Closed
     page.screenshot(path="/home/jules/verification/alarm_acknowledged.png")
 
+
 if __name__ == "__main__":
     import os
+
     os.makedirs("/home/jules/verification", exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
