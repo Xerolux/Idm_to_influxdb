@@ -23,6 +23,13 @@ VM_QUERY_URL = os.environ.get(
 )
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "change-me-to-something-secure")
 
+# Admin IDs (comma separated UUIDs)
+ADMIN_IDS = [
+    x.strip()
+    for x in os.environ.get("ADMIN_INSTALLATION_IDS", "").split(",")
+    if x.strip()
+]
+
 # Model storage directory
 MODEL_DIR = os.environ.get("MODEL_DIR", "/app/models")
 
@@ -47,8 +54,9 @@ app = FastAPI(
     version="1.1.0",
     docs_url=None,
     redoc_url=None,
-    openapi_url=None
+    openapi_url=None,
 )
+
 
 # Middleware for HTTPS enforcement
 @app.middleware("http")
@@ -56,20 +64,28 @@ async def enforce_https(request: Request, call_next):
     # Trust X-Forwarded-Proto from reverse proxy
     proto = request.headers.get("X-Forwarded-Proto", "https")
     if proto == "http":
-        return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return PlainTextResponse(
+            "Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
 
     response = await call_next(request)
     return response
 
+
 # Obfuscate 404 errors (Scanning attempts)
 @app.exception_handler(404)
 async def not_found_exception_handler(request: Request, exc: HTTPException):
-    return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return PlainTextResponse(
+        "Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
 
 # Obfuscate Root URL
 @app.get("/")
 async def root():
-    return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return PlainTextResponse(
+        "Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 def check_rate_limit(client_ip: str) -> bool:
@@ -380,6 +396,32 @@ async def check_eligibility(
             "update_available": False,
             "data_pool": get_data_pool_stats(),
         }
+
+        # Check if Admin
+        if installation_id in ADMIN_IDS:
+            result["is_admin"] = True
+            # Fetch server stats for admins
+            try:
+                # Reuse existing pool stats which are already in result['data_pool']
+                # Add total models
+                models = []
+                m_dir = Path(MODEL_DIR)
+                if m_dir.exists():
+                    for mf in m_dir.glob("*.enc"):
+                        models.append(
+                            {
+                                "name": mf.stem.replace("_", " "),
+                                "size": mf.stat().st_size,
+                                "modified": mf.stat().st_mtime,
+                            }
+                        )
+                result["server_stats"] = {
+                    "models": models,
+                    "active_installations": result["data_pool"]["total_installations"],
+                    "total_points": result["data_pool"]["total_data_points"],
+                }
+            except Exception as e:
+                logger.error(f"Error fetching admin stats: {e}")
 
         # Check if data pool has enough data
         if not result["data_pool"]["data_sufficient"]:
