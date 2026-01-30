@@ -214,7 +214,9 @@ async def get_data_pool_stats() -> Dict[str, Any]:
                     )
 
             # Count total data points (last 30 days)
-            query_points = 'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
+            query_points = (
+                'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
+            )
             response = await client.get(
                 VM_QUERY_URL, params={"query": query_points}, timeout=5
             )
