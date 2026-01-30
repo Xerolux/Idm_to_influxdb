@@ -1,6 +1,5 @@
 # Xerolux 2026
 from unittest.mock import patch, MagicMock, AsyncMock
-import pytest
 
 # ... existing tests ...
 

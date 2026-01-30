@@ -5,7 +5,6 @@ from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Any
 import os
 import logging
-import requests
 import httpx
 import time
 import asyncio
@@ -13,7 +12,6 @@ import hashlib
 import re
 import uuid
 import json
-import orjson
 from pathlib import Path
 from collections import defaultdict
 from analysis import get_community_averages
