@@ -193,12 +193,6 @@
                   <small class="text-gray-400">Standard: https://collector.xerolux.de (Community Server). Ändern Sie dies nur für eigene Server-Instanzen.</small>
                 </div>
 
-                <div class="flex flex-col gap-2">
-                  <label class="font-bold text-sm text-gray-300">Auth Token (Optional)</label>
-                  <InputText v-model="config.telemetry.auth_token" type="password" class="w-full" placeholder="Standard: Community Token" />
-                  <small class="text-gray-400">Nur erforderlich, wenn Sie einen eigenen Server mit benutzerdefiniertem Token verwenden.</small>
-                </div>
-
                 <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-2">
                   <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
                     <i class="pi pi-cloud"></i> Telemetrie Status
