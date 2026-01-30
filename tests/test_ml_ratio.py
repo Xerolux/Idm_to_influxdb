@@ -6,11 +6,21 @@ import os
 
 sys.path.insert(0, os.getcwd())
 
-# Mock requests to avoid network calls during import
-with patch("requests.get"), patch("requests.post"):
-    from ml_service import main as ml_main
+# Gracefully skip if river is not available (e.g. in backend CI)
+try:
+    import river
+except ImportError:
+    river = None
+
+if river:
+    # Mock requests to avoid network calls during import
+    with patch("requests.get"), patch("requests.post"):
+        from ml_service import main as ml_main
+else:
+    ml_main = None
 
 
+@unittest.skipIf(river is None, "river library not installed")
 class TestMlRatio(unittest.TestCase):
     def setUp(self):
         # Reset logger mock for each test
