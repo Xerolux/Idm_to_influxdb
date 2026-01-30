@@ -7,8 +7,8 @@
 export async function copyToClipboard(text) {
   if (!text) return false
 
-  // Try the modern API first
-  if (navigator.clipboard && navigator.clipboard.writeText) {
+  // Try the modern API first if available and context is secure
+  if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text)
       return true
@@ -26,10 +26,17 @@ export async function copyToClipboard(text) {
     textArea.style.position = 'fixed'
     textArea.style.left = '-9999px'
     textArea.style.top = '0'
+
+    // Prevent zooming and keyboard on mobile
+    textArea.setAttribute('readonly', '')
+
     document.body.appendChild(textArea)
 
     textArea.focus()
     textArea.select()
+
+    // mobile devices might need setSelectionRange
+    textArea.setSelectionRange(0, 99999)
 
     const successful = document.execCommand('copy')
     document.body.removeChild(textArea)
