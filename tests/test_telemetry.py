@@ -139,6 +139,7 @@ class TestTelemetry(unittest.TestCase):
         try:
             # We need cryptography here since we imported it (or rely on it being installed)
             from cryptography.fernet import Fernet
+
             key = DEFAULT_ENCRYPTION_KEY
             f = Fernet(key)
             original_data = b"serialized_model_data"
