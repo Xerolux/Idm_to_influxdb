@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 # In a real scenario, this might be rotated or fetched securely.
 DEFAULT_ENCRYPTION_KEY = b"gR6xZ9jK3q2L5n8P7s4v1t0wY_mH-cJdKbNxVfZlQqA="
 
+# Hardcoded Shared Auth Token for Community Server
+# This allows clients to submit data without needing to configure a token manually.
+SHARED_AUTH_TOKEN = "COMMUNITY-CONTRIBUTOR-TOKEN-2026"
+
 # Service URLs
 ML_SERVICE_UPLOAD_URL = os.environ.get(
     "ML_SERVICE_UPLOAD_URL", "http://idm-ml-service:8080/model/upload"
@@ -136,7 +140,8 @@ class TelemetryManager:
         Query VictoriaMetrics for data and submit to server.
         """
         server_url = config.get("telemetry.server_url", "https://collector.xerolux.de")
-        auth_token = config.get("telemetry.auth_token")
+        # Use hardcoded shared token instead of user config
+        auth_token = SHARED_AUTH_TOKEN
 
         if not auth_token:
             logger.warning("Telemetry: No auth token configured. Skipping submission.")
@@ -321,7 +326,8 @@ class TelemetryManager:
 
             # 2. Download Model
             logger.info("Downloading community model...")
-            auth_token = config.get("telemetry.auth_token")
+            # Use hardcoded shared token
+            auth_token = SHARED_AUTH_TOKEN
             headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
 
             download_url = f"{server_url}/api/v1/model/download"
