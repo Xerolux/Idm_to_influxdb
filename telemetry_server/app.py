@@ -31,7 +31,7 @@ logger = logging.getLogger("telemetry-server")
 
 # Admin IDs (comma separated UUIDs)
 raw_admin_ids = os.environ.get("ADMIN_INSTALLATION_IDS", "")
-ADMIN_IDS = [x.strip() for x in raw_admin_ids.split(",") if x.strip()]
+ADMIN_IDS = [x.strip().lower() for x in raw_admin_ids.split(",") if x.strip()]
 
 logger.info(f"Loaded {len(ADMIN_IDS)} Admin IDs from environment")
 if not ADMIN_IDS and raw_admin_ids:
@@ -403,9 +403,14 @@ async def check_eligibility(
         }
 
         # Check if Admin
-        if installation_id in ADMIN_IDS:
+        is_admin_check = installation_id.lower() in ADMIN_IDS
+        logger.info(
+            f"Checking eligibility for {installation_id} (Admin check: {is_admin_check})"
+        )
+
+        if is_admin_check:
             result["is_admin"] = True
-            logger.info(f"Admin access verified for {mask_ip(installation_id)}")
+            logger.info(f"Admin access verified for {installation_id}")
             # Fetch server stats for admins
             try:
                 # Reuse existing pool stats which are already in result['data_pool']
