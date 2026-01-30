@@ -1,16 +1,19 @@
 # Xerolux 2026
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, status
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, ORJSONResponse
 from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Any
 import os
 import logging
 import requests
+import httpx
 import time
+import asyncio
 import hashlib
 import re
 import uuid
 import json
+import orjson
 from pathlib import Path
 from collections import defaultdict
 from analysis import get_community_averages
@@ -31,7 +34,7 @@ logger = logging.getLogger("telemetry-server")
 
 # Admin IDs (comma separated UUIDs)
 raw_admin_ids = os.environ.get("ADMIN_INSTALLATION_IDS", "")
-ADMIN_IDS = [x.strip().lower() for x in raw_admin_ids.split(",") if x.strip()]
+ADMIN_IDS = {x.strip().lower() for x in raw_admin_ids.split(",") if x.strip()}
 
 logger.info(f"Loaded {len(ADMIN_IDS)} Admin IDs from environment")
 if not ADMIN_IDS and raw_admin_ids:
@@ -58,7 +61,43 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    default_response_class=ORJSONResponse,
 )
+
+
+async def cleanup_rate_limits():
+    """Background task to clean up stale rate limit entries."""
+    while True:
+        await asyncio.sleep(300)  # Clean every 5 minutes
+        try:
+            now = time.time()
+            keys_to_remove = []
+            # Iterate over copy of items
+            for ip, timestamps in list(_rate_limit_store.items()):
+                # Filter out old timestamps first
+                valid_timestamps = [
+                    t for t in timestamps if now - t < RATE_LIMIT_WINDOW
+                ]
+                if not valid_timestamps:
+                    keys_to_remove.append(ip)
+                else:
+                    _rate_limit_store[ip] = valid_timestamps
+
+            for k in keys_to_remove:
+                if k in _rate_limit_store:
+                    del _rate_limit_store[k]
+
+            if keys_to_remove:
+                logger.info(
+                    f"Rate limit cleanup: removed {len(keys_to_remove)} stale IPs"
+                )
+        except Exception as e:
+            logger.error(f"Error in rate limit cleanup: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(cleanup_rate_limits())
 
 
 # Middleware for HTTPS enforcement
@@ -105,8 +144,8 @@ def check_rate_limit(client_ip: str) -> bool:
     return True
 
 
-def get_file_hash(filepath: str) -> Optional[str]:
-    """Calculate SHA256 hash of a file."""
+def _get_file_hash_sync(filepath: str) -> Optional[str]:
+    """Synchronous internal function for hash calculation."""
     if not os.path.exists(filepath):
         return None
     sha256_hash = hashlib.sha256()
@@ -117,6 +156,12 @@ def get_file_hash(filepath: str) -> Optional[str]:
         return sha256_hash.hexdigest()
     except Exception:
         return None
+
+
+async def get_file_hash(filepath: str) -> Optional[str]:
+    """Calculate SHA256 hash of a file (Async wrapper)."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _get_file_hash_sync, filepath)
 
 
 def validate_installation_id(installation_id: str) -> str:
@@ -142,7 +187,7 @@ def validate_model_name(model_name: Optional[str]) -> Optional[str]:
     return model_name
 
 
-def get_data_pool_stats() -> Dict[str, Any]:
+async def get_data_pool_stats() -> Dict[str, Any]:
     """
     Get current data pool statistics from VictoriaMetrics.
     Used for cold start feedback.
@@ -157,27 +202,30 @@ def get_data_pool_stats() -> Dict[str, Any]:
     }
 
     try:
-        # Count unique installations (last 30 days)
-        query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
-        response = requests.get(
-            VM_QUERY_URL, params={"query": query_installations}, timeout=5
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "success" and data["data"]["result"]:
-                stats["total_installations"] = int(
-                    data["data"]["result"][0]["value"][1]
-                )
+        async with httpx.AsyncClient() as client:
+            # Count unique installations (last 30 days)
+            query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
+            response = await client.get(
+                VM_QUERY_URL, params={"query": query_installations}, timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "success" and data["data"]["result"]:
+                    stats["total_installations"] = int(
+                        data["data"]["result"][0]["value"][1]
+                    )
 
-        # Count total data points (last 30 days)
-        query_points = 'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
-        response = requests.get(VM_QUERY_URL, params={"query": query_points}, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "success" and data["data"]["result"]:
-                stats["total_data_points"] = int(
-                    float(data["data"]["result"][0]["value"][1])
-                )
+            # Count total data points (last 30 days)
+            query_points = 'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
+            response = await client.get(
+                VM_QUERY_URL, params={"query": query_points}, timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "success" and data["data"]["result"]:
+                    stats["total_data_points"] = int(
+                        float(data["data"]["result"][0]["value"][1])
+                    )
 
         # Check which models are available
         model_dir = Path(MODEL_DIR)
@@ -321,13 +369,14 @@ async def submit_telemetry(
         if lines:
             # Batch write to VictoriaMetrics
             data = "\n".join(lines)
-            response = requests.post(VM_WRITE_URL, data=data)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(VM_WRITE_URL, data=data)
 
-            if response.status_code != 204:  # VM returns 204 on success
-                logger.error(
-                    f"VictoriaMetrics write failed: {response.status_code} - {response.text}"
-                )
-                raise HTTPException(status_code=502, detail="Database Write Failed")
+                if response.status_code != 204:  # VM returns 204 on success
+                    logger.error(
+                        f"VictoriaMetrics write failed: {response.status_code} - {response.text}"
+                    )
+                    raise HTTPException(status_code=502, detail="Database Write Failed")
 
             logger.info(
                 f"Ingested {len(lines)} points from {payload.installation_id} ({client_ip})"
@@ -354,7 +403,8 @@ async def server_status(auth: None = Depends(verify_token)):
         # Count unique installations (approximate)
         # Using a count query on installation_id tag
         query = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
-        response = requests.get(VM_QUERY_URL, params={"query": query})
+        async with httpx.AsyncClient() as client:
+            response = await client.get(VM_QUERY_URL, params={"query": query})
         installations = 0
         if response.status_code == 200:
             data = response.json()
@@ -399,7 +449,7 @@ async def check_eligibility(
             "model_metadata": None,
             "model_available": False,
             "update_available": False,
-            "data_pool": get_data_pool_stats(),
+            "data_pool": await get_data_pool_stats(),
         }
 
         # Check if Admin
@@ -448,7 +498,10 @@ async def check_eligibility(
 
         # Query: Check if this ID appears in the last 30 days
         query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
-        response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                VM_QUERY_URL, params={"query": query}, timeout=5
+            )
 
         if response.status_code == 200:
             data = response.json()
@@ -486,7 +539,7 @@ async def check_eligibility(
 
         if model_file and model_file.exists():
             result["model_available"] = True
-            result["model_hash"] = get_file_hash(str(model_file))
+            result["model_hash"] = await get_file_hash(str(model_file))
 
             # Load metadata if available
             if metadata_file and metadata_file.exists():
@@ -544,7 +597,10 @@ async def download_model(
     try:
         # Verify eligibility first
         query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
-        response = requests.get(VM_QUERY_URL, params={"query": query}, timeout=5)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                VM_QUERY_URL, params={"query": query}, timeout=5
+            )
 
         eligible = False
         if response.status_code == 200:
@@ -583,7 +639,7 @@ async def download_model(
             filename=model_file.name,
             media_type="application/octet-stream",
             headers={
-                "X-Model-Hash": get_file_hash(str(model_file)) or "",
+                "X-Model-Hash": await get_file_hash(str(model_file)) or "",
                 "X-Model-Name": model_file.stem,
             },
         )
@@ -602,7 +658,7 @@ async def data_pool_status():
     Public endpoint - no authentication required.
     Useful for displaying cold start information to users.
     """
-    stats = get_data_pool_stats()
+    stats = await get_data_pool_stats()
     stats["timestamp"] = time.time()
     return stats
 
@@ -623,7 +679,7 @@ async def list_available_models(auth: None = Depends(verify_token)):
                     "name": model_file.stem.replace("_", " "),
                     "filename": model_file.name,
                     "size_bytes": model_file.stat().st_size,
-                    "hash": get_file_hash(str(model_file)),
+                    "hash": await get_file_hash(str(model_file)),
                     "modified": model_file.stat().st_mtime,
                 }
             )
