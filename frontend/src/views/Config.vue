@@ -42,7 +42,7 @@
             <Fieldset legend="IDM Wärmepumpe" :toggleable="true">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                  <label class="font-bold text-sm text-gray-400">Installation</label>
+                  <label class="font-bold text-sm text-gray-300">Installation</label>
                   <div class="flex items-center gap-2">
                     <div class="p-inputgroup flex-1">
                       <span class="p-inputgroup-addon">ID</span>
@@ -143,7 +143,7 @@
                     <label for="realtime_mode" class="font-bold cursor-pointer"
                       >Echtzeit-Modus</label
                     >
-                    <span class="text-sm text-gray-400"
+                    <span class="text-sm text-gray-300"
                       >Aktualisierung im Sekundentakt (Hohe Last)</span
                     >
                   </div>
@@ -157,7 +157,7 @@
                     :useGrouping="false"
                     class="w-full md:w-1/2"
                   />
-                  <small class="text-gray-400">Standard: 60 Sekunden</small>
+                  <small class="text-gray-300">Standard: 60 Sekunden</small>
                 </div>
               </div>
             </Fieldset>
@@ -193,19 +193,19 @@
                   </h4>
                   <div v-if="telemetryStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Server:</span>
+                      <span class="text-gray-300">Server:</span>
                       <span class="font-mono truncate max-w-[150px]">{{ telemetryStatus.server_url }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Letzte Übertragung:</span>
+                      <span class="text-gray-300">Letzte Übertragung:</span>
                       <span class="font-mono">{{ telemetryStatus.last_submission ? new Date(telemetryStatus.last_submission * 1000).toLocaleString() : 'Nie' }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Letzter Modell-Check:</span>
+                      <span class="text-gray-300">Letzter Modell-Check:</span>
                       <span class="font-mono">{{ telemetryStatus.last_model_check ? new Date(telemetryStatus.last_model_check * 1000).toLocaleString() : 'Nie' }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Manuelle Downloads heute:</span>
+                      <span class="text-gray-300">Manuelle Downloads heute:</span>
                       <span class="font-mono">{{ telemetryStatus.manual_downloads_today }} / 3</span>
                     </div>
                   </div>
@@ -286,7 +286,7 @@
                         placeholder="/path/to/ca.crt"
                         class="w-full"
                       />
-                      <small class="text-gray-400"
+                      <small class="text-gray-300"
                         >Für selbst-signierte Zertifikate. Leer lassen für System-CA.</small
                       >
                     </div>
@@ -328,7 +328,7 @@
                   </div>
                 </div>
               </div>
-              <div v-else class="text-gray-400 italic">
+              <div v-else class="text-gray-300 italic">
                 Aktivieren Sie MQTT, um Daten an Broker wie Mosquitto oder Home Assistant zu senden.
               </div>
             </Fieldset>
@@ -370,7 +370,7 @@
                       placeholder="signal-cli"
                       class="w-full md:w-1/2"
                     />
-                    <small class="text-gray-400">Standard: signal-cli (im PATH)</small>
+                    <small class="text-gray-300">Standard: signal-cli (im PATH)</small>
                   </div>
                 </div>
                 <Button
@@ -493,11 +493,11 @@
                   </h4>
                   <div v-if="aiStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Service:</span>
+                      <span class="text-gray-300">Service:</span>
                       <span class="font-mono">{{ aiStatus.service || 'Unbekannt' }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Status:</span>
+                      <span class="text-gray-300">Status:</span>
                       <span
                         class="font-bold"
                         :class="aiStatus.online ? 'text-green-400' : 'text-red-400'"
@@ -506,13 +506,13 @@
                       </span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Letzter Score:</span>
+                      <span class="text-gray-300">Letzter Score:</span>
                       <span class="font-mono text-lg">{{
                         aiStatus.score ? aiStatus.score.toFixed(4) : '0.0000'
                       }}</span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Aktuelle Anomalie:</span>
+                      <span class="text-gray-300">Aktuelle Anomalie:</span>
                       <span
                         class="font-bold"
                         :class="aiStatus.is_anomaly ? 'text-red-500' : 'text-green-500'"
@@ -521,7 +521,7 @@
                       </span>
                     </div>
                     <div class="flex justify-between border-b border-gray-700 py-2">
-                      <span class="text-gray-400">Letztes Update:</span>
+                      <span class="text-gray-300">Letztes Update:</span>
                       <span class="font-mono">{{
                         aiStatus.last_update
                           ? new Date(aiStatus.last_update * 1000).toLocaleString()
@@ -560,7 +560,7 @@
                     <label for="write_access" class="font-bold cursor-pointer"
                       >Schreibzugriff erlauben</label
                     >
-                    <span class="text-sm text-gray-400"
+                    <span class="text-sm text-gray-300"
                       >Erforderlich für manuelle Steuerung und Zeitpläne</span
                     >
                   </div>
@@ -628,11 +628,11 @@
                 </h3>
                 <div class="flex items-center justify-between bg-gray-900/50 p-3 rounded">
                   <div>
-                    <div class="text-sm text-gray-400">Installierte Version</div>
+                    <div class="text-sm text-gray-300">Installierte Version</div>
                     <div class="font-mono text-gray-200">{{ updateStatus.current_version || 'v0.0.0' }}</div>
                   </div>
                   <div class="text-right">
-                    <div class="text-sm text-gray-400">Verfügbare Version</div>
+                    <div class="text-sm text-gray-300">Verfügbare Version</div>
                     <div class="font-mono text-green-400">
                       {{ updateStatus.latest_version || 'Checking...' }}
                     </div>
@@ -690,7 +690,7 @@
                     <i class="pi pi-info-circle"></i>
                     <span>Neue Version verfügbar!</span>
                   </div>
-                  <p class="text-xs text-gray-400">
+                  <p class="text-xs text-gray-300">
                     Watchtower aktualisiert automatisch täglich um 3:00 Uhr.
                   </p>
                 </div>
@@ -701,7 +701,7 @@
                     <i class="pi pi-sync text-green-400"></i>
                     <span class="text-sm font-bold">Automatische Updates</span>
                   </div>
-                  <p class="text-xs text-gray-400 mb-2">
+                  <p class="text-xs text-gray-300 mb-2">
                     Watchtower prüft täglich um
                     <span class="text-green-400 font-mono">03:00 Uhr</span> auf neue Docker Images
                     und aktualisiert automatisch.
@@ -747,7 +747,7 @@
                     class="grid grid-cols-2 gap-2 text-sm bg-gray-900/30 p-2 rounded"
                   >
                     <div class="flex flex-col">
-                      <label class="text-xs text-gray-400">Intervall (Std)</label>
+                      <label class="text-xs text-gray-300">Intervall (Std)</label>
                       <InputNumber
                         v-model="config.backup.interval"
                         :min="1"
@@ -756,7 +756,7 @@
                       />
                     </div>
                     <div class="flex flex-col">
-                      <label class="text-xs text-gray-400">Behalten (Anzahl)</label>
+                      <label class="text-xs text-gray-300">Behalten (Anzahl)</label>
                       <InputNumber
                         v-model="config.backup.retention"
                         :min="1"
@@ -912,19 +912,19 @@
               <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
                 <i class="pi pi-database text-4xl text-blue-400 mb-2"></i>
                 <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.total_points?.toLocaleString() || 0 }}</div>
-                <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Total Data Points</div>
+                <div class="text-gray-300 uppercase text-xs tracking-wider mt-1">Total Data Points</div>
               </div>
 
               <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
                 <i class="pi pi-desktop text-4xl text-green-400 mb-2"></i>
                 <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.active_installations || 0 }}</div>
-                <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Active Installations</div>
+                <div class="text-gray-300 uppercase text-xs tracking-wider mt-1">Active Installations</div>
               </div>
 
               <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
                  <i class="pi pi-box text-4xl text-purple-400 mb-2"></i>
                  <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.models?.length || 0 }}</div>
-                 <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Generated Models</div>
+                 <div class="text-gray-300 uppercase text-xs tracking-wider mt-1">Generated Models</div>
               </div>
             </div>
 
@@ -934,7 +934,7 @@
                      class="bg-gray-900/50 p-4 rounded border border-gray-700 flex justify-between items-center">
                   <div class="flex flex-col">
                     <span class="font-bold text-lg">{{ model.name }}</span>
-                    <span class="text-xs text-gray-400">Modified: {{ new Date(model.modified * 1000).toLocaleString() }}</span>
+                    <span class="text-xs text-gray-300">Modified: {{ new Date(model.modified * 1000).toLocaleString() }}</span>
                   </div>
                   <div class="flex flex-col items-end">
                     <span class="font-mono text-blue-300">{{ (model.size / 1024 / 1024).toFixed(2) }} MB</span>
@@ -1071,7 +1071,7 @@
           </div>
         </div>
 
-        <div class="text-xs text-gray-400">
+        <div class="text-xs text-gray-300">
           <i class="pi pi-lightbulb mr-1"></i>
           Nach dem Update wird die Seite automatisch neu geladen sobald der Container wieder
           erreichbar ist.
