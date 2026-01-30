@@ -187,11 +187,6 @@
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-2">
-                  <label>Auth Token (Optional / Shared Secret)</label>
-                  <InputText v-model="config.telemetry.auth_token" type="password" class="w-full md:w-1/2" placeholder="Token falls erforderlich" />
-                </div>
-
                 <div class="bg-gray-800 p-4 rounded border border-gray-700 mt-2">
                   <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
                     <i class="pi pi-cloud"></i> Telemetrie Status
