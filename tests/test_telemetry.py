@@ -97,7 +97,9 @@ class TestTelemetry(unittest.TestCase):
                     {
                         "metric": {"__name__": "idm_heatpump_temp"},
                         "values": [i],
-                        "timestamps": [i * 1000],  # Unique timestamps to create unique buckets
+                        "timestamps": [
+                            i * 1000
+                        ],  # Unique timestamps to create unique buckets
                     }
                 ).encode()
             )
