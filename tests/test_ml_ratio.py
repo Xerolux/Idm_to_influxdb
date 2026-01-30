@@ -3,7 +3,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import sys
 import os
-import pytest
 
 sys.path.insert(0, os.getcwd())
 
