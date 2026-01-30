@@ -63,6 +63,12 @@ services:
       - "com.centurylinklabs.watchtower.scope=idm-updates"
     volumes:
       - ml-model-data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 512M
     environment:
       # Core settings
       - METRICS_URL=http://victoriametrics:8428
@@ -95,26 +101,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  # Watchtower - Automatic Docker image updates
-  watchtower:
-    image: containrrr/watchtower
-    container_name: idm-watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      # Check for updates daily at 3:00 AM
-      - WATCHTOWER_SCHEDULE=0 0 3 * * *
-      # Remove old images after updating
-      - WATCHTOWER_CLEANUP=true
-      # Only update these specific containers
-      - WATCHTOWER_SCOPE=idm-updates
-      # Notification settings (optional - configure if needed)
-      # - WATCHTOWER_NOTIFICATIONS=shoutrrr
-      # - WATCHTOWER_NOTIFICATION_URL=telegram://token@telegram?channels=channel-1
-    labels:
-      - "com.centurylinklabs.watchtower.scope=idm-updates"
 
   # grafana:
   #   image: grafana/grafana:latest
