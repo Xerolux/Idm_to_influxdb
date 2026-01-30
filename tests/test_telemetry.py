@@ -25,7 +25,7 @@ mock_config_module.config = mock_config_instance
 mock_config_module.Config = MagicMock(return_value=mock_config_instance)
 
 # Now we can safely import telemetry
-from idm_logger.telemetry import TelemetryManager, DEFAULT_ENCRYPTION_KEY
+from idm_logger.telemetry import TelemetryManager, DEFAULT_ENCRYPTION_KEY  # noqa: E402
 
 
 class TestTelemetry(unittest.TestCase):
