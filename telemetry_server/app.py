@@ -1,6 +1,6 @@
 # Xerolux 2026
-from fastapi import FastAPI, HTTPException, Header, Depends, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Header, Depends, Request, status
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Any
 import os
@@ -41,7 +41,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger("telemetry-server")
 
-app = FastAPI(title="IDM Telemetry Server", version="1.1.0")
+# Security: Disable Docs, ReDoc, and OpenAPI to prevent scanning
+app = FastAPI(
+    title="IDM Telemetry Server",
+    version="1.1.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
+)
+
+# Middleware for HTTPS enforcement
+@app.middleware("http")
+async def enforce_https(request: Request, call_next):
+    # Trust X-Forwarded-Proto from reverse proxy
+    proto = request.headers.get("X-Forwarded-Proto", "https")
+    if proto == "http":
+        return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    response = await call_next(request)
+    return response
+
+# Obfuscate 404 errors (Scanning attempts)
+@app.exception_handler(404)
+async def not_found_exception_handler(request: Request, exc: HTTPException):
+    return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+# Obfuscate Root URL
+@app.get("/")
+async def root():
+    return PlainTextResponse("Service Unavailable", status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 def check_rate_limit(client_ip: str) -> bool:
