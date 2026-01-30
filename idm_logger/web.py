@@ -2375,6 +2375,7 @@ def create_annotation():
             tags=data.get("tags", []),
             color=data.get("color", "#ef4444"),
             dashboard_id=data.get("dashboard_id"),
+            acknowledged=data.get("acknowledged", False),
         )
 
         return jsonify(annotation.to_dict()), 201
@@ -2417,6 +2418,7 @@ def update_annotation(annotation_id):
             text=data.get("text"),
             tags=data.get("tags"),
             color=data.get("color"),
+            acknowledged=data.get("acknowledged"),
         )
 
         if not annotation:
