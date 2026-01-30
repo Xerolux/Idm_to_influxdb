@@ -94,22 +94,22 @@ class SafeExpressionEvaluator(ast.NodeVisitor):
 
         if func_name == "min":
             if not args:
-                 raise ValueError("min() requires at least one argument")
+                raise ValueError("min() requires at least one argument")
             return min(args)
         elif func_name == "max":
             if not args:
-                 raise ValueError("max() requires at least one argument")
+                raise ValueError("max() requires at least one argument")
             return max(args)
         elif func_name == "abs":
             if len(args) != 1:
                 raise ValueError("abs() takes exactly one argument")
             return abs(args[0])
         elif func_name == "sum":
-             return sum(args)
+            return sum(args)
         elif func_name == "avg":
-             if not args:
-                 raise ValueError("avg() requires at least one argument")
-             return sum(args) / len(args)
+            if not args:
+                raise ValueError("avg() requires at least one argument")
+            return sum(args) / len(args)
 
     def generic_visit(self, node):
         raise ValueError(f"Unsupported expression element: {type(node).__name__}")

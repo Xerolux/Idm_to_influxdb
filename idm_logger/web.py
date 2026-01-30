@@ -2245,7 +2245,7 @@ def restore_backup():
             return jsonify(result), 500
     except Exception as e:
         logger.error(f"Restore failed: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Wiederherstellung fehlgeschlagen (siehe Logs)"}), 500
 
 
 @app.route("/api/backup/delete/<filename>", methods=["DELETE"])

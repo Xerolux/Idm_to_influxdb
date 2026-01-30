@@ -975,7 +975,7 @@ class BackupManager:
         """Delete a backup file."""
         # Security check: ensure filename is safe
         if not _SAFE_FILENAME_PATTERN.match(filename) or ".." in filename:
-             return {"success": False, "error": "Invalid filename"}
+            return {"success": False, "error": "Invalid filename"}
 
         backup_path = BACKUP_DIR / filename
 

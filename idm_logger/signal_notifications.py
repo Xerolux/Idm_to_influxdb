@@ -68,7 +68,9 @@ def send_signal_message(message: str) -> None:
     if os.path.sep in cli_path:
         # Absolute path check
         if not os.path.isabs(cli_path):
-            raise RuntimeError("Signal CLI Pfad muss absolut sein (wenn nicht in PATH).")
+            raise RuntimeError(
+                "Signal CLI Pfad muss absolut sein (wenn nicht in PATH)."
+            )
         if not os.path.isfile(cli_path):
             raise RuntimeError(f"Signal CLI Executable nicht gefunden: {cli_path}")
         if not os.access(cli_path, os.X_OK):
@@ -76,7 +78,9 @@ def send_signal_message(message: str) -> None:
     else:
         # Look up in PATH
         if not shutil.which(cli_path):
-            raise RuntimeError(f"Signal CLI Befehl '{cli_path}' nicht im PATH gefunden.")
+            raise RuntimeError(
+                f"Signal CLI Befehl '{cli_path}' nicht im PATH gefunden."
+            )
 
     command = [cli_path, "-u", sender, "send", "-m", message] + recipients
     logger.info(f"Sending Signal message to {len(recipients)} recipient(s)")

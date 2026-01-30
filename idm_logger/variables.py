@@ -249,10 +249,11 @@ class VariableManager:
             return query
 
         # Combined regex for all formats
-        # Group 1: ${var} -> var is Group 1
+        # Group 1: ${var} -> var is Group 1. Max 100 chars to prevent ReDoS.
         # Group 2: $var   -> var is Group 2
         # Group 3: {var}  -> var is Group 3
-        pattern = r"\$\{([^}]+)\}|\$([a-zA-Z_]\w*)|\{([a-zA-Z_]\w*)\}"
+        # We limit the length of the variable name to avoid performance issues on malicious inputs
+        pattern = r"\$\{([^}]{1,100})\}|\$([a-zA-Z_]\w{0,99})|\{([a-zA-Z_]\w{0,99})\}"
 
         def replacer(match):
             # Find which group matched
@@ -268,4 +269,5 @@ class VariableManager:
 
             return match.group(0)
 
+        # Pre-compiled patterns are cached by re module, but explicit is better
         return re.sub(pattern, replacer, query)
