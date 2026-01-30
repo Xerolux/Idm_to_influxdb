@@ -21,6 +21,7 @@ class Annotation:
         tags: List[str] = None,
         color: str = "#ef4444",
         dashboard_id: Optional[str] = None,
+        acknowledged: bool = False,
     ):
         self.id = annotation_id
         self.time = time  # Unix timestamp
@@ -28,6 +29,7 @@ class Annotation:
         self.tags = tags or []
         self.color = color
         self.dashboard_id = dashboard_id
+        self.acknowledged = acknowledged
 
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
@@ -38,6 +40,7 @@ class Annotation:
             "tags": self.tags,
             "color": self.color,
             "dashboard_id": self.dashboard_id,
+            "acknowledged": self.acknowledged,
         }
 
     @classmethod
@@ -50,6 +53,7 @@ class Annotation:
             tags=data.get("tags", []),
             color=data.get("color", "#ef4444"),
             dashboard_id=data.get("dashboard_id"),
+            acknowledged=data.get("acknowledged", False),
         )
 
 
@@ -96,6 +100,7 @@ class AnnotationManager:
         tags: List[str] = None,
         color: str = "#ef4444",
         dashboard_id: str = None,
+        acknowledged: bool = False,
     ) -> Annotation:
         """Add a new annotation"""
         import uuid
@@ -109,6 +114,7 @@ class AnnotationManager:
             tags=tags or [],
             color=color,
             dashboard_id=dashboard_id,
+            acknowledged=acknowledged,
         )
 
         if "annotations" not in self.config.data:
@@ -126,6 +132,7 @@ class AnnotationManager:
         text: str = None,
         tags: List[str] = None,
         color: str = None,
+        acknowledged: bool = None,
     ) -> Optional[Annotation]:
         """Update an existing annotation"""
         annotations = self.config.data.get("annotations", [])
@@ -140,6 +147,8 @@ class AnnotationManager:
                     ann["tags"] = tags
                 if color is not None:
                     ann["color"] = color
+                if acknowledged is not None:
+                    ann["acknowledged"] = acknowledged
 
                 self.config.data["annotations"][i] = ann
                 self.config.save()

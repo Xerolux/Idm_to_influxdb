@@ -7,7 +7,7 @@ services:
     environment:
       - VM_WRITE_URL=http://victoriametrics:8428/write
       - VM_QUERY_URL=http://victoriametrics:8428/api/v1/query
-      - AUTH_TOKEN=change-me-to-something-secure
+      - AUTH_TOKEN=COMMUNITY-CONTRIBUTOR-TOKEN-2026
       - MODEL_DIR=/app/models
       - MIN_INSTALLATIONS=5
       - MIN_DATA_POINTS=10000

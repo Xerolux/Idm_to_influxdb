@@ -303,6 +303,9 @@ const chartOptions = computed(() => {
           // Time-based annotations (vertical lines)
           ...annotations.value.reduce((acc, annotation, index) => {
             if (!annotation.time || isNaN(annotation.time)) return acc
+            // Don't show anomalies in the chart
+            if (annotation.tags && annotation.tags.includes('anomaly')) return acc
+
             acc[`annotation-${index}`] = {
               type: 'line',
               xMin: annotation.time * 1000, // Chart.js uses milliseconds
