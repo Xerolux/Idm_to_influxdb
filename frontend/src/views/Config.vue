@@ -900,6 +900,59 @@
               </div>
             </div>
           </div>
+
+          <!-- Admin Zone -->
+          <div v-if="activeCategory === 'admin'" class="flex flex-col gap-6">
+            <h2 class="text-xl font-bold border-b border-surface-700 pb-2 mb-2 flex items-center gap-2">
+              <i class="pi pi-crown text-yellow-500"></i> Admin Zone
+            </h2>
+
+            <div v-if="telemetryStatus?.server_stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <!-- Global Stats -->
+              <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
+                <i class="pi pi-database text-4xl text-blue-400 mb-2"></i>
+                <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.total_points?.toLocaleString() || 0 }}</div>
+                <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Total Data Points</div>
+              </div>
+
+              <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
+                <i class="pi pi-desktop text-4xl text-green-400 mb-2"></i>
+                <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.active_installations || 0 }}</div>
+                <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Active Installations</div>
+              </div>
+
+              <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 flex flex-col items-center">
+                 <i class="pi pi-box text-4xl text-purple-400 mb-2"></i>
+                 <div class="text-3xl font-bold">{{ telemetryStatus.server_stats.models?.length || 0 }}</div>
+                 <div class="text-gray-400 uppercase text-xs tracking-wider mt-1">Generated Models</div>
+              </div>
+            </div>
+
+            <Fieldset legend="Available Models" :toggleable="true" v-if="telemetryStatus?.server_stats?.models">
+              <div class="grid grid-cols-1 gap-4">
+                <div v-for="model in telemetryStatus.server_stats.models" :key="model.name"
+                     class="bg-gray-900/50 p-4 rounded border border-gray-700 flex justify-between items-center">
+                  <div class="flex flex-col">
+                    <span class="font-bold text-lg">{{ model.name }}</span>
+                    <span class="text-xs text-gray-400">Modified: {{ new Date(model.modified * 1000).toLocaleString() }}</span>
+                  </div>
+                  <div class="flex flex-col items-end">
+                    <span class="font-mono text-blue-300">{{ (model.size / 1024 / 1024).toFixed(2) }} MB</span>
+                  </div>
+                </div>
+                <div v-if="!telemetryStatus.server_stats.models.length" class="text-gray-500 italic text-center p-4">
+                  No models available yet.
+                </div>
+              </div>
+            </Fieldset>
+
+            <div class="bg-yellow-900/20 border border-yellow-600/50 p-4 rounded flex items-start gap-3">
+              <i class="pi pi-info-circle text-yellow-500 text-xl mt-1"></i>
+              <div class="text-sm text-yellow-200">
+                You are authenticated as a <strong>Community Admin</strong>. This tab provides exclusive insights into the telemetry server status and model generation pipeline.
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Footer (Save Button) inside the content area to be sticky at bottom -->
@@ -1095,14 +1148,22 @@ const config = ref({
 })
 
 const activeCategory = ref('connection')
-const categories = [
-  { id: 'connection', label: 'Verbindung', icon: 'pi pi-server' },
-  { id: 'mqtt', label: 'MQTT & Integration', icon: 'pi pi-share-alt' },
-  { id: 'notifications', label: 'Benachrichtigungen', icon: 'pi pi-bell' },
-  { id: 'ai', label: 'KI-Analyse', icon: 'pi pi-chart-line' },
-  { id: 'security', label: 'Sicherheit', icon: 'pi pi-shield' },
-  { id: 'system', label: 'System & Wartung', icon: 'pi pi-cog' }
-]
+const categories = computed(() => {
+  const cats = [
+    { id: 'connection', label: 'Verbindung', icon: 'pi pi-server' },
+    { id: 'mqtt', label: 'MQTT & Integration', icon: 'pi pi-share-alt' },
+    { id: 'notifications', label: 'Benachrichtigungen', icon: 'pi pi-bell' },
+    { id: 'ai', label: 'KI-Analyse', icon: 'pi pi-chart-line' },
+    { id: 'security', label: 'Sicherheit', icon: 'pi pi-shield' },
+    { id: 'system', label: 'System & Wartung', icon: 'pi pi-cog' }
+  ]
+
+  if (telemetryStatus.value?.is_admin) {
+    cats.push({ id: 'admin', label: 'Admin Zone', icon: 'pi pi-crown' })
+  }
+
+  return cats
+})
 
 const showPasswordDialog = ref(false)
 const newPassword = ref('')

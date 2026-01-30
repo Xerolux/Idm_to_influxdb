@@ -40,6 +40,10 @@ class TelemetryManager:
         self.manual_downloads_today = 0
         self.last_manual_download = 0
 
+        # Admin State
+        self.is_admin = False
+        self.server_stats = None
+
         # Load state from config
         self._load_state()
 
@@ -47,6 +51,8 @@ class TelemetryManager:
         telemetry_config = config.get("telemetry", {})
         self.manual_downloads_today = telemetry_config.get("manual_downloads_today", 0)
         self.last_manual_download = telemetry_config.get("last_manual_download", 0)
+        self.is_admin = telemetry_config.get("is_admin", False)
+        self.server_stats = telemetry_config.get("server_stats", None)
 
         # Reset counter if it's a new day
         last_date = datetime.fromtimestamp(self.last_manual_download).date()
@@ -57,6 +63,9 @@ class TelemetryManager:
     def _save_state(self):
         config.set("telemetry.manual_downloads_today", self.manual_downloads_today)
         config.set("telemetry.last_manual_download", self.last_manual_download)
+        config.set("telemetry.is_admin", self.is_admin)
+        if self.server_stats:
+            config.set("telemetry.server_stats", self.server_stats)
         config.save()
 
     def start(self, scheduler=None):
@@ -111,6 +120,8 @@ class TelemetryManager:
             "last_model_check": telemetry_config.get("last_model_check"),
             "manual_downloads_today": self.manual_downloads_today,
             "version": get_current_version(),
+            "is_admin": self.is_admin,
+            "server_stats": self.server_stats,
         }
 
     def submit_data_job(self):
@@ -303,7 +314,16 @@ class TelemetryManager:
             status = resp.json()
 
             config.set("telemetry.last_model_check", int(time.time()))
-            config.save()
+
+            # Update Admin Status
+            if status.get("is_admin"):
+                self.is_admin = True
+                self.server_stats = status.get("server_stats")
+            else:
+                self.is_admin = False
+                self.server_stats = None
+
+            self._save_state()
 
             if not status.get("eligible"):
                 msg = status.get("reason_de", status.get("reason", "Nicht berechtigt"))
