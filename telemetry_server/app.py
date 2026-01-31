@@ -1,8 +1,8 @@
 # Xerolux 2026
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, status
-from fastapi.responses import FileResponse, PlainTextResponse, ORJSONResponse
+from fastapi.responses import FileResponse, PlainTextResponse, ORJSONResponse, JSONResponse, Response
 from pydantic import BaseModel, validator
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import os
 import logging
 import httpx
@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 from collections import defaultdict
 from analysis import get_community_averages
+import structlog
 
 # Configuration
 # VictoriaMetrics Import Endpoint (Influx Line Protocol)
@@ -24,20 +25,34 @@ VM_QUERY_URL = os.environ.get(
 )
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "change-me-to-something-secure")
 
-# Setup Logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+# Setup Structured Logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
 )
-logger = logging.getLogger("telemetry-server")
+logger = structlog.get_logger("telemetry-server")
 
 # Admin IDs (comma separated UUIDs)
 raw_admin_ids = os.environ.get("ADMIN_INSTALLATION_IDS", "")
 ADMIN_IDS = {x.strip().lower() for x in raw_admin_ids.split(",") if x.strip()}
 
-logger.info(f"Loaded {len(ADMIN_IDS)} Admin IDs from environment")
+logger.info("loaded_admin_ids", count=len(ADMIN_IDS))
 if not ADMIN_IDS and raw_admin_ids:
     logger.warning(
-        "ADMIN_INSTALLATION_IDS was present but parsed to empty list. Check delimiters."
+        "admin_ids_empty_but_set",
+        message="ADMIN_INSTALLATION_IDS was present but parsed to empty list. Check delimiters."
     )
 
 # Model storage directory
@@ -47,15 +62,31 @@ MODEL_DIR = os.environ.get("MODEL_DIR", "/app/models")
 MIN_INSTALLATIONS_FOR_MODEL = int(os.environ.get("MIN_INSTALLATIONS", "5"))
 MIN_DATA_POINTS_FOR_MODEL = int(os.environ.get("MIN_DATA_POINTS", "10000"))
 
+# Request size limit
+MAX_PAYLOAD_SIZE = int(os.environ.get("MAX_PAYLOAD_SIZE", str(10 * 1024 * 1024)))  # 10 MB default
+
 # Simple in-memory rate limiting
 _rate_limit_store: Dict[str, List[float]] = defaultdict(list)
-RATE_LIMIT_REQUESTS = 100  # requests per window
-RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", "100"))  # requests per window
+RATE_LIMIT_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW", "60"))  # seconds
+MAX_RATE_LIMIT_ENTRIES = int(os.environ.get("MAX_RATE_LIMIT_ENTRIES", "10000"))  # Max IPs to track
+
+# IP Ban store
+_banned_ips: Dict[str, Tuple[float, int]] = {}  # {ip: (ban_time, duration)}
+DEFAULT_BAN_DURATION = int(os.environ.get("DEFAULT_BAN_DURATION", "3600"))  # 1 hour default
+
+# Cache configurations
+HASH_CACHE_TTL = int(os.environ.get("HASH_CACHE_TTL", "3600"))  # 1 hour
+POOL_STATS_CACHE_TTL = int(os.environ.get("POOL_STATS_CACHE_TTL", "60"))  # 1 minute
+
+# Cache stores
+_file_hash_cache: Dict[str, Tuple[Optional[str], float]] = {}  # {path: (hash, timestamp)}
+_pool_stats_cache: Tuple[Optional[Dict[str, Any]], float] = (None, 0)  # (stats, timestamp)
 
 # Security: Disable Docs, ReDoc, and OpenAPI to prevent scanning
 app = FastAPI(
     title="IDM Telemetry Server",
-    version="1.1.0",
+    version="1.2.0",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
@@ -63,14 +94,15 @@ app = FastAPI(
 )
 
 
-async def cleanup_rate_limits():
-    """Background task to clean up stale rate limit entries."""
+async def cleanup_rate_limits_and_bans():
+    """Background task to clean up stale rate limit entries and expired bans."""
     while True:
         await asyncio.sleep(300)  # Clean every 5 minutes
         try:
             now = time.time()
             keys_to_remove = []
-            # Iterate over copy of items
+
+            # Clean rate limit entries
             for ip, timestamps in list(_rate_limit_store.items()):
                 # Filter out old timestamps first
                 valid_timestamps = [
@@ -86,16 +118,54 @@ async def cleanup_rate_limits():
                     del _rate_limit_store[k]
 
             if keys_to_remove:
-                logger.info(
-                    f"Rate limit cleanup: removed {len(keys_to_remove)} stale IPs"
-                )
+                logger.info("rate_limit_cleanup", removed=len(keys_to_remove))
+
+            # Clean expired IP bans
+            expired_bans = []
+            for ip, (ban_time, duration) in list(_banned_ips.items()):
+                if now - ban_time >= duration:
+                    expired_bans.append(ip)
+
+            for ip in expired_bans:
+                del _banned_ips[ip]
+
+            if expired_bans:
+                logger.info("ip_ban_cleanup", expired=len(expired_bans))
+
+            # Clean file hash cache
+            expired_hashes = []
+            for path, (_, timestamp) in list(_file_hash_cache.items()):
+                if now - timestamp >= HASH_CACHE_TTL:
+                    expired_hashes.append(path)
+
+            for path in expired_hashes:
+                del _file_hash_cache[path]
+
         except Exception as e:
-            logger.error(f"Error in rate limit cleanup: {e}")
+            logger.error("cleanup_error", error=str(e))
 
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(cleanup_rate_limits())
+    """Initialize HTTP client and start background tasks."""
+    # Create HTTPX client with connection pooling
+    app.state.http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+    )
+    logger.info("http_client_initialized")
+
+    # Start cleanup task
+    asyncio.create_task(cleanup_rate_limits_and_bans())
+    logger.info("background_tasks_started")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources."""
+    if hasattr(app.state, "http_client"):
+        await app.state.http_client.aclose()
+        logger.info("http_client_closed")
 
 
 # Middleware for HTTPS enforcement
@@ -128,18 +198,77 @@ async def root():
     )
 
 
-def check_rate_limit(client_ip: str) -> bool:
-    """Simple rate limiting check. Returns True if request is allowed."""
+def check_rate_limit(client_ip: str) -> Tuple[bool, Dict[str, str]]:
+    """
+    Rate limiting check with headers.
+    Returns (allowed, headers_dict).
+    """
     now = time.time()
+
+    # Check if too many IPs stored
+    if len(_rate_limit_store) >= MAX_RATE_LIMIT_ENTRIES:
+        # Remove oldest entries
+        oldest_keys = sorted(
+            _rate_limit_store.keys(),
+            key=lambda k: min(_rate_limit_store[k]) if _rate_limit_store[k] else 0
+        )[:100]
+        for k in oldest_keys:
+            del _rate_limit_store[k]
+        logger.warning("rate_limit_eviction", evicted=len(oldest_keys))
+
     # Clean old entries
     _rate_limit_store[client_ip] = [
         t for t in _rate_limit_store[client_ip] if now - t < RATE_LIMIT_WINDOW
     ]
+
+    remaining = max(0, RATE_LIMIT_REQUESTS - len(_rate_limit_store[client_ip]))
+    reset_time = int(
+        max(_rate_limit_store[client_ip]) + RATE_LIMIT_WINDOW
+        if _rate_limit_store[client_ip]
+        else now + RATE_LIMIT_WINDOW
+    )
+
     # Check limit
     if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
-        return False
+        return False, {
+            "X-RateLimit-Limit": str(RATE_LIMIT_REQUESTS),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": str(reset_time),
+            "Retry-After": str(RATE_LIMIT_WINDOW),
+        }
+
     _rate_limit_store[client_ip].append(now)
-    return True
+    return True, {
+        "X-RateLimit-Limit": str(RATE_LIMIT_REQUESTS),
+        "X-RateLimit-Remaining": str(remaining - 1),
+        "X-RateLimit-Reset": str(reset_time),
+    }
+
+
+async def check_ip_ban(client_ip: str) -> bool:
+    """Check if IP is banned."""
+    now = time.time()
+    if client_ip in _banned_ips:
+        ban_time, duration = _banned_ips[client_ip]
+        if now - ban_time < duration:
+            logger.warning("ip_ban_check", ip=mask_ip(client_ip), banned=True)
+            return True  # Still banned
+        else:
+            del _banned_ips[client_ip]  # Ban expired
+    return False
+
+
+def ban_ip(client_ip: str, duration: Optional[int] = None) -> None:
+    """Ban an IP for duration seconds."""
+    if duration is None:
+        duration = DEFAULT_BAN_DURATION
+    _banned_ips[client_ip] = (time.time(), duration)
+    logger.warning(
+        "ip_banned",
+        ip=mask_ip(client_ip),
+        duration=duration,
+        reason="Manual or automatic ban"
+    )
 
 
 def _get_file_hash_sync(filepath: str) -> Optional[str]:
@@ -157,9 +286,24 @@ def _get_file_hash_sync(filepath: str) -> Optional[str]:
 
 
 async def get_file_hash(filepath: str) -> Optional[str]:
-    """Calculate SHA256 hash of a file (Async wrapper)."""
+    """Calculate SHA256 hash of a file with caching."""
+    now = time.time()
+
+    # Check cache
+    if filepath in _file_hash_cache:
+        cached_hash, timestamp = _file_hash_cache[filepath]
+        if now - timestamp < HASH_CACHE_TTL:
+            return cached_hash
+
+    # Calculate new hash
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _get_file_hash_sync, filepath)
+    hash_val = await loop.run_in_executor(None, _get_file_hash_sync, filepath)
+
+    # Cache it
+    if hash_val:
+        _file_hash_cache[filepath] = (hash_val, now)
+
+    return hash_val
 
 
 def validate_installation_id(installation_id: str) -> str:
@@ -185,11 +329,19 @@ def validate_model_name(model_name: Optional[str]) -> Optional[str]:
     return model_name
 
 
-async def get_data_pool_stats() -> Dict[str, Any]:
+async def get_data_pool_stats(request: Request) -> Dict[str, Any]:
     """
-    Get current data pool statistics from VictoriaMetrics.
+    Get current data pool statistics from VictoriaMetrics with caching.
     Used for cold start feedback.
     """
+    global _pool_stats_cache
+    now = time.time()
+
+    # Check cache
+    cached_stats, timestamp = _pool_stats_cache
+    if cached_stats and now - timestamp < POOL_STATS_CACHE_TTL:
+        return cached_stats
+
     stats = {
         "total_installations": 0,
         "total_data_points": 0,
@@ -200,32 +352,29 @@ async def get_data_pool_stats() -> Dict[str, Any]:
     }
 
     try:
-        async with httpx.AsyncClient() as client:
-            # Count unique installations (last 30 days)
-            query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
-            response = await client.get(
-                VM_QUERY_URL, params={"query": query_installations}, timeout=5
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("status") == "success" and data["data"]["result"]:
-                    stats["total_installations"] = int(
-                        data["data"]["result"][0]["value"][1]
-                    )
+        client = request.app.state.http_client
 
-            # Count total data points (last 30 days)
-            query_points = (
-                'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
-            )
-            response = await client.get(
-                VM_QUERY_URL, params={"query": query_points}, timeout=5
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("status") == "success" and data["data"]["result"]:
-                    stats["total_data_points"] = int(
-                        float(data["data"]["result"][0]["value"][1])
-                    )
+        # Count unique installations (last 30 days)
+        query_installations = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
+        response = await client.get(VM_QUERY_URL, params={"query": query_installations})
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success" and data["data"]["result"]:
+                stats["total_installations"] = int(
+                    data["data"]["result"][0]["value"][1]
+                )
+
+        # Count total data points (last 30 days)
+        query_points = (
+            'sum(count_over_time({__name__=~"heatpump_metrics_.*"}[30d]))'
+        )
+        response = await client.get(VM_QUERY_URL, params={"query": query_points})
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success" and data["data"]["result"]:
+                stats["total_data_points"] = int(
+                    float(data["data"]["result"][0]["value"][1])
+                )
 
         # Check which models are available
         model_dir = Path(MODEL_DIR)
@@ -263,9 +412,12 @@ async def get_data_pool_stats() -> Dict[str, Any]:
             )
 
     except Exception as e:
-        logger.error(f"Error getting data pool stats: {e}")
+        logger.error("data_pool_stats_error", error=str(e))
         stats["message"] = "Data pool status temporarily unavailable."
         stats["message_de"] = "Datenpool-Status vorübergehend nicht verfügbar."
+
+    # Update cache
+    _pool_stats_cache = (stats, now)
 
     return stats
 
@@ -302,6 +454,15 @@ class TelemetryPayload(BaseModel):
             raise ValueError("heatpump_model contains invalid characters")
         return v
 
+    @validator("data")
+    def validate_data_size(cls, v):
+        """Validate payload size to prevent DoS."""
+        import sys
+        size = sys.getsizeof(v)
+        if size > MAX_PAYLOAD_SIZE:
+            raise ValueError(f"Payload too large (max {MAX_PAYLOAD_SIZE} bytes)")
+        return v
+
 
 async def verify_token(authorization: Optional[str] = Header(None)):
     if not AUTH_TOKEN:
@@ -331,12 +492,25 @@ async def submit_telemetry(
 
     client_ip = mask_ip(raw_ip)
 
-    # Rate limiting
-    if not check_rate_limit(raw_ip):
-        logger.warning(f"Rate limit exceeded for {client_ip}")
-        raise HTTPException(
-            status_code=429, detail="Too many requests. Please try again later."
+    # Check IP ban
+    if await check_ip_ban(raw_ip):
+        logger.warning("submit_banned_ip", ip=client_ip, installation_id=payload.installation_id)
+        return JSONResponse(
+            {"detail": "Access denied"},
+            status_code=403,
+            headers={"Content-Type": "application/json"}
         )
+
+    # Rate limiting with headers
+    allowed, rate_limit_headers = check_rate_limit(raw_ip)
+    if not allowed:
+        logger.warning("rate_limit_exceeded", ip=client_ip, installation_id=payload.installation_id)
+        return JSONResponse(
+            {"detail": "Too many requests. Please try again later."},
+            status_code=429,
+            headers=rate_limit_headers
+        )
+
     try:
         lines = []
 
@@ -367,44 +541,90 @@ async def submit_telemetry(
                 lines.append(line)
 
         if lines:
-            # Batch write to VictoriaMetrics
+            # Batch write to VictoriaMetrics using pooled client
             data = "\n".join(lines)
-            async with httpx.AsyncClient() as client:
-                response = await client.post(VM_WRITE_URL, data=data)
+            client = request.app.state.http_client
+            response = await client.post(VM_WRITE_URL, data=data)
 
-                if response.status_code != 204:  # VM returns 204 on success
-                    logger.error(
-                        f"VictoriaMetrics write failed: {response.status_code} - {response.text}"
-                    )
-                    raise HTTPException(status_code=502, detail="Database Write Failed")
+            if response.status_code != 204:  # VM returns 204 on success
+                logger.error(
+                    "vm_write_failed",
+                    status=response.status_code,
+                    response=response.text[:200]
+                )
+                raise HTTPException(status_code=502, detail="Database Write Failed")
 
             logger.info(
-                f"Ingested {len(lines)} points from {payload.installation_id} ({client_ip})"
+                "telemetry_ingested",
+                installation_id=payload.installation_id,
+                points=len(lines),
+                ip=client_ip
             )
 
-        return {"status": "success", "processed": len(lines)}
+        return JSONResponse(
+            {"status": "success", "processed": len(lines)},
+            headers=rate_limit_headers
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error processing telemetry from {client_ip}: {e}")
+        logger.error("telemetry_processing_error", ip=client_ip, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+async def health(request: Request):
+    """Detailed health check endpoint."""
+    health_status = {
+        "status": "healthy",
+        "checks": {},
+        "timestamp": time.time()
+    }
+
+    # Check VictoriaMetrics
+    try:
+        client = request.app.state.http_client
+        response = await client.get(f"{VM_QUERY_URL}?query=up", timeout=2)
+        health_status["checks"]["victoriametrics"] = "up" if response.status_code == 200 else "down"
+        if response.status_code != 200:
+            health_status["status"] = "degraded"
+    except Exception as e:
+        health_status["checks"]["victoriametrics"] = "unreachable"
+        health_status["status"] = "degraded"
+        logger.warning("health_check_vm_failed", error=str(e))
+
+    # Check Model Directory
+    model_dir = Path(MODEL_DIR)
+    health_status["checks"]["model_dir"] = "accessible" if model_dir.exists() else "missing"
+    if not model_dir.exists():
+        health_status["status"] = "degraded"
+
+    # Check memory usage
+    try:
+        import psutil
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        health_status["checks"]["memory_mb"] = round(memory_info.rss / 1024 / 1024, 2)
+    except ImportError:
+        pass  # psutil not available, skip
+    except Exception as e:
+        logger.warning("health_check_memory_failed", error=str(e))
+
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(content=health_status, status_code=status_code)
 
 
 @app.get("/api/v1/status")
-async def server_status(auth: None = Depends(verify_token)):
+async def server_status(request: Request, auth: None = Depends(verify_token)):
     """
     Get server statistics (Internal/Admin only).
     """
     try:
+        client = request.app.state.http_client
         # Count unique installations (approximate)
-        # Using a count query on installation_id tag
         query = 'count(count by (installation_id) (count_over_time({__name__=~"heatpump_metrics_.*", installation_id!=""}[30d])))'
-        async with httpx.AsyncClient() as client:
-            response = await client.get(VM_QUERY_URL, params={"query": query})
+        response = await client.get(VM_QUERY_URL, params={"query": query})
         installations = 0
         if response.status_code == 200:
             data = response.json()
@@ -417,12 +637,13 @@ async def server_status(auth: None = Depends(verify_token)):
             "timestamp": time.time(),
         }
     except Exception as e:
-        logger.error(f"Status check failed: {e}")
+        logger.error("status_check_failed", error=str(e))
         return {"status": "error", "message": str(e)}
 
 
 @app.get("/api/v1/model/check")
 async def check_eligibility(
+    request: Request,
     installation_id: str,
     model: Optional[str] = None,
     current_hash: Optional[str] = None,
@@ -449,22 +670,22 @@ async def check_eligibility(
             "model_metadata": None,
             "model_available": False,
             "update_available": False,
-            "data_pool": await get_data_pool_stats(),
+            "data_pool": await get_data_pool_stats(request),
         }
 
         # Check if Admin
         is_admin_check = installation_id.lower() in ADMIN_IDS
         logger.info(
-            f"Checking eligibility for {installation_id} (Admin check: {is_admin_check})"
+            "eligibility_check",
+            installation_id=installation_id,
+            is_admin=is_admin_check
         )
 
         if is_admin_check:
             result["is_admin"] = True
-            logger.info(f"Admin access verified for {installation_id}")
+            logger.info("admin_access_verified", installation_id=installation_id)
             # Fetch server stats for admins
             try:
-                # Reuse existing pool stats which are already in result['data_pool']
-                # Add total models
                 models = []
                 m_dir = Path(MODEL_DIR)
                 if m_dir.exists():
@@ -482,7 +703,7 @@ async def check_eligibility(
                     "total_points": result["data_pool"]["total_data_points"],
                 }
             except Exception as e:
-                logger.error(f"Error fetching admin stats: {e}")
+                logger.error("admin_stats_error", error=str(e))
 
         # Check if data pool has enough data
         if not result["data_pool"]["data_sufficient"]:
@@ -498,10 +719,8 @@ async def check_eligibility(
 
         # Query: Check if this ID appears in the last 30 days
         query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                VM_QUERY_URL, params={"query": query}, timeout=5
-            )
+        client = request.app.state.http_client
+        response = await client.get(VM_QUERY_URL, params={"query": query})
 
         if response.status_code == 200:
             data = response.json()
@@ -547,7 +766,7 @@ async def check_eligibility(
                     with open(metadata_file, "r") as f:
                         result["model_metadata"] = json.load(f)
                 except Exception as e:
-                    logger.warning(f"Failed to load metadata from {metadata_file}: {e}")
+                    logger.warning("metadata_load_failed", file=str(metadata_file), error=str(e))
 
             # Check if update is needed
             if current_hash and result["model_hash"]:
@@ -572,12 +791,13 @@ async def check_eligibility(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Eligibility check failed for {installation_id}: {e}")
+        logger.error("eligibility_check_failed", installation_id=installation_id, error=str(e))
         raise HTTPException(status_code=500, detail="Check failed")
 
 
 @app.get("/api/v1/model/download")
 async def download_model(
+    request: Request,
     installation_id: str,
     model: Optional[str] = None,
     auth: None = Depends(verify_token),
@@ -597,10 +817,8 @@ async def download_model(
     try:
         # Verify eligibility first
         query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{installation_id}"}}[30d])'
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                VM_QUERY_URL, params={"query": query}, timeout=5
-            )
+        client = request.app.state.http_client
+        response = await client.get(VM_QUERY_URL, params={"query": query})
 
         eligible = False
         if response.status_code == 200:
@@ -609,6 +827,7 @@ async def download_model(
                 eligible = True
 
         if not eligible:
+            logger.warning("model_download_not_eligible", installation_id=installation_id)
             raise HTTPException(
                 status_code=403,
                 detail="Not eligible. Contribute data for 30 days to access community models.",
@@ -627,12 +846,13 @@ async def download_model(
             model_file = model_dir / "community_model.enc"
 
         if not model_file or not model_file.exists():
+            logger.warning("model_download_not_found", installation_id=installation_id, model=model)
             raise HTTPException(
                 status_code=404,
                 detail="No model available yet. The community model is still being trained.",
             )
 
-        logger.info(f"Model download by {installation_id}: {model_file.name}")
+        logger.info("model_download", installation_id=installation_id, model_file=model_file.name)
 
         return FileResponse(
             path=str(model_file),
@@ -641,30 +861,31 @@ async def download_model(
             headers={
                 "X-Model-Hash": await get_file_hash(str(model_file)) or "",
                 "X-Model-Name": model_file.stem,
+                "Content-Disposition": f'attachment; filename="{model_file.name}"',
             },
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Model download failed for {installation_id}: {e}")
+        logger.error("model_download_failed", installation_id=installation_id, error=str(e))
         raise HTTPException(status_code=500, detail="Download failed")
 
 
 @app.get("/api/v1/pool/status")
-async def data_pool_status():
+async def data_pool_status(request: Request):
     """
     Get the current status of the data pool.
     Public endpoint - no authentication required.
     Useful for displaying cold start information to users.
     """
-    stats = await get_data_pool_stats()
+    stats = await get_data_pool_stats(request)
     stats["timestamp"] = time.time()
     return stats
 
 
 @app.get("/api/v1/models")
-async def list_available_models(auth: None = Depends(verify_token)):
+async def list_available_models(request: Request, auth: None = Depends(verify_token)):
     """
     List all available community models.
     Admin endpoint.
@@ -693,7 +914,10 @@ async def list_available_models(auth: None = Depends(verify_token)):
 
 @app.get("/api/v1/community/averages")
 async def community_averages(
-    model: str, metrics: Optional[str] = None, auth: None = Depends(verify_token)
+    request: Request,
+    model: str,
+    metrics: Optional[str] = None,
+    auth: None = Depends(verify_token)
 ):
     """
     Get aggregated community statistics.
@@ -712,9 +936,56 @@ async def community_averages(
             if not re.match(r"^[a-zA-Z0-9_]+$", m):
                 raise HTTPException(status_code=400, detail=f"Invalid metric name: {m}")
 
-    result = get_community_averages(model, metric_list)
+    # Pass http_client to analysis module (we need to update analysis.py too)
+    result = get_community_averages(model, metric_list, client=request.app.state.http_client)
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
 
     return result
+
+
+# Prometheus Metrics
+try:
+    from prometheus_client import Counter, Histogram, generate_latest
+
+    telemetry_requests_total = Counter('telemetry_requests_total', 'Total telemetry requests received', ['endpoint'])
+    telemetry_errors_total = Counter('telemetry_errors_total', 'Total errors occurred', ['endpoint', 'error_type'])
+    request_duration_seconds = Histogram('telemetry_request_duration_seconds', 'Request duration in seconds', ['endpoint'])
+    model_downloads_total = Counter('model_downloads_total', 'Total model downloads', ['model'])
+    rate_limit_hits_total = Counter('rate_limit_hits_total', 'Total rate limit violations')
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    logger.warning("prometheus_not_available", message="prometheus_client not installed, metrics endpoint disabled")
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    if not PROMETHEUS_AVAILABLE:
+        raise HTTPException(status_code=501, detail="Metrics not available. Install prometheus_client.")
+
+    return Response(content=generate_latest(), media_type="text/plain")
+
+
+# Metrics tracking middleware
+@app.middleware("http")
+async def track_metrics(request: Request, call_next):
+    """Track request metrics for Prometheus."""
+    if PROMETHEUS_AVAILABLE:
+        endpoint = request.url.path
+        start = time.time()
+
+        try:
+            response = await call_next(request)
+            telemetry_requests_total.labels(endpoint=endpoint).inc()
+            return response
+        except Exception as e:
+            telemetry_errors_total.labels(endpoint=endpoint, error_type=type(e).__name__).inc()
+            raise
+        finally:
+            request_duration_seconds.labels(endpoint=endpoint).observe(time.time() - start)
+    else:
+        return await call_next(request)
