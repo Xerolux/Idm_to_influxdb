@@ -116,7 +116,9 @@ def test_check_eligibility_invalid_model(mock_client_cls, client):
 
 @patch("app.get_data_pool_stats")
 @patch("app.httpx.AsyncClient")
-def test_check_eligibility_valid_model_with_parens(mock_client_cls, mock_pool_stats, client):
+def test_check_eligibility_valid_model_with_parens(
+    mock_client_cls, mock_pool_stats, client
+):
     # Valid UUID and model with parens
     uuid_str = "550e8400-e29b-41d4-a716-446655440000"
 
@@ -140,7 +142,7 @@ def test_check_eligibility_valid_model_with_parens(mock_client_cls, mock_pool_st
         "data_sufficient": True,
         "models_available": [],
         "message": "Ready",
-        "message_de": "Bereit"
+        "message_de": "Bereit",
     }
 
     response = client.get(

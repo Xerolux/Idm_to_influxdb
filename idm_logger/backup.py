@@ -122,9 +122,13 @@ class BackupManager:
                 logger.error(f"Response: {response.text}")
                 # Try alternative endpoint
                 logger.info("Trying alternative snapshot endpoint...")
-                response = requests.post(f"{vm_snapshot_url}/api/v1/snapshot/create", timeout=60)
+                response = requests.post(
+                    f"{vm_snapshot_url}/api/v1/snapshot/create", timeout=60
+                )
                 if response.status_code != 200:
-                    logger.error(f"Alternative endpoint also failed: {response.status_code}")
+                    logger.error(
+                        f"Alternative endpoint also failed: {response.status_code}"
+                    )
                     logger.error(f"Response: {response.text}")
                     return False
 
