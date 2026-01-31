@@ -990,18 +990,16 @@ async def verify_admin(
     installation_id: Optional[str] = None
 ):
     """Verify admin access (token + admin ID)."""
-    # First verify token
-    if not AUTH_TOKEN:
-        raise HTTPException(status_code=501, detail="Admin access requires AUTH_TOKEN")
+    # Verify token if configured
+    if AUTH_TOKEN:
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Missing Authorization Header")
 
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization Header")
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or token != AUTH_TOKEN:
+            raise HTTPException(status_code=403, detail="Invalid Token")
 
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or token != AUTH_TOKEN:
-        raise HTTPException(status_code=403, detail="Invalid Token")
-
-    # Then verify admin ID
+    # Verify admin ID
     if not installation_id:
         raise HTTPException(status_code=401, detail="Missing installation_id for admin check")
 
