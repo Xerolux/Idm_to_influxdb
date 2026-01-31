@@ -80,11 +80,8 @@ jobs:
       - name: Determine Platforms
         id: platforms
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          else
-            echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          fi
+          # Telemetry Server is ALWAYS built as multi-arch (amd64 + arm64)
+          echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
 
       - name: Build and push Telemetry Server
         uses: docker/build-push-action@v6
