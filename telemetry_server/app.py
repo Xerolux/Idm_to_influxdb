@@ -102,6 +102,13 @@ _pool_stats_cache: Tuple[Optional[Dict[str, Any]], float] = (
     0,
 )  # (stats, timestamp)
 
+
+async def run_sync(func, *args):
+    """Run a synchronous function in the default executor."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, func, *args)
+
+
 # Security: Disable Docs, ReDoc, and OpenAPI to prevent scanning
 app = FastAPI(
     title="IDM Telemetry Server",
@@ -395,10 +402,13 @@ async def get_data_pool_stats(request: Request) -> Dict[str, Any]:
 
         # Check which models are available
         model_dir = Path(MODEL_DIR)
-        if model_dir.exists():
-            for model_file in model_dir.glob("*.enc"):
-                model_name = model_file.stem.replace("_", " ")
-                stats["models_available"].append(model_name)
+
+        def _list_models():
+            if model_dir.exists():
+                return [f.stem.replace("_", " ") for f in model_dir.glob("*.enc")]
+            return []
+
+        stats["models_available"] = await run_sync(_list_models)
 
         # Determine if data is sufficient
         stats["data_sufficient"] = (
@@ -566,7 +576,8 @@ async def submit_telemetry(
             # Batch write to VictoriaMetrics using pooled client
             data = "\n".join(lines)
             client = request.app.state.http_client
-            response = await client.post(VM_WRITE_URL, data=data)
+            # Use content=data for raw body to avoid form-encoding overhead/issues
+            response = await client.post(VM_WRITE_URL, content=data)
 
             if response.status_code != 204:  # VM returns 204 on success
                 logger.error(
@@ -708,19 +719,23 @@ async def check_eligibility(
             logger.info("admin_access_verified", installation_id=installation_id)
             # Fetch server stats for admins
             try:
-                models = []
-                m_dir = Path(MODEL_DIR)
-                if m_dir.exists():
-                    for mf in m_dir.glob("*.enc"):
-                        models.append(
-                            {
-                                "name": mf.stem.replace("_", " "),
-                                "size": mf.stat().st_size,
-                                "modified": mf.stat().st_mtime,
-                            }
-                        )
+
+                def _get_admin_models():
+                    models = []
+                    m_dir = Path(MODEL_DIR)
+                    if m_dir.exists():
+                        for mf in m_dir.glob("*.enc"):
+                            models.append(
+                                {
+                                    "name": mf.stem.replace("_", " "),
+                                    "size": mf.stat().st_size,
+                                    "modified": mf.stat().st_mtime,
+                                }
+                            )
+                    return models
+
                 result["server_stats"] = {
-                    "models": models,
+                    "models": await run_sync(_get_admin_models),
                     "active_installations": result["data_pool"]["total_installations"],
                     "total_points": result["data_pool"]["total_data_points"],
                 }
@@ -748,6 +763,13 @@ async def check_eligibility(
             data = response.json()
             if data.get("status") == "success" and data["data"]["result"]:
                 result["eligible"] = True
+        else:
+            logger.warning(
+                "vm_eligibility_check_failed",
+                status=response.status_code,
+                response=response.text[:200],
+                installation_id=installation_id,
+            )
 
         if not result["eligible"]:
             result["reason"] = (
@@ -778,15 +800,27 @@ async def check_eligibility(
             model_file = model_dir / "community_model.enc"
             metadata_file = model_dir / "community_model_metadata.json"
 
-        if model_file and model_file.exists():
+        # Helper to check existence asynchronously
+        exists = await run_sync(model_file.exists) if model_file else False
+
+        if exists:
             result["model_available"] = True
             result["model_hash"] = await get_file_hash(str(model_file))
 
             # Load metadata if available
-            if metadata_file and metadata_file.exists():
+            meta_exists = (
+                await run_sync(metadata_file.exists) if metadata_file else False
+            )
+            if meta_exists:
                 try:
-                    with open(metadata_file, "r") as f:
-                        result["model_metadata"] = json.load(f)
+
+                    def _load_json(path):
+                        with open(path, "r") as f:
+                            return json.load(f)
+
+                    result["model_metadata"] = await run_sync(
+                        _load_json, str(metadata_file)
+                    )
                 except Exception as e:
                     logger.warning(
                         "metadata_load_failed", file=str(metadata_file), error=str(e)
@@ -1019,24 +1053,28 @@ async def admin_list_models(
     """Admin: List all models with details."""
     await verify_admin(authorization, installation_id)
 
-    models = []
     model_dir = Path(MODEL_DIR)
 
-    if model_dir.exists():
-        for model_file in model_dir.glob("*.enc"):
-            models.append(
-                {
-                    "name": model_file.stem.replace("_", " "),
-                    "filename": model_file.name,
-                    "size_bytes": model_file.stat().st_size,
-                    "size_mb": round(model_file.stat().st_size / 1024 / 1024, 2),
-                    "modified": model_file.stat().st_mtime,
-                    "modified_formatted": time.strftime(
-                        "%Y-%m-%d %H:%M:%S", time.localtime(model_file.stat().st_mtime)
-                    ),
-                    "hash": await get_file_hash(str(model_file)),
-                }
-            )
+    async def _get_model_details(model_file):
+        stat = await run_sync(model_file.stat)
+        return {
+            "name": model_file.stem.replace("_", " "),
+            "filename": model_file.name,
+            "size_bytes": stat.st_size,
+            "size_mb": round(stat.st_size / 1024 / 1024, 2),
+            "modified": stat.st_mtime,
+            "modified_formatted": time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime)
+            ),
+            "hash": await get_file_hash(str(model_file)),
+        }
+
+    models = []
+    exists = await run_sync(model_dir.exists)
+    if exists:
+        model_files = await run_sync(lambda: list(model_dir.glob("*.enc")))
+        for mf in model_files:
+            models.append(await _get_model_details(mf))
 
     return {
         "models": sorted(models, key=lambda x: x["modified"], reverse=True),
@@ -1061,11 +1099,12 @@ async def admin_delete_model(
 
     model_file = Path(MODEL_DIR) / safe_name
 
-    if not model_file.exists():
+    exists = await run_sync(model_file.exists)
+    if not exists:
         raise HTTPException(status_code=404, detail="Model not found")
 
     try:
-        model_file.unlink()
+        await run_sync(model_file.unlink)
         logger.info(
             "admin_model_deleted",
             model=safe_name,
@@ -1200,43 +1239,56 @@ async def admin_server_health(
         import psutil
         import platform
 
-        # CPU and Memory
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
+        def _get_system_stats():
+            return {
+                "hostname": platform.node(),
+                "boot_time": psutil.boot_time(),
+                "cpu_percent": psutil.cpu_percent(interval=None),  # Non-blocking
+                "memory": psutil.virtual_memory(),
+                "disk": psutil.disk_usage("/"),
+            }
+
+        sys_stats = await run_sync(_get_system_stats)
 
         # Check VictoriaMetrics
         vm_response = await request.app.state.http_client.get(f"{VM_QUERY_URL}/health")
         vm_healthy = vm_response.status_code == 200
 
         # Get model stats
-        model_dir = Path(MODEL_DIR)
-        model_count = len(list(model_dir.glob("*.enc"))) if model_dir.exists() else 0
-        total_size = (
-            sum(f.stat().st_size for f in model_dir.glob("*.enc"))
-            if model_dir.exists()
-            else 0
-        )
+        def _get_model_stats():
+            model_dir = Path(MODEL_DIR)
+            if not model_dir.exists():
+                return 0, 0
+            files = list(model_dir.glob("*.enc"))
+            count = len(files)
+            size = sum(f.stat().st_size for f in files)
+            return count, size
+
+        model_count, total_size = await run_sync(_get_model_stats)
 
         return {
             "server": {
-                "hostname": platform.node(),
-                "uptime": time.time() - psutil.boot_time(),
+                "hostname": sys_stats["hostname"],
+                "uptime": time.time() - sys_stats["boot_time"],
                 "uptime_formatted": str(
-                    timedelta(seconds=int(time.time() - psutil.boot_time()))
+                    timedelta(seconds=int(time.time() - sys_stats["boot_time"]))
                 ),
-                "cpu_percent": cpu_percent,
+                "cpu_percent": sys_stats["cpu_percent"],
                 "memory": {
-                    "total_gb": round(memory.total / 1024 / 1024 / 1024, 2),
-                    "available_gb": round(memory.available / 1024 / 1024 / 1024, 2),
-                    "used_gb": round(memory.used / 1024 / 1024 / 1024, 2),
-                    "percent": memory.percent,
+                    "total_gb": round(
+                        sys_stats["memory"].total / 1024 / 1024 / 1024, 2
+                    ),
+                    "available_gb": round(
+                        sys_stats["memory"].available / 1024 / 1024 / 1024, 2
+                    ),
+                    "used_gb": round(sys_stats["memory"].used / 1024 / 1024 / 1024, 2),
+                    "percent": sys_stats["memory"].percent,
                 },
                 "disk": {
-                    "total_gb": round(disk.total / 1024 / 1024 / 1024, 2),
-                    "used_gb": round(disk.used / 1024 / 1024 / 1024, 2),
-                    "free_gb": round(disk.free / 1024 / 1024 / 1024, 2),
-                    "percent": disk.percent,
+                    "total_gb": round(sys_stats["disk"].total / 1024 / 1024 / 1024, 2),
+                    "used_gb": round(sys_stats["disk"].used / 1024 / 1024 / 1024, 2),
+                    "free_gb": round(sys_stats["disk"].free / 1024 / 1024 / 1024, 2),
+                    "percent": sys_stats["disk"].percent,
                 },
             },
             "victoriametrics": {
