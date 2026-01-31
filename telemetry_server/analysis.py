@@ -1,6 +1,5 @@
 # Xerolux 2026
 import os
-import logging
 import requests
 from typing import List, Dict, Any, Optional
 import httpx
