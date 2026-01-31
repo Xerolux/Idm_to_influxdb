@@ -973,7 +973,7 @@ async def community_averages(
                 raise HTTPException(status_code=400, detail=f"Invalid metric name: {m}")
 
     # Pass http_client to analysis module (we need to update analysis.py too)
-    result = get_community_averages(
+    result = await get_community_averages(
         model, metric_list, client=request.app.state.http_client
     )
 

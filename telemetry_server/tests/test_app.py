@@ -157,7 +157,7 @@ def test_check_eligibility_valid_model_with_parens(
         assert data["eligible"] is True
 
 
-@patch("app.get_community_averages")
+@patch("app.get_community_averages", new_callable=AsyncMock)
 def test_community_averages_endpoint(mock_analysis, client):
     mock_analysis.return_value = {
         "model": "AERO_SLM",
