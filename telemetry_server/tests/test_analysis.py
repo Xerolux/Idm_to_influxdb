@@ -1,5 +1,5 @@
 # Xerolux 2026
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 import sys
 import os
 import pytest
