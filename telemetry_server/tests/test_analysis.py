@@ -10,6 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from analysis import get_community_averages
 
+
 @pytest.mark.anyio
 async def test_get_community_averages_success():
     # Mock Client
@@ -49,7 +50,9 @@ async def test_get_community_averages_success():
 
     mock_client.get.side_effect = mock_get
 
-    result = await get_community_averages("AERO_SLM", ["cop_current"], client=mock_client)
+    result = await get_community_averages(
+        "AERO_SLM", ["cop_current"], client=mock_client
+    )
 
     assert result["model"] == "AERO_SLM"
     assert result["sample_size"] == 10
@@ -57,6 +60,7 @@ async def test_get_community_averages_success():
     assert "cop_current" in result["metrics"]
     assert result["metrics"]["cop_current"]["avg"] == 4.2
     assert result["metrics"]["cop_current"]["min"] == 3.5
+
 
 @pytest.mark.anyio
 async def test_get_community_averages_no_data():
@@ -69,14 +73,19 @@ async def test_get_community_averages_no_data():
     }
     mock_client.get.return_value = r1
 
-    result = await get_community_averages("Unknown", ["cop_current"], client=mock_client)
+    result = await get_community_averages(
+        "Unknown", ["cop_current"], client=mock_client
+    )
     assert result["sample_size"] == 0
     assert result["metrics"] == {}
+
 
 @pytest.mark.anyio
 async def test_get_community_averages_error():
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_client.get.side_effect = Exception("VM Down")
 
-    result = await get_community_averages("AERO_SLM", ["cop_current"], client=mock_client)
+    result = await get_community_averages(
+        "AERO_SLM", ["cop_current"], client=mock_client
+    )
     assert "error" in result
