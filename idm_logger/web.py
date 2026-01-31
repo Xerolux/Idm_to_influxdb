@@ -230,6 +230,7 @@ _ai_status_cache = {
     "last_update": None,
     "error": None,
 }
+_ai_status_stop_event = threading.Event()  # For graceful shutdown of AI status thread
 
 
 def _update_ai_status_once():
@@ -295,7 +296,7 @@ def _update_ai_status_loop():
     current_interval = base_interval
     consecutive_failures = 0
 
-    while True:
+    while not _ai_status_stop_event.is_set():
         try:
             _update_ai_status_once()
             # Check if service is online
@@ -323,12 +324,28 @@ def _update_ai_status_loop():
                 base_interval * (2 ** min(consecutive_failures, 5)), max_interval
             )
 
-        time.sleep(current_interval)
+        # Sleep with stop event checking (split sleep for faster shutdown)
+        sleep_chunk = min(current_interval, 5)  # Check at least every 5 seconds
+        total_slept = 0
+        while total_slept < current_interval:
+            if _ai_status_stop_event.is_set():
+                break
+            time.sleep(sleep_chunk)
+            total_slept += sleep_chunk
+
+    logger.info("AI status thread stopped gracefully")
 
 
 def _start_ai_status_thread():
+    _ai_status_stop_event.clear()  # Reset event before starting
     t = threading.Thread(target=_update_ai_status_loop, daemon=True)
     t.start()
+
+
+def _stop_ai_status_thread():
+    """Signal the AI status thread to stop gracefully."""
+    _ai_status_stop_event.set()
+    logger.info("AI status thread shutdown requested")
 
 
 @functools.lru_cache(maxsize=128)

@@ -17,7 +17,7 @@ from .sensor_addresses import (
 logger = logging.getLogger(__name__)
 
 # Connection configuration
-MODBUS_TIMEOUT = config.get("modbus.timeout", 10)
+MODBUS_TIMEOUT = config.get("modbus.timeout", 3)  # Reduced from 10s to 3s for faster recovery
 MODBUS_RETRIES = config.get("modbus.retries", 3)
 RECONNECT_BASE_DELAY = config.get("modbus.reconnect_base_delay", 1.0)
 RECONNECT_MAX_DELAY = config.get("modbus.reconnect_max_delay", 60.0)
@@ -59,8 +59,11 @@ class ModbusClient:
 
         # Cache management - store sensor config hash to detect changes
         self._read_blocks = None
-        self._failed_blocks = set()
+        self._failed_blocks = {}  # Changed to dict: {(start, end): timestamp}
         self._sensor_config_hash = self._compute_sensor_hash()
+        self._last_failed_cleanup = time.time()
+        self._FAILED_BLOCK_TTL = 3600  # 1 hour TTL for failed blocks
+        self._FAILED_BLOCK_CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 
         # Connection state tracking for exponential backoff
         self._connection_was_lost = False
@@ -89,9 +92,28 @@ class ModbusClient:
     def invalidate_cache(self):
         """Invalidate the read blocks cache. Call when sensor config changes."""
         self._read_blocks = None
-        self._failed_blocks = set()
+        self._failed_blocks = {}
         self._sensor_config_hash = self._compute_sensor_hash()
         logger.debug("Modbus read blocks cache invalidated")
+
+    def _cleanup_failed_blocks(self):
+        """Remove expired failed block entries to prevent memory leak."""
+        now = time.time()
+        if now - self._last_failed_cleanup < self._FAILED_BLOCK_CLEANUP_INTERVAL:
+            return
+
+        # Remove entries older than TTL
+        expired_keys = [
+            key for key, timestamp in self._failed_blocks.items()
+            if now - timestamp > self._FAILED_BLOCK_TTL
+        ]
+
+        if expired_keys:
+            for key in expired_keys:
+                del self._failed_blocks[key]
+            logger.debug(f"Cleaned up {len(expired_keys)} expired failed block entries")
+
+        self._last_failed_cleanup = now
 
     def connect(self):
         """Connects to the Modbus server."""
@@ -285,6 +307,9 @@ class ModbusClient:
                     f"Optimized Modbus reading: {len(self._read_blocks)} requests for {len(self.sensors) + len(self.binary_sensors)} sensors"
                 )
 
+            # Periodic cleanup of failed blocks to prevent memory leak
+            self._cleanup_failed_blocks()
+
             for block_idx, block in enumerate(self._read_blocks):
                 if not block:
                     continue
@@ -326,7 +351,7 @@ class ModbusClient:
                             logger.debug(
                                 f"Bulk read failed for block {start_addr}-{end_addr}: Illegal Data Address. Marking block for individual reads."
                             )
-                            self._failed_blocks.add(block_key)
+                            self._failed_blocks[block_key] = time.time()  # Store with timestamp
                         else:
                             logger.warning(
                                 f"Bulk read failed for block {start_addr}-{end_addr}: {rr}. Falling back to individual reads."

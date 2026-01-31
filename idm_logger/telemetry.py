@@ -101,10 +101,22 @@ class TelemetryManager:
         while self.running:
             try:
                 schedule.run_pending()
-                time.sleep(60)
+                # Use a shorter sleep to check stop condition more frequently
+                for _ in range(60):  # Sleep for 60 seconds total, but check every second
+                    if not self.running:
+                        break
+                    time.sleep(1)
+                if not self.running:
+                    break
             except Exception as e:
                 logger.error(f"Telemetry loop error: {e}")
-                time.sleep(60)
+                # Also check running flag during error recovery sleep
+                for _ in range(60):
+                    if not self.running:
+                        break
+                    time.sleep(1)
+                if not self.running:
+                    break
 
     def stop(self):
         self.running = False

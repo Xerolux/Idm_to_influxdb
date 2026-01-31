@@ -262,7 +262,9 @@ def main():
                     f"Loop took {elapsed:.2f}s, which is longer than interval {effective_interval}s"
                 )
 
-            sleep_time = max(0, effective_interval - elapsed)
+            # Calculate sleep time with minimum 0.1s to prevent CPU spinning on overload
+            MIN_SLEEP = 0.1  # Minimum sleep to prevent CPU spinning
+            sleep_time = max(MIN_SLEEP, effective_interval - elapsed)
             stop_event.wait(sleep_time)
 
     except Exception as e:
