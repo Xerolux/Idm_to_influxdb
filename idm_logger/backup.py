@@ -164,7 +164,9 @@ class BackupManager:
             if vm_data_path.exists():
                 try:
                     shutil.copytree(vm_data_path, vm_backup_dir / snapshot_name)
-                    logger.info("VictoriaMetrics snapshot copied via direct volume access")
+                    logger.info(
+                        "VictoriaMetrics snapshot copied via direct volume access"
+                    )
                     return True
                 except Exception as e:
                     logger.debug(f"Direct volume copy failed: {e}")
@@ -181,10 +183,14 @@ class BackupManager:
                     str(vm_backup_dir / snapshot_name),
                 ]
 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=120
+                )
 
                 if result.returncode == 0:
-                    logger.info("VictoriaMetrics snapshot copied successfully via docker cp")
+                    logger.info(
+                        "VictoriaMetrics snapshot copied successfully via docker cp"
+                    )
                     return True
                 else:
                     logger.debug(f"Docker cp failed: {result.stderr}")
@@ -423,7 +429,9 @@ class BackupManager:
                         f"{container_name}:/app/data/model_state.pkl",
                         str(ml_backup_dir / "model_state.pkl"),
                     ]
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=30
+                    )
                     if result.returncode == 0:
                         logger.info("ML model state copied via docker cp")
                         model_copied = True
@@ -431,7 +439,9 @@ class BackupManager:
                     logger.debug(f"Could not copy ML model state via docker: {e}")
 
             if not model_copied:
-                logger.debug("ML model state could not be copied (not found or no access)")
+                logger.debug(
+                    "ML model state could not be copied (not found or no access)"
+                )
 
             return True
 
@@ -659,7 +669,9 @@ class BackupManager:
                     if vm_snapshot_path.exists():
                         shutil.rmtree(vm_snapshot_path)
                     shutil.copytree(snapshot_dir, vm_snapshot_path)
-                    logger.info("VictoriaMetrics snapshot restored via direct volume copy")
+                    logger.info(
+                        "VictoriaMetrics snapshot restored via direct volume copy"
+                    )
                     restored = True
                 except Exception as e:
                     logger.debug(f"Direct volume restore failed: {e}")
@@ -674,7 +686,9 @@ class BackupManager:
                         str(snapshot_dir),
                         f"{container_name}:/storage/snapshots/",
                     ]
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=120
+                    )
                     if result.returncode == 0:
                         logger.info("VictoriaMetrics snapshot restored via docker cp")
                         restored = True
@@ -684,7 +698,9 @@ class BackupManager:
                     logger.debug(f"Docker cp restore failed: {e}")
 
             if not restored:
-                logger.error("Failed to restore VictoriaMetrics snapshot (no access method available)")
+                logger.error(
+                    "Failed to restore VictoriaMetrics snapshot (no access method available)"
+                )
                 return False
 
             # Restore snapshot via API
@@ -886,7 +902,9 @@ class BackupManager:
                             str(model_file),
                             f"{container_name}:/app/data/model_state.pkl",
                         ]
-                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                        result = subprocess.run(
+                            cmd, capture_output=True, text=True, timeout=30
+                        )
                         if result.returncode == 0:
                             logger.info("ML model state restored via docker cp")
                             restored = True
@@ -894,7 +912,9 @@ class BackupManager:
                         logger.debug(f"Docker cp restore failed: {e}")
 
                 if not restored:
-                    logger.error("Failed to restore ML model state (no access method available)")
+                    logger.error(
+                        "Failed to restore ML model state (no access method available)"
+                    )
                     return False
 
                 # Restart ML service via API or docker
@@ -910,7 +930,9 @@ class BackupManager:
                     except Exception as e:
                         logger.debug(f"Docker restart failed: {e}")
                 else:
-                    logger.info("ML service model restored - manual restart may be needed")
+                    logger.info(
+                        "ML service model restored - manual restart may be needed"
+                    )
 
                 return True
             return False
