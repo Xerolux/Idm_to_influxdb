@@ -1,7 +1,11 @@
 # Xerolux 2026
 services:
   telemetry-api:
-    build: .
+    image: ghcr.io/xerolux/idm-metrics-collector-telemetry:latest
+    # For local development, comment out the image line above and uncomment:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -26,7 +30,11 @@ services:
       start_period: 10s
 
   telemetry-trainer:
-    build: .
+    image: ghcr.io/xerolux/idm-metrics-collector-telemetry:latest
+    # For local development, comment out the image line above and uncomment:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     environment:
       - VM_QUERY_URL=http://victoriametrics:8428/api/v1/query_range
       - VM_EXPORT_URL=http://victoriametrics:8428/api/v1/export
