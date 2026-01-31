@@ -658,12 +658,12 @@
                 </h3>
                 <div class="flex items-center justify-between bg-gray-900/50 p-3 rounded">
                   <div>
-                    <div class="text-sm text-gray-300">Installierte Version</div>
-                    <div class="font-mono text-gray-200">{{ updateStatus.current_version || 'v0.0.0' }}</div>
+                    <div class="text-sm text-gray-100 font-medium">Installierte Version</div>
+                    <div class="font-mono text-white font-semibold">{{ updateStatus.current_version || 'v0.0.0' }}</div>
                   </div>
                   <div class="text-right">
-                    <div class="text-sm text-gray-300">Verfügbare Version</div>
-                    <div class="font-mono text-green-400">
+                    <div class="text-sm text-gray-100 font-medium">Verfügbare Version</div>
+                    <div class="font-mono text-green-400 font-semibold">
                       {{ updateStatus.latest_version || 'Checking...' }}
                     </div>
                   </div>
@@ -673,10 +673,10 @@
                 <div v-if="updateStatus.docker" class="bg-gray-900/50 p-3 rounded mt-2">
                   <div class="flex items-center gap-2 mb-2">
                     <i class="pi pi-box text-blue-400"></i>
-                    <span class="text-sm font-bold">Docker Images</span>
+                    <span class="text-sm font-bold text-white">Docker Images</span>
                     <span
                       v-if="updateStatus.docker.updates_available"
-                      class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full"
+                      class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-semibold"
                       >Updates verfügbar</span
                     >
                   </div>
@@ -699,13 +699,13 @@
                               : 'pi pi-check text-green-400'
                           "
                         ></i>
-                        <span class="font-mono">{{ name }}</span>
+                        <span class="font-mono text-white font-semibold">{{ name }}</span>
                       </div>
                       <div class="text-right">
-                        <span v-if="img.update_available" class="text-blue-300"
+                        <span v-if="img.update_available" class="text-blue-300 font-semibold"
                           >Update verfügbar</span
                         >
-                        <span v-else class="text-green-400">Aktuell</span>
+                        <span v-else class="text-green-400 font-semibold">Aktuell</span>
                       </div>
                     </div>
                   </div>
@@ -716,11 +716,11 @@
                   v-if="updateStatus.update_available"
                   class="bg-blue-900/20 border border-blue-600/50 p-3 rounded mt-2 flex flex-col gap-2"
                 >
-                  <div class="flex items-center gap-2 text-blue-300 text-sm">
+                  <div class="flex items-center gap-2 text-blue-300 text-sm font-semibold">
                     <i class="pi pi-info-circle"></i>
                     <span>Neue Version verfügbar!</span>
                   </div>
-                  <p class="text-xs text-gray-300">
+                  <p class="text-sm text-gray-100">
                     Automatische Updates sind deaktiviert. Bitte führen Sie das Update manuell durch.
                   </p>
                 </div>
@@ -729,9 +729,9 @@
                 <div class="bg-gray-900/50 p-3 rounded mt-2">
                   <div class="flex items-center gap-2 mb-2">
                     <i class="pi pi-sync text-green-400"></i>
-                    <span class="text-sm font-bold">Manuelle Updates</span>
+                    <span class="text-sm font-bold text-white">Manuelle Updates</span>
                   </div>
-                  <p class="text-xs text-gray-300 mb-2">
+                  <p class="text-sm text-gray-100 mb-2">
                     Es werden keine automatischen Updates mehr durchgeführt.
                     Neue Versionen müssen manuell über die Konsole installiert werden.
                   </p>
@@ -766,7 +766,7 @@
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <Checkbox v-model="config.backup.enabled" binary inputId="auto_backup" />
-                      <label for="auto_backup" class="font-bold text-sm"
+                      <label for="auto_backup" class="font-bold text-sm text-white"
                         >Automatisches Backup</label
                       >
                     </div>
@@ -776,7 +776,7 @@
                     class="grid grid-cols-2 gap-2 text-sm bg-gray-900/30 p-2 rounded"
                   >
                     <div class="flex flex-col">
-                      <label class="text-xs text-gray-300">Intervall (Std)</label>
+                      <label class="text-sm text-gray-100 font-medium">Intervall (Std)</label>
                       <InputNumber
                         v-model="config.backup.interval"
                         :min="1"
@@ -785,7 +785,7 @@
                       />
                     </div>
                     <div class="flex flex-col">
-                      <label class="text-xs text-gray-300">Behalten (Anzahl)</label>
+                      <label class="text-sm text-gray-100 font-medium">Behalten (Anzahl)</label>
                       <InputNumber
                         v-model="config.backup.retention"
                         :min="1"
@@ -802,7 +802,7 @@
                       />
                       <label
                         for="backup_upload"
-                        class="text-xs"
+                        class="text-sm text-gray-100 font-medium"
                         :class="{ 'opacity-50': !config.webdav.enabled }"
                         >Automatisch in Cloud hochladen</label
                       >
@@ -847,7 +847,7 @@
                     :key="backup.filename"
                     class="flex justify-between items-center p-2 hover:bg-gray-700 rounded text-sm border-b border-gray-700 last:border-0"
                   >
-                    <span class="truncate">{{ backup.filename }}</span>
+                    <span class="truncate text-white font-medium">{{ backup.filename }}</span>
                     <div class="flex gap-1">
                       <Button
                         icon="pi pi-cloud-upload"
@@ -876,13 +876,13 @@
                 <div class="border-t border-gray-700 pt-3 mt-2">
                   <div class="flex items-center gap-2 mb-2">
                     <Checkbox v-model="config.webdav.enabled" binary inputId="webdav_enabled" />
-                    <label for="webdav_enabled" class="font-bold cursor-pointer"
+                    <label for="webdav_enabled" class="font-bold text-white cursor-pointer"
                       >Cloud Backup (WebDAV/Nextcloud)</label
                     >
                   </div>
                   <div v-if="config.webdav.enabled" class="flex flex-col gap-2">
                     <div class="flex flex-col gap-1">
-                      <label class="text-xs">URL</label>
+                      <label class="text-sm text-gray-100 font-medium">URL</label>
                       <InputText
                         v-model="config.webdav.url"
                         placeholder="https://cloud.example.com/remote.php/dav/files/user/"
@@ -890,11 +890,11 @@
                       />
                     </div>
                     <div class="flex flex-col gap-1">
-                      <label class="text-xs">Benutzername</label>
+                      <label class="text-sm text-gray-100 font-medium">Benutzername</label>
                       <InputText v-model="config.webdav.username" class="p-inputtext-sm w-full" />
                     </div>
                     <div class="flex flex-col gap-1">
-                      <label class="text-xs">Passwort</label>
+                      <label class="text-sm text-gray-100 font-medium">Passwort</label>
                       <InputText
                         v-model="webdavPassword"
                         type="password"
