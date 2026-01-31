@@ -110,13 +110,23 @@ class BackupManager:
         try:
             vm_url = os.environ.get("METRICS_URL", "http://victoriametrics:8428")
 
+            # Normalize URL for snapshot API (remove /write suffix if present)
+            vm_snapshot_url = vm_url.replace("/write", "").replace("/api/v1/write", "")
+
             # Create snapshot via API
-            logger.info("Creating VictoriaMetrics snapshot...")
-            response = requests.post(f"{vm_url}/snapshot/create", timeout=60)
+            logger.info(f"Creating VictoriaMetrics snapshot at {vm_snapshot_url}...")
+            response = requests.post(f"{vm_snapshot_url}/snapshot/create", timeout=60)
 
             if response.status_code != 200:
                 logger.error(f"Failed to create VM snapshot: {response.status_code}")
-                return False
+                logger.error(f"Response: {response.text}")
+                # Try alternative endpoint
+                logger.info("Trying alternative snapshot endpoint...")
+                response = requests.post(f"{vm_snapshot_url}/api/v1/snapshot/create", timeout=60)
+                if response.status_code != 200:
+                    logger.error(f"Alternative endpoint also failed: {response.status_code}")
+                    logger.error(f"Response: {response.text}")
+                    return False
 
             result = response.json()
             snapshot_name = result.get("snapshot", "")
