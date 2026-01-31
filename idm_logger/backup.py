@@ -100,6 +100,19 @@ class BackupManager:
     """Manages backup and restore operations."""
 
     @staticmethod
+    def _is_docker_available() -> bool:
+        """Check if docker command is available."""
+        try:
+            result = subprocess.run(
+                ["docker", "--version"],
+                capture_output=True,
+                timeout=5,
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
     def _backup_victoriametrics(backup_dir: Path) -> bool:
         """
         Create VictoriaMetrics snapshot and copy to backup directory.
@@ -141,31 +154,50 @@ class BackupManager:
 
             logger.info(f"VictoriaMetrics snapshot created: {snapshot_name}")
 
-            # Copy snapshot data using docker exec
+            # Copy snapshot data
             # The snapshot is stored in /storage/snapshots/<snapshot_name>
             vm_backup_dir = backup_dir / "victoriametrics"
             vm_backup_dir.mkdir(exist_ok=True)
 
-            # Use docker cp to copy snapshot from container
-            container_name = "idm-victoriametrics"
-            snapshot_path = f"/storage/snapshots/{snapshot_name}"
+            # Method 1: Try direct volume access (when running in container)
+            vm_data_path = Path("/storage/snapshots") / snapshot_name
+            if vm_data_path.exists():
+                try:
+                    shutil.copytree(vm_data_path, vm_backup_dir / snapshot_name)
+                    logger.info("VictoriaMetrics snapshot copied via direct volume access")
+                    return True
+                except Exception as e:
+                    logger.debug(f"Direct volume copy failed: {e}")
 
-            cmd = [
-                "docker",
-                "cp",
-                f"{container_name}:{snapshot_path}",
-                str(vm_backup_dir / snapshot_name),
-            ]
+            # Method 2: Try docker cp (when running on host with docker access)
+            if BackupManager._is_docker_available():
+                container_name = "idm-victoriametrics"
+                snapshot_path = f"/storage/snapshots/{snapshot_name}"
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                cmd = [
+                    "docker",
+                    "cp",
+                    f"{container_name}:{snapshot_path}",
+                    str(vm_backup_dir / snapshot_name),
+                ]
 
-            if result.returncode != 0:
-                logger.error(f"Failed to copy VM snapshot: {result.stderr}")
-                return False
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
-            logger.info("VictoriaMetrics snapshot copied successfully")
+                if result.returncode == 0:
+                    logger.info("VictoriaMetrics snapshot copied successfully via docker cp")
+                    return True
+                else:
+                    logger.debug(f"Docker cp failed: {result.stderr}")
 
-            # Clean up snapshot in container (optional, to save space)
+            # Method 3: Snapshot was created but cannot be copied
+            # This is still a partial success - at least the snapshot exists
+            logger.warning(
+                "VictoriaMetrics snapshot created but could not be copied "
+                "(no direct volume access and docker not available). "
+                "Snapshot will remain in container storage."
+            )
+
+            # Clean up snapshot in container to save space
             delete_response = requests.post(
                 f"{vm_url}/snapshot/delete",
                 params={"snapshot": snapshot_name},
@@ -175,7 +207,8 @@ class BackupManager:
             if delete_response.status_code == 200:
                 logger.info("Cleaned up VM snapshot in container")
 
-            return True
+            # Return False since we couldn't actually copy the snapshot
+            return False
 
         except Exception as e:
             logger.error(f"VictoriaMetrics backup failed: {e}", exc_info=True)
@@ -367,20 +400,38 @@ class BackupManager:
 
                 logger.info("ML service configuration backed up")
 
-            # Copy ML model data from container
-            container_name = "idm-ml-service"
-            try:
-                # Copy model_state.pkl
-                cmd = [
-                    "docker",
-                    "cp",
-                    f"{container_name}:/app/data/model_state.pkl",
-                    str(ml_backup_dir / "model_state.pkl"),
-                ]
-                subprocess.run(cmd, capture_output=True, check=True)
-                logger.info("ML model state copied from container")
-            except Exception as e:
-                logger.debug(f"Could not copy ML model state: {e}")
+            # Copy ML model data - try direct volume access first, then docker
+            model_copied = False
+
+            # Method 1: Try direct volume access (when running in container)
+            ml_data_path = Path("/app/data/model_state.pkl")
+            if ml_data_path.exists():
+                try:
+                    shutil.copy2(ml_data_path, ml_backup_dir / "model_state.pkl")
+                    logger.info("ML model state copied via direct volume access")
+                    model_copied = True
+                except Exception as e:
+                    logger.debug(f"Direct volume copy failed: {e}")
+
+            # Method 2: Try docker cp (when running on host with docker access)
+            if not model_copied and BackupManager._is_docker_available():
+                container_name = "idm-ml-service"
+                try:
+                    cmd = [
+                        "docker",
+                        "cp",
+                        f"{container_name}:/app/data/model_state.pkl",
+                        str(ml_backup_dir / "model_state.pkl"),
+                    ]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    if result.returncode == 0:
+                        logger.info("ML model state copied via docker cp")
+                        model_copied = True
+                except Exception as e:
+                    logger.debug(f"Could not copy ML model state via docker: {e}")
+
+            if not model_copied:
+                logger.debug("ML model state could not be copied (not found or no access)")
 
             return True
 
@@ -598,21 +649,42 @@ class BackupManager:
             snapshot_dir = snapshots[0]  # Take first snapshot
             logger.info(f"Restoring VictoriaMetrics snapshot: {snapshot_dir.name}")
 
-            # Copy snapshot to container
-            container_name = "idm-victoriametrics"
+            vm_snapshot_path = Path("/storage/snapshots") / snapshot_dir.name
+            restored = False
 
-            # First, copy to container's snapshots directory
-            cmd = [
-                "docker",
-                "cp",
-                str(snapshot_dir),
-                f"{container_name}:/storage/snapshots/",
-            ]
+            # Method 1: Try direct volume access (when running in container)
+            if not restored:
+                try:
+                    vm_snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+                    if vm_snapshot_path.exists():
+                        shutil.rmtree(vm_snapshot_path)
+                    shutil.copytree(snapshot_dir, vm_snapshot_path)
+                    logger.info("VictoriaMetrics snapshot restored via direct volume copy")
+                    restored = True
+                except Exception as e:
+                    logger.debug(f"Direct volume restore failed: {e}")
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            # Method 2: Try docker cp (when running on host with docker access)
+            if not restored and BackupManager._is_docker_available():
+                container_name = "idm-victoriametrics"
+                try:
+                    cmd = [
+                        "docker",
+                        "cp",
+                        str(snapshot_dir),
+                        f"{container_name}:/storage/snapshots/",
+                    ]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0:
+                        logger.info("VictoriaMetrics snapshot restored via docker cp")
+                        restored = True
+                    else:
+                        logger.debug(f"Docker cp restore failed: {result.stderr}")
+                except Exception as e:
+                    logger.debug(f"Docker cp restore failed: {e}")
 
-            if result.returncode != 0:
-                logger.error(f"Failed to copy snapshot to container: {result.stderr}")
+            if not restored:
+                logger.error("Failed to restore VictoriaMetrics snapshot (no access method available)")
                 return False
 
             # Restore snapshot via API
@@ -625,7 +697,7 @@ class BackupManager:
             )
 
             if response.status_code == 200:
-                logger.info("VictoriaMetrics snapshot restored successfully")
+                logger.info("VictoriaMetrics snapshot restored successfully via API")
                 return True
             else:
                 logger.error(
@@ -693,9 +765,9 @@ class BackupManager:
                             f"Could not restore dashboard {dashboard_file.name}: {e}"
                         )
 
-            # 2. Restore Grafana volume data
+            # 2. Restore Grafana volume data (only if docker is available)
             volume_dir = grafana_backup_dir / "volume"
-            if volume_dir.exists():
+            if volume_dir.exists() and BackupManager._is_docker_available():
                 logger.info("Restoring Grafana volume data...")
 
                 container_name = "idm-grafana"
@@ -737,6 +809,8 @@ class BackupManager:
                     logger.info("Grafana restarted to apply restored data")
                 except Exception as e:
                     logger.warning(f"Could not restart Grafana: {e}")
+            elif volume_dir.exists():
+                logger.debug("Grafana volume restore skipped (docker not available)")
 
             # 3. Restore provisioning files to host
             provisioning_dir = grafana_backup_dir / "provisioning"
@@ -789,23 +863,55 @@ class BackupManager:
             model_file = ml_backup_dir / "model_state.pkl"
             if model_file.exists():
                 logger.info("Restoring ML model state...")
-                container_name = "idm-ml-service"
-                # Copy to container
-                cmd = [
-                    "docker",
-                    "cp",
-                    str(model_file),
-                    f"{container_name}:/app/data/model_state.pkl",
-                ]
-                subprocess.run(cmd, capture_output=True, check=True)
+                restored = False
 
-                # Restart ML service
-                subprocess.run(
-                    ["docker", "restart", container_name],
-                    capture_output=True,
-                    check=False,
-                )
-                logger.info("ML service restored and restarted")
+                # Method 1: Try direct volume access (when running in container)
+                ml_data_path = Path("/app/data/model_state.pkl")
+                if not restored:
+                    try:
+                        ml_data_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(model_file, ml_data_path)
+                        logger.info("ML model state restored via direct volume copy")
+                        restored = True
+                    except Exception as e:
+                        logger.debug(f"Direct volume restore failed: {e}")
+
+                # Method 2: Try docker cp (when running on host with docker access)
+                if not restored and BackupManager._is_docker_available():
+                    container_name = "idm-ml-service"
+                    try:
+                        cmd = [
+                            "docker",
+                            "cp",
+                            str(model_file),
+                            f"{container_name}:/app/data/model_state.pkl",
+                        ]
+                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                        if result.returncode == 0:
+                            logger.info("ML model state restored via docker cp")
+                            restored = True
+                    except Exception as e:
+                        logger.debug(f"Docker cp restore failed: {e}")
+
+                if not restored:
+                    logger.error("Failed to restore ML model state (no access method available)")
+                    return False
+
+                # Restart ML service via API or docker
+                if BackupManager._is_docker_available():
+                    container_name = "idm-ml-service"
+                    try:
+                        subprocess.run(
+                            ["docker", "restart", container_name],
+                            capture_output=True,
+                            timeout=30,
+                        )
+                        logger.info("ML service restarted via docker")
+                    except Exception as e:
+                        logger.debug(f"Docker restart failed: {e}")
+                else:
+                    logger.info("ML service model restored - manual restart may be needed")
+
                 return True
             return False
         except Exception as e:

@@ -8,6 +8,7 @@ services:
       - "5008:5000"
     volumes:
       - idm-data:/app/data
+      - vm-data:/storage  # For VictoriaMetrics backup (direct volume access)
     depends_on:
       - victoriametrics
     labels:
