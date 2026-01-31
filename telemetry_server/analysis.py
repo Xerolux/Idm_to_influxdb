@@ -17,7 +17,7 @@ def get_community_averages(
     model_name: str,
     metrics: List[str],
     window: str = "24h",
-    client: Optional[httpx.AsyncClient] = None
+    client: Optional[httpx.AsyncClient] = None,
 ) -> Dict[str, Any]:
     """
     Fetch aggregated community statistics for a specific heat pump model.
@@ -41,7 +41,9 @@ def get_community_averages(
         # 1. Get sample size (approximate number of active installations for this model in window)
         count_query = f'count(count by (installation_id) (count_over_time({{__name__=~"heatpump_metrics_.*", model="{safe_model}"}}[{window}])))'
 
-        response = requests.get(VM_QUERY_URL, params={"query": count_query}, timeout=VM_TIMEOUT)
+        response = requests.get(
+            VM_QUERY_URL, params={"query": count_query}, timeout=VM_TIMEOUT
+        )
         if response.status_code == 200:
             data = response.json()
             if data.get("status") == "success" and data["data"]["result"]:
@@ -69,14 +71,21 @@ def get_community_averages(
             metric_stats = {}
             for stat_type, query in queries.items():
                 try:
-                    res = requests.get(VM_QUERY_URL, params={"query": query}, timeout=VM_TIMEOUT)
+                    res = requests.get(
+                        VM_QUERY_URL, params={"query": query}, timeout=VM_TIMEOUT
+                    )
                     if res.status_code == 200:
                         d = res.json()
                         if d.get("status") == "success" and d["data"]["result"]:
                             val = float(d["data"]["result"][0]["value"][1])
                             metric_stats[stat_type] = round(val, 2)
                 except Exception as e:
-                    logger.warning("metric_fetch_failed", metric=metric, stat=stat_type, error=str(e))
+                    logger.warning(
+                        "metric_fetch_failed",
+                        metric=metric,
+                        stat=stat_type,
+                        error=str(e),
+                    )
 
             if metric_stats:
                 results["metrics"][clean_name] = metric_stats

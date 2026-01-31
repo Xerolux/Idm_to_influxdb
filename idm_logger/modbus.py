@@ -17,7 +17,9 @@ from .sensor_addresses import (
 logger = logging.getLogger(__name__)
 
 # Connection configuration
-MODBUS_TIMEOUT = config.get("modbus.timeout", 3)  # Reduced from 10s to 3s for faster recovery
+MODBUS_TIMEOUT = config.get(
+    "modbus.timeout", 3
+)  # Reduced from 10s to 3s for faster recovery
 MODBUS_RETRIES = config.get("modbus.retries", 3)
 RECONNECT_BASE_DELAY = config.get("modbus.reconnect_base_delay", 1.0)
 RECONNECT_MAX_DELAY = config.get("modbus.reconnect_max_delay", 60.0)
@@ -104,7 +106,8 @@ class ModbusClient:
 
         # Remove entries older than TTL
         expired_keys = [
-            key for key, timestamp in self._failed_blocks.items()
+            key
+            for key, timestamp in self._failed_blocks.items()
             if now - timestamp > self._FAILED_BLOCK_TTL
         ]
 
@@ -351,7 +354,9 @@ class ModbusClient:
                             logger.debug(
                                 f"Bulk read failed for block {start_addr}-{end_addr}: Illegal Data Address. Marking block for individual reads."
                             )
-                            self._failed_blocks[block_key] = time.time()  # Store with timestamp
+                            self._failed_blocks[block_key] = (
+                                time.time()
+                            )  # Store with timestamp
                         else:
                             logger.warning(
                                 f"Bulk read failed for block {start_addr}-{end_addr}: {rr}. Falling back to individual reads."

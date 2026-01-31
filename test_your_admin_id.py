@@ -9,7 +9,8 @@ import sys
 from unittest.mock import patch, MagicMock, AsyncMock
 
 # Füge telemetry_server zum Pfad hinzu
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'telemetry_server'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "telemetry_server"))
+
 
 def test_with_your_admin_id():
     """Testet mit deiner Admin-ID aus der .env Datei"""
@@ -23,7 +24,7 @@ def test_with_your_admin_id():
     print("\nStarte Test...")
 
     # Mock httpx für VictoriaMetrics Abfragen
-    with patch('app.httpx.AsyncClient') as mock_client_cls:
+    with patch("app.httpx.AsyncClient") as mock_client_cls:
         mock_instance = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_instance
 
@@ -41,13 +42,15 @@ def test_with_your_admin_id():
 
         # Patch ADMIN_IDS mit deiner Admin-ID
         print(f"\nSetze ADMIN_IDS auf: {your_admin_id}")
-        with patch('app.ADMIN_IDS', {your_admin_id.lower()}):
+        with patch("app.ADMIN_IDS", {your_admin_id.lower()}):
             # Log-Meldungen aktivieren
             import logging
+
             logging.basicConfig(level=logging.INFO)
 
             # Simuliere FastAPI TestClient
             from fastapi.testclient import TestClient
+
             client = TestClient(app.app)
 
             print("\n" + "-" * 70)
@@ -55,29 +58,33 @@ def test_with_your_admin_id():
             print("-" * 70)
 
             # Test mit deiner Admin-ID
-            response = client.get(f"/api/v1/model/check?installation_id={your_admin_id}")
+            response = client.get(
+                f"/api/v1/model/check?installation_id={your_admin_id}"
+            )
 
             print(f"\nRequest: GET /api/v1/model/check?installation_id={your_admin_id}")
             print(f"Response Status: {response.status_code}")
 
             if response.status_code == 200:
                 data = response.json()
-                print(f"\nAntwort:")
+                print("\nAntwort:")
                 print(f"  - is_admin: {data.get('is_admin')}")
                 print(f"  - eligible: {data.get('eligible')}")
                 print(f"  - model_available: {data.get('model_available')}")
 
-                if data.get('is_admin'):
-                    print(f"\n[ERFOLG] Admin-Zugang erkannt!")
+                if data.get("is_admin"):
+                    print("\n[ERFOLG] Admin-Zugang erkannt!")
 
-                    if 'server_stats' in data:
-                        stats = data['server_stats']
-                        print(f"\nServer Statistiken:")
+                    if "server_stats" in data:
+                        stats = data["server_stats"]
+                        print("\nServer Statistiken:")
                         print(f"  - Modelle verfuegbar: {len(stats.get('models', []))}")
-                        print(f"  - Aktive Installationen: {stats.get('active_installations')}")
+                        print(
+                            f"  - Aktive Installationen: {stats.get('active_installations')}"
+                        )
                         print(f"  - Gesamte Datenpunkte: {stats.get('total_points'):,}")
                 else:
-                    print(f"\n[FEHLER] Admin-Flag nicht gesetzt!")
+                    print("\n[FEHLER] Admin-Flag nicht gesetzt!")
                     return False
             else:
                 print(f"\n[FEHLER] Server antwortet mit {response.status_code}")
@@ -88,7 +95,9 @@ def test_with_your_admin_id():
             print("-" * 70)
 
             # Test mit Großschreibung
-            response = client.get(f"/api/v1/model/check?installation_id={your_admin_id.upper()}")
+            response = client.get(
+                f"/api/v1/model/check?installation_id={your_admin_id.upper()}"
+            )
 
             print(f"\nRequest mit Grossschreibung: {your_admin_id.upper()}")
             print(f"Response Status: {response.status_code}")
@@ -97,10 +106,10 @@ def test_with_your_admin_id():
                 data = response.json()
                 print(f"  - is_admin: {data.get('is_admin')}")
 
-                if data.get('is_admin'):
-                    print(f"\n[ERFOLG] Case-insensitive Check funktioniert!")
+                if data.get("is_admin"):
+                    print("\n[ERFOLG] Case-insensitive Check funktioniert!")
                 else:
-                    print(f"\n[FEHLER] Case-insensitive Check fehlgeschlagen!")
+                    print("\n[FEHLER] Case-insensitive Check fehlgeschlagen!")
                     return False
 
             print("\n" + "-" * 70)
@@ -117,10 +126,12 @@ def test_with_your_admin_id():
                 data = response.json()
                 print(f"  - is_admin: {data.get('is_admin')}")
 
-                if not data.get('is_admin'):
-                    print(f"\n[ERFOLG] Normale UUID wird korrekt als Nicht-Admin erkannt!")
+                if not data.get("is_admin"):
+                    print(
+                        "\n[ERFOLG] Normale UUID wird korrekt als Nicht-Admin erkannt!"
+                    )
                 else:
-                    print(f"\n[FEHLER] Normale UUID sollte nicht Admin sein!")
+                    print("\n[FEHLER] Normale UUID sollte nicht Admin sein!")
                     return False
 
     print("\n" + "=" * 70)
@@ -141,11 +152,12 @@ def test_with_your_admin_id():
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         test_with_your_admin_id()
     except Exception as e:
         print(f"\n[FEHLER] Test fehlgeschlagen: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

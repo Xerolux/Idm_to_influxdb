@@ -6,8 +6,8 @@ Testet ob deine lokale Installation als Admin erkannt wird.
 """
 
 import os
-import sys
 import json
+
 
 # Prüfe lokale installation_id
 def check_local_installation_id():
@@ -18,9 +18,11 @@ def check_local_installation_id():
 
     # Suche nach Datenbank
     db_path = None
-    for root, dirs, files in os.walk('.'):
-        if 'settings.db' in files or 'idm_logger.db' in files:
-            db_path = os.path.join(root, files[0] if 'settings.db' in files else 'idm_logger.db')
+    for root, dirs, files in os.walk("."):
+        if "settings.db" in files or "idm_logger.db" in files:
+            db_path = os.path.join(
+                root, files[0] if "settings.db" in files else "idm_logger.db"
+            )
             break
 
     if not db_path:
@@ -33,6 +35,7 @@ def check_local_installation_id():
     # Versuche die ID zu lesen
     try:
         import sqlite3
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
@@ -42,7 +45,7 @@ def check_local_installation_id():
 
         if row:
             config = json.loads(row[0])
-            installation_id = config.get('installation_id')
+            installation_id = config.get("installation_id")
             print(f"\n[OK] Installation ID: {installation_id}")
             conn.close()
             return installation_id
@@ -71,8 +74,8 @@ def test_local_server(installation_id):
         print("\n[INFO] Deine Installation ID IST die Admin-ID!")
         print("[INFO] Du solltest Admin-Rechte erhalten.")
     else:
-        print(f"\n[WARNUNG] IDs stimmen nicht überein!")
-        print(f"[INFO] Damit du Admin-Rechte bekommst, müsste deine Installation ID")
+        print("\n[WARNUNG] IDs stimmen nicht überein!")
+        print("[INFO] Damit du Admin-Rechte bekommst, müsste deine Installation ID")
         print(f"       die Admin-ID sein: {admin_id}")
 
     # Teste Server-Endpoint lokal
@@ -82,6 +85,7 @@ def test_local_server(installation_id):
 
     try:
         import requests
+
         # Lokaler Server (wenn er läuft)
         local_url = "http://localhost:5000/api/v1/model/check"
         params = {"installation_id": admin_id}
@@ -97,13 +101,15 @@ def test_local_server(installation_id):
             data = response.json()
             print(f"[Antwort] is_admin: {data.get('is_admin', False)}")
 
-            if data.get('is_admin'):
+            if data.get("is_admin"):
                 print("\n[ERFOLG] Admin-Zugang funktioniert!")
-                if 'server_stats' in data:
-                    stats = data['server_stats']
-                    print(f"\nServer Statistiken:")
+                if "server_stats" in data:
+                    stats = data["server_stats"]
+                    print("\nServer Statistiken:")
                     print(f"  - Modelle: {len(stats.get('models', []))}")
-                    print(f"  - Aktive Installationen: {stats.get('active_installations', 0)}")
+                    print(
+                        f"  - Aktive Installationen: {stats.get('active_installations', 0)}"
+                    )
                     print(f"  - Gesamte Datenpunkte: {stats.get('total_points', 0)}")
             else:
                 print("\n[INFO] Kein Admin-Zugang (normale Installation)")
@@ -133,16 +139,20 @@ def show_how_to_configure():
     print("Wenn du möchten, dass deine lokale Installation Admin-Rechte hat,")
     print("musst du die installation_id in der Datenbank auf die Admin-ID setzen.")
     print("\nSQL Befehl (in der Datenbank):")
-    print("  UPDATE settings SET value = json_set(value, '$.installation_id', '075e0c34-f67f-4882-9637-90ea85971a79')")
+    print(
+        "  UPDATE settings SET value = json_set(value, '$.installation_id', '075e0c34-f67f-4882-9637-90ea85971a79')"
+    )
     print("  WHERE key = 'config';")
 
     print("\nOption 2: Deine ID zur Admin-Liste hinzufügen")
     print("-" * 60)
     print("Oder füge deine aktuelle ID zur .env Datei hinzu:")
-    print("  ADMIN_INSTALLATION_IDS=075e0c34-f67f-4882-9637-90ea85971a79,<deine-id-hier>")
+    print(
+        "  ADMIN_INSTALLATION_IDS=075e0c34-f67f-4882-9637-90ea85971a79,<deine-id-hier>"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     installation_id = check_local_installation_id()
     test_local_server(installation_id)
     show_how_to_configure()

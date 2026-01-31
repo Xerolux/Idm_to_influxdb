@@ -102,7 +102,9 @@ class TelemetryManager:
             try:
                 schedule.run_pending()
                 # Use a shorter sleep to check stop condition more frequently
-                for _ in range(60):  # Sleep for 60 seconds total, but check every second
+                for _ in range(
+                    60
+                ):  # Sleep for 60 seconds total, but check every second
                     if not self.running:
                         break
                     time.sleep(1)

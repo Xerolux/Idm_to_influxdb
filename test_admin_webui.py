@@ -6,8 +6,7 @@ Testet ob die Admin Zone im WebUI korrekt angezeigt wird.
 """
 
 import sys
-import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 # Mock DB
 mock_db_module = MagicMock()
@@ -15,6 +14,7 @@ mock_db_instance = MagicMock()
 mock_db_instance.get_setting.return_value = None
 mock_db_module.db = mock_db_instance
 sys.modules["idm_logger.db"] = mock_db_module
+
 
 def test_telemetry_manager_status():
     """Testet ob get_status() Admin-Daten zurückgibt"""
@@ -30,8 +30,8 @@ def test_telemetry_manager_status():
     status = tm.get_status()
     print(f"   is_admin: {status.get('is_admin')}")
     print(f"   server_stats: {status.get('server_stats')}")
-    assert status.get('is_admin') is False
-    assert status.get('server_stats') is None
+    assert status.get("is_admin") is False
+    assert status.get("server_stats") is None
 
     print("\n2. Simuliere Admin-Signal vom Server:")
     # So wie es in telemetry.py Zeile 319-326 passiert
@@ -40,11 +40,11 @@ def test_telemetry_manager_status():
         "server_stats": {
             "models": [
                 {"name": "AERO_ALM_6-15", "size": 1234567, "modified": 1738272000},
-                {"name": "AERO_SLM", "size": 987654, "modified": 1738358400}
+                {"name": "AERO_SLM", "size": 987654, "modified": 1738358400},
             ],
             "active_installations": 42,
-            "total_points": 50000000
-        }
+            "total_points": 50000000,
+        },
     }
 
     if admin_response.get("is_admin"):
@@ -62,11 +62,15 @@ def test_telemetry_manager_status():
     print(f"   server_stats: {status.get('server_stats') is not None}")
 
     # Prüfe alle Felder die das Frontend erwartet
-    assert status.get('is_admin') is True, "is_admin sollte True sein"
-    assert status.get('server_stats') is not None, "server_stats sollte vorhanden sein"
-    assert 'models' in status['server_stats'], "models sollte in server_stats sein"
-    assert 'active_installations' in status['server_stats'], "active_installations sollte in server_stats sein"
-    assert 'total_points' in status['server_stats'], "total_points sollte in server_stats sein"
+    assert status.get("is_admin") is True, "is_admin sollte True sein"
+    assert status.get("server_stats") is not None, "server_stats sollte vorhanden sein"
+    assert "models" in status["server_stats"], "models sollte in server_stats sein"
+    assert "active_installations" in status["server_stats"], (
+        "active_installations sollte in server_stats sein"
+    )
+    assert "total_points" in status["server_stats"], (
+        "total_points sollte in server_stats sein"
+    )
 
     print("\n   [OK] Alle Admin-Daten vorhanden!")
     print(f"   - Modelle: {len(status['server_stats']['models'])}")
@@ -96,11 +100,9 @@ def test_webui_admin_zone_display():
 
     print("\n2. Mit Admin-Status:")
     admin_stats = {
-        "models": [
-            {"name": "AERO_ALM_6-15", "size": 1234567, "modified": 1738272000}
-        ],
+        "models": [{"name": "AERO_ALM_6-15", "size": 1234567, "modified": 1738272000}],
         "active_installations": 42,
-        "total_points": 50000000
+        "total_points": 50000000,
     }
     status_admin = MockTelemetryStatus(is_admin=True, server_stats=admin_stats)
 
@@ -113,18 +115,20 @@ def test_webui_admin_zone_display():
 
     # Simuliere computed categories aus Config.vue Zeile 1190-1192
     categories = [
-        { 'id': 'general', 'label': 'Allgemein' },
-        { 'id': 'idm', 'label': 'IDM' }
+        {"id": "general", "label": "Allgemein"},
+        {"id": "idm", "label": "IDM"},
     ]
 
     if status_admin.is_admin:
-        categories.append({ 'id': 'admin', 'label': 'Admin Zone', 'icon': 'pi pi-crown' })
+        categories.append({"id": "admin", "label": "Admin Zone", "icon": "pi pi-crown"})
 
-    print(f"\n3. Kategorien mit Admin:")
+    print("\n3. Kategorien mit Admin:")
     for cat in categories:
         print(f"   - {cat['label']} ({cat.get('icon', 'kein Icon')})")
 
-    assert any(c['id'] == 'admin' for c in categories), "Admin Kategorie sollte vorhanden sein"
+    assert any(c["id"] == "admin" for c in categories), (
+        "Admin Kategorie sollte vorhanden sein"
+    )
 
     print("\n   [OK] Admin Zone wird im Frontend angezeigt!")
 
@@ -138,11 +142,11 @@ def verify_api_endpoint():
     print("=" * 70)
 
     # Prüfe ob Route in web.py existiert
-    with open('idm_logger/web.py', 'r', encoding='utf-8') as f:
+    with open("idm_logger/web.py", "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '/api/telemetry/status' in content, "API Route sollte existieren"
-    assert 'telemetry_manager.get_status()' in content, "Sollte get_status() aufrufen"
+    assert "/api/telemetry/status" in content, "API Route sollte existieren"
+    assert "telemetry_manager.get_status()" in content, "Sollte get_status() aufrufen"
 
     print("\n   [OK] API-Endpunkt /api/telemetry/status vorhanden")
     print("   [OK] Ruft telemetry_manager.get_status() auf")
@@ -156,16 +160,36 @@ def check_frontend_integration():
     print("VERIFIZIERUNG: Frontend Integration")
     print("=" * 70)
 
-    with open('frontend/src/views/Config.vue', 'r', encoding='utf-8') as f:
+    with open("frontend/src/views/Config.vue", "r", encoding="utf-8") as f:
         content = f.read()
 
     checks = [
-        ("Admin Status Indikator", 'v-if="telemetryStatus.is_admin"', "Admin Badge wird angezeigt"),
-        ("Admin Zone Kategorie", "{ id: 'admin', label: 'Admin Zone'", "Admin Kategorie wird hinzugefügt"),
-        ("Admin Zone Template", 'v-if="activeCategory === \'admin\'"', "Admin Zone wird gerendert"),
-        ("Server Stats", 'telemetryStatus.server_stats', "Server Stats werden verwendet"),
-        ("loadTelemetryStatus", 'const loadTelemetryStatus', "Funktion zum Laden existiert"),
-        ("onMounted Aufruf", 'loadTelemetryStatus()', "Wird beim Laden aufgerufen"),
+        (
+            "Admin Status Indikator",
+            'v-if="telemetryStatus.is_admin"',
+            "Admin Badge wird angezeigt",
+        ),
+        (
+            "Admin Zone Kategorie",
+            "{ id: 'admin', label: 'Admin Zone'",
+            "Admin Kategorie wird hinzugefügt",
+        ),
+        (
+            "Admin Zone Template",
+            "v-if=\"activeCategory === 'admin'\"",
+            "Admin Zone wird gerendert",
+        ),
+        (
+            "Server Stats",
+            "telemetryStatus.server_stats",
+            "Server Stats werden verwendet",
+        ),
+        (
+            "loadTelemetryStatus",
+            "const loadTelemetryStatus",
+            "Funktion zum Laden existiert",
+        ),
+        ("onMounted Aufruf", "loadTelemetryStatus()", "Wird beim Laden aufgerufen"),
         ("API Call", "'/api/telemetry/status'", "Ruft richtigen Endpunkt auf"),
     ]
 
@@ -179,7 +203,7 @@ def check_frontend_integration():
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         # Test 1: TelemetryManager
         test_telemetry_manager_status()
@@ -210,5 +234,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n[FEHLER] Test fehlgeschlagen: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
