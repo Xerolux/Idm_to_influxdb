@@ -1,18 +1,22 @@
 # Xerolux 2026
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, AsyncMock
 import sys
 import os
+import pytest
+import httpx
 
-# Ensure telemetry_server is in path (similar to conftest, but explicit for this test module if needed)
+# Ensure telemetry_server is in path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from analysis import get_community_averages
 
 
-@patch("requests.get")
-def test_get_community_averages_success(mock_get):
+@pytest.mark.anyio
+async def test_get_community_averages_success():
+    # Mock Client
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+
     # Mock responses for count, avg, min, max
-    # count query
     r1 = MagicMock()
     r1.status_code = 200
     r1.json.return_value = {
@@ -20,7 +24,6 @@ def test_get_community_averages_success(mock_get):
         "data": {"result": [{"value": [123456, "10"]}]},
     }
 
-    # avg query
     r2 = MagicMock()
     r2.status_code = 200
     r2.json.return_value = {
@@ -28,7 +31,6 @@ def test_get_community_averages_success(mock_get):
         "data": {"result": [{"value": [123456, "4.2"]}]},
     }
 
-    # min/max queries
     r3 = MagicMock()
     r3.status_code = 200
     r3.json.return_value = {
@@ -36,9 +38,21 @@ def test_get_community_averages_success(mock_get):
         "data": {"result": [{"value": [123456, "3.5"]}]},
     }
 
-    mock_get.side_effect = [r1, r2, r3, r3]  # count, avg, min, max
+    async def mock_get(url, params=None, timeout=None):
+        query = params.get("query", "")
+        if "count(" in query:
+            return r1
+        elif "avg(" in query:
+            return r2
+        elif "min(" in query or "max(" in query:
+            return r3
+        return MagicMock(status_code=404)
 
-    result = get_community_averages("AERO_SLM", ["cop_current"])
+    mock_client.get.side_effect = mock_get
+
+    result = await get_community_averages(
+        "AERO_SLM", ["cop_current"], client=mock_client
+    )
 
     assert result["model"] == "AERO_SLM"
     assert result["sample_size"] == 10
@@ -48,28 +62,30 @@ def test_get_community_averages_success(mock_get):
     assert result["metrics"]["cop_current"]["min"] == 3.5
 
 
-@patch("requests.get")
-def test_get_community_averages_no_data(mock_get):
-    # count query returns 0
+@pytest.mark.anyio
+async def test_get_community_averages_no_data():
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
     r1 = MagicMock()
     r1.status_code = 200
     r1.json.return_value = {
         "status": "success",
-        "data": {"result": []},  # No result means 0? Or result with value 0?
-        # count() returns a vector if matches, or empty if no matches?
-        # Actually count() over time usually returns something if time series exist.
-        # Let's assume empty result means 0.
+        "data": {"result": []},
     }
-    mock_get.return_value = r1
+    mock_client.get.return_value = r1
 
-    result = get_community_averages("Unknown", ["cop_current"])
+    result = await get_community_averages(
+        "Unknown", ["cop_current"], client=mock_client
+    )
     assert result["sample_size"] == 0
     assert result["metrics"] == {}
 
 
-@patch("requests.get")
-def test_get_community_averages_error(mock_get):
-    mock_get.side_effect = Exception("VM Down")
+@pytest.mark.anyio
+async def test_get_community_averages_error():
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+    mock_client.get.side_effect = Exception("VM Down")
 
-    result = get_community_averages("AERO_SLM", ["cop_current"])
+    result = await get_community_averages(
+        "AERO_SLM", ["cop_current"], client=mock_client
+    )
     assert "error" in result
