@@ -566,7 +566,8 @@ async def submit_telemetry(
             # Batch write to VictoriaMetrics using pooled client
             data = "\n".join(lines)
             client = request.app.state.http_client
-            response = await client.post(VM_WRITE_URL, data=data)
+            # Use content=data for raw body to avoid form-encoding overhead/issues
+            response = await client.post(VM_WRITE_URL, content=data)
 
             if response.status_code != 204:  # VM returns 204 on success
                 logger.error(
@@ -748,6 +749,13 @@ async def check_eligibility(
             data = response.json()
             if data.get("status") == "success" and data["data"]["result"]:
                 result["eligible"] = True
+        else:
+            logger.warning(
+                "vm_eligibility_check_failed",
+                status=response.status_code,
+                response=response.text[:200],
+                installation_id=installation_id,
+            )
 
         if not result["eligible"]:
             result["reason"] = (
