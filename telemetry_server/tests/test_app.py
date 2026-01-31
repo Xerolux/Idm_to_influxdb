@@ -1,5 +1,5 @@
 # Xerolux 2026
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # ... existing tests ...
 
@@ -10,9 +10,12 @@ def test_health(client):
     assert response.json() == {"status": "ok"}
 
 
-@patch("requests.post")
-def test_submit_telemetry(mock_post, client):
-    mock_post.return_value.status_code = 204
+@patch("app.httpx.AsyncClient")
+def test_submit_telemetry(mock_client_cls, client):
+    # Mock AsyncClient context manager
+    mock_instance = AsyncMock()
+    mock_client_cls.return_value.__aenter__.return_value = mock_instance
+    mock_instance.post.return_value.status_code = 204
 
     # Use valid UUID
     payload = {
@@ -27,9 +30,12 @@ def test_submit_telemetry(mock_post, client):
     response = client.post("/api/v1/submit", json=payload, headers=headers)
 
     assert response.status_code == 200
-    assert mock_post.called
+
+    # Check if post was called
+    mock_instance.post.assert_called()
+
     # Check Influx line protocol format
-    args, kwargs = mock_post.call_args
+    args, kwargs = mock_instance.post.call_args
     assert "heatpump_metrics" in kwargs["data"]
     assert "temp=20.5" in kwargs["data"]
 
@@ -65,16 +71,19 @@ def test_submit_telemetry_unauthorized(client):
     assert response.status_code == 401
 
 
-@patch("requests.get")
-def test_pool_status(mock_get, client):
+@patch("app.httpx.AsyncClient")
+def test_pool_status(mock_client_cls, client):
     # Mock VM query responses
+    mock_instance = AsyncMock()
+    mock_client_cls.return_value.__aenter__.return_value = mock_instance
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "status": "success",
         "data": {"result": [{"value": [123456, "20000"]}]},  # Adequate data points
     }
-    mock_get.return_value = mock_response
+    mock_instance.get.return_value = mock_response
 
     response = client.get("/api/v1/pool/status")
     assert response.status_code == 200
@@ -83,15 +92,15 @@ def test_pool_status(mock_get, client):
     assert "total_data_points" in data
 
 
-@patch("requests.get")
-def test_check_eligibility_invalid_uuid(mock_get, client):
+@patch("app.httpx.AsyncClient")
+def test_check_eligibility_invalid_uuid(mock_client_cls, client):
     response = client.get("/api/v1/model/check?installation_id=invalid")
     assert response.status_code == 400
     assert "UUID" in response.json()["detail"]
 
 
-@patch("requests.get")
-def test_check_eligibility_invalid_model(mock_get, client):
+@patch("app.httpx.AsyncClient")
+def test_check_eligibility_invalid_model(mock_client_cls, client):
     # Valid UUID
     uuid_str = "550e8400-e29b-41d4-a716-446655440000"
     response = client.get(
@@ -101,12 +110,15 @@ def test_check_eligibility_invalid_model(mock_get, client):
     assert "format" in response.json()["detail"]
 
 
-@patch("requests.get")
-def test_check_eligibility_valid_model_with_parens(mock_get, client):
+@patch("app.httpx.AsyncClient")
+def test_check_eligibility_valid_model_with_parens(mock_client_cls, client):
     # Valid UUID and model with parens
     uuid_str = "550e8400-e29b-41d4-a716-446655440000"
 
     # Mock VM response for eligibility
+    mock_instance = AsyncMock()
+    mock_client_cls.return_value.__aenter__.return_value = mock_instance
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     # Return 20000 to satisfy data points check
@@ -114,7 +126,7 @@ def test_check_eligibility_valid_model_with_parens(mock_get, client):
         "status": "success",
         "data": {"result": [{"value": [123456, "20000"]}]},
     }
-    mock_get.return_value = mock_response
+    mock_instance.get.return_value = mock_response
 
     response = client.get(
         f"/api/v1/model/check?installation_id={uuid_str}&model=AERO_SLM(v2)"
@@ -148,3 +160,54 @@ def test_community_averages_invalid_metric(client):
         "/api/v1/community/averages?model=AERO_SLM&metrics=cop;drop", headers=headers
     )
     assert response.status_code == 400
+
+
+@patch("app.httpx.AsyncClient")
+def test_check_eligibility_admin_success(mock_client_cls, client):
+    """Verify Admin ID is correctly identified and returns is_admin: True."""
+    # Setup VM mock
+    mock_instance = AsyncMock()
+    mock_client_cls.return_value.__aenter__.return_value = mock_instance
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "success",
+        "data": {"result": [{"value": [123456, "20000"]}]},
+    }
+    mock_instance.get.return_value = mock_response
+
+    admin_uuid = "12345678-1234-1234-1234-123456789abc"
+
+    # Patch ADMIN_IDS set with our test UUID
+    with patch("app.ADMIN_IDS", {admin_uuid}):
+        response = client.get(f"/api/v1/model/check?installation_id={admin_uuid}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("is_admin") is True
+        assert "server_stats" in data
+
+
+@patch("app.httpx.AsyncClient")
+def test_check_eligibility_admin_case_insensitive(mock_client_cls, client):
+    """Verify Admin ID check is case insensitive."""
+    # Setup VM mock
+    mock_instance = AsyncMock()
+    mock_client_cls.return_value.__aenter__.return_value = mock_instance
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "success",
+        "data": {"result": [{"value": [123456, "20000"]}]},
+    }
+    mock_instance.get.return_value = mock_response
+
+    admin_uuid_lower = "12345678-1234-1234-1234-123456789abc"
+    admin_uuid_upper = admin_uuid_lower.upper()
+
+    # Patch ADMIN_IDS set with LOWERCASE version
+    with patch("app.ADMIN_IDS", {admin_uuid_lower}):
+        # Request with UPPERCASE version
+        response = client.get(f"/api/v1/model/check?installation_id={admin_uuid_upper}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("is_admin") is True
