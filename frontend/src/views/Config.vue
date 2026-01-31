@@ -975,6 +975,74 @@
               </div>
             </Fieldset>
 
+            <!-- Server Health -->
+            <Fieldset legend="Server Health" :toggleable="true" v-if="adminHealth">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-900/50 p-4 rounded border border-gray-700">
+                  <div class="flex items-center gap-2 mb-2">
+                    <i class="pi pi-server text-blue-400"></i>
+                    <span class="font-bold">Server</span>
+                    <i v-if="adminHealth.victoriametrics?.healthy" class="pi pi-check-circle text-green-400 ml-auto"></i>
+                    <i v-else class="pi pi-times-circle text-red-400 ml-auto"></i>
+                  </div>
+                  <div class="text-sm space-y-1">
+                    <div class="flex justify-between"><span class="text-gray-400">Hostname:</span> <span>{{ adminHealth.server?.hostname || 'N/A' }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Uptime:</span> <span>{{ adminHealth.server?.uptime_formatted || 'N/A' }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">CPU:</span> <span>{{ adminHealth.server?.cpu_percent?.toFixed(1) }}%</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">RAM:</span> <span>{{ adminHealth.server?.memory?.used_gb?.toFixed(1) }}GB / {{ adminHealth.server?.memory?.total_gb?.toFixed(1) }}GB ({{ adminHealth.server?.memory?.percent }}%)</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Disk:</span> <span>{{ adminHealth.server?.disk?.used_gb?.toFixed(1) }}GB / {{ adminHealth.server?.disk?.total_gb?.toFixed(1) }}GB ({{ adminHealth.server?.disk?.percent }}%)</span></div>
+                  </div>
+                </div>
+                <div class="bg-gray-900/50 p-4 rounded border border-gray-700">
+                  <div class="flex items-center gap-2 mb-2">
+                    <i class="pi pi-database text-purple-400"></i>
+                    <span class="font-bold">Models</span>
+                  </div>
+                  <div class="text-sm space-y-1">
+                    <div class="flex justify-between"><span class="text-gray-400">Count:</span> <span>{{ adminHealth.models?.count || 0 }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Total Size:</span> <span>{{ adminHealth.models?.total_size_mb?.toFixed(2) }} MB</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">VictoriaMetrics:</span> <span :class="adminHealth.victoriametrics?.healthy ? 'text-green-400' : 'text-red-400'">{{ adminHealth.victoriametrics?.healthy ? 'Healthy' : 'Down' }}</span></div>
+                  </div>
+                </div>
+              </div>
+              <Button
+                label="Trigger Training"
+                icon="pi pi-play"
+                @click="triggerTraining"
+                :loading="trainingInProgress"
+                severity="success"
+                size="small"
+                class="mt-2"
+              />
+            </Fieldset>
+
+            <!-- Installations List -->
+            <Fieldset legend="Active Installations" :toggleable="true" v-if="adminInstallations">
+              <div class="text-sm text-gray-400 mb-2">Showing {{ adminInstallations.showing }} of {{ adminInstallations.total }} installations</div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-gray-700">
+                      <th class="text-left py-2 px-3">Installation ID</th>
+                      <th class="text-right py-2 px-3">Data Points</th>
+                      <th class="text-right py-2 px-3">Last Seen</th>
+                      <th class="text-center py-2 px-3">Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="inst in adminInstallations.installations" :key="inst.installation_id" class="border-b border-gray-800 hover:bg-gray-800/50">
+                      <td class="py-2 px-3 font-mono text-xs">{{ inst.installation_id.substring(0, 20) }}...</td>
+                      <td class="py-2 px-3 text-right">{{ inst.data_points?.toLocaleString() || 0 }}</td>
+                      <td class="py-2 px-3 text-right">{{ inst.last_seen_formatted || 'Unknown' }}</td>
+                      <td class="py-2 px-3 text-center">
+                        <i v-if="inst.is_admin" class="pi pi-crown text-yellow-500"></i>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Fieldset>
+
             <div class="bg-yellow-900/20 border border-yellow-600/50 p-4 rounded flex items-start gap-3">
               <i class="pi pi-info-circle text-yellow-500 text-xl mt-1"></i>
               <div class="text-sm text-yellow-200">
@@ -1210,6 +1278,10 @@ const signalStatus = ref({})
 const aiStatus = ref(null)
 const telemetryStatus = ref(null)
 const statusLoading = ref(false)
+// Admin Zone variables
+const adminHealth = ref(null)
+const adminInstallations = ref(null)
+const trainingInProgress = ref(false)
 const checkingUpdates = ref(false)
 const checkingModel = ref(false)
 const submittingTelemetry = ref(false)
@@ -1230,6 +1302,72 @@ const copyId = async () => {
     toast.add({ severity: 'info', summary: 'Kopiert', detail: 'ID in Zwischenablage kopiert', life: 2000 })
   } else {
     toast.add({ severity: 'error', summary: 'Fehler', detail: 'Konnte nicht kopiert werden', life: 3000 })
+  }
+}
+
+// ==================== ADMIN FUNCTIONS ====================
+
+const fetchAdminHealth = async () => {
+  if (!telemetryStatus.value?.is_admin) return
+
+  try {
+    const telemetryUrl = config.value.telemetry?.url || 'https://collector.xerolux.de'
+    const res = await axios.get(`${telemetryUrl}/api/v1/admin/health`, {
+      params: { installation_id: config.value.installation_id }
+    })
+    adminHealth.value = res.data
+  } catch (err) {
+    console.error('Failed to fetch admin health:', err)
+  }
+}
+
+const fetchAdminInstallations = async () => {
+  if (!telemetryStatus.value?.is_admin) return
+
+  try {
+    const telemetryUrl = config.value.telemetry?.url || 'https://collector.xerolux.de'
+    const res = await axios.get(`${telemetryUrl}/api/v1/admin/installations`, {
+      params: { installation_id: config.value.installation_id, limit: 50 }
+    })
+    adminInstallations.value = res.data
+  } catch (err) {
+    console.error('Failed to fetch admin installations:', err)
+  }
+}
+
+const triggerTraining = async () => {
+  trainingInProgress.value = true
+  try {
+    const telemetryUrl = config.value.telemetry?.url || 'https://collector.xerolux.de'
+    const res = await axios.post(`${telemetryUrl}/api/v1/admin/models/trigger-training`, null, {
+      params: { installation_id: config.value.installation_id }
+    })
+
+    if (res.data.success) {
+      toast.add({
+        severity: 'success',
+        summary: 'Training gestartet',
+        detail: 'Modell-Training wurde manuell ausgelöst',
+        life: 3000
+      })
+    } else {
+      toast.add({
+        severity: 'warn',
+        summary: 'Training gestartet (mit Warnungen)',
+        detail: res.data.message || 'Siehe Logs für Details',
+        life: 5000
+      })
+    }
+  } catch (err) {
+    console.error('Failed to trigger training:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Fehler',
+      detail: 'Training konnte nicht gestartet werden: ' + (err.response?.data?.detail || err.message),
+      life: 5000
+    })
+  } finally {
+    trainingInProgress.value = false
   }
 }
 
@@ -1452,6 +1590,12 @@ const loadTelemetryStatus = async () => {
   try {
     const res = await axios.get('/api/telemetry/status')
     telemetryStatus.value = res.data
+
+    // Load admin-specific data if admin
+    if (res.data.is_admin) {
+      await fetchAdminHealth()
+      await fetchAdminInstallations()
+    }
   } catch (e) {
     console.error('Failed to load Telemetry status', e)
   }

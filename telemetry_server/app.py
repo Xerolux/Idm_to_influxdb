@@ -13,6 +13,7 @@ import os
 import httpx
 import time
 import asyncio
+from datetime import timedelta
 import hashlib
 import re
 import uuid
@@ -980,6 +981,259 @@ async def community_averages(
         raise HTTPException(status_code=500, detail=result["error"])
 
     return result
+
+
+# ==================== ADMIN ENDPOINTS ====================
+
+async def verify_admin(
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None
+):
+    """Verify admin access (token + admin ID)."""
+    # First verify token
+    if not AUTH_TOKEN:
+        raise HTTPException(status_code=501, detail="Admin access requires AUTH_TOKEN")
+
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization Header")
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or token != AUTH_TOKEN:
+        raise HTTPException(status_code=403, detail="Invalid Token")
+
+    # Then verify admin ID
+    if not installation_id:
+        raise HTTPException(status_code=401, detail="Missing installation_id for admin check")
+
+    if installation_id.lower() not in ADMIN_IDS:
+        logger.warning("unauthorized_admin_access", installation_id=installation_id)
+        raise HTTPException(status_code=403, detail="Not authorized as admin")
+
+
+@app.get("/api/v1/admin/models")
+async def admin_list_models(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None
+):
+    """Admin: List all models with details."""
+    await verify_admin(authorization, installation_id)
+
+    models = []
+    model_dir = Path(MODEL_DIR)
+
+    if model_dir.exists():
+        for model_file in model_dir.glob("*.enc"):
+            models.append({
+                "name": model_file.stem.replace("_", " "),
+                "filename": model_file.name,
+                "size_bytes": model_file.stat().st_size,
+                "size_mb": round(model_file.stat().st_size / 1024 / 1024, 2),
+                "modified": model_file.stat().st_mtime,
+                "modified_formatted": time.strftime(
+                    "%Y-%m-%d %H:%M:%S",
+                    time.localtime(model_file.stat().st_mtime)
+                ),
+                "hash": await get_file_hash(str(model_file)),
+            })
+
+    return {
+        "models": sorted(models, key=lambda x: x["modified"], reverse=True),
+        "total": len(models),
+    }
+
+
+@app.delete("/api/v1/admin/models/{model_name}")
+async def admin_delete_model(
+    model_name: str,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None
+):
+    """Admin: Delete a model file."""
+    await verify_admin(authorization, installation_id)
+
+    # Sanitize model name
+    safe_name = os.path.basename(model_name).replace(" ", "_")
+    if not safe_name.endswith(".enc"):
+        safe_name += ".enc"
+
+    model_file = Path(MODEL_DIR) / safe_name
+
+    if not model_file.exists():
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    try:
+        model_file.unlink()
+        logger.info(
+            "admin_model_deleted",
+            model=safe_name,
+            admin_id=installation_id,
+        )
+        return {"success": True, "message": f"Model {safe_name} deleted"}
+    except Exception as e:
+        logger.error("admin_model_delete_failed", model=safe_name, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+
+@app.post("/api/v1/admin/models/trigger-training")
+async def admin_trigger_training(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None
+):
+    """Admin: Trigger manual model training."""
+    await verify_admin(authorization, installation_id)
+
+    # Import training scheduler
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["python3", "/app/scripts/train_models.py"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            cwd="/app"
+        )
+
+        logger.info(
+            "admin_training_triggered",
+            admin_id=installation_id,
+            returncode=result.returncode,
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "message": "Training triggered" if result.returncode == 0 else f"Training failed: {result.stderr}",
+            "stdout": result.stdout if result.returncode != 0 else None,
+            "stderr": result.stderr if result.returncode != 0 else None,
+        }
+    except Exception as e:
+        logger.error("admin_training_trigger_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to trigger training: {str(e)}")
+
+
+@app.get("/api/v1/admin/installations")
+async def admin_list_installations(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None,
+    limit: int = 100
+):
+    """Admin: List all active installations with stats."""
+    await verify_admin(authorization, installation_id)
+
+    try:
+        client = request.app.state.http_client
+
+        # Get all unique installation IDs from metrics
+        query = 'group by(installation_id) (count by (installation_id))'
+        response = await client.get(VM_QUERY_URL, params={"query": query})
+
+        installations = []
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                for result in data["data"]["result"]:
+                    inst_id = result["metric"].get("installation_id", "unknown")
+                    count = int(result["value"][1]) if result.get("value") else 0
+
+                    # Get last activity timestamp
+                    time_query = f'last_over_time({{__name__=~"heatpump_metrics_.*", installation_id="{inst_id}"}}[30d])'
+                    time_resp = await client.get(VM_QUERY_URL, params={"query": time_query})
+
+                    last_seen = None
+                    if time_resp.status_code == 200:
+                        time_data = time_resp.json()
+                        if time_data.get("data") and time_data["data"].get("result"):
+                            last_seen = float(time_data["data"]["result"][0]["value"][0])
+
+                    installations.append({
+                        "installation_id": inst_id,
+                        "data_points": count,
+                        "last_seen": last_seen,
+                        "last_seen_formatted": time.strftime(
+                            "%Y-%m-%d %H:%M:%S",
+                            time.localtime(last_seen)
+                        ) if last_seen else "Unknown",
+                        "is_admin": inst_id.lower() in ADMIN_IDS,
+                    })
+
+        # Sort by last seen
+        installations.sort(key=lambda x: x.get("last_seen") or 0, reverse=True)
+
+        return {
+            "installations": installations[:limit],
+            "total": len(installations),
+            "showing": min(len(installations), limit),
+        }
+    except Exception as e:
+        logger.error("admin_installations_list_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to list installations: {str(e)}")
+
+
+@app.get("/api/v1/admin/health")
+async def admin_server_health(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    installation_id: Optional[str] = None
+):
+    """Admin: Get server health stats."""
+    await verify_admin(authorization, installation_id)
+
+    try:
+        import psutil
+        import platform
+
+        # CPU and Memory
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        # Check VictoriaMetrics
+        vm_response = await request.app.state.http_client.get(f"{VM_QUERY_URL}/health")
+        vm_healthy = vm_response.status_code == 200
+
+        # Get model stats
+        model_dir = Path(MODEL_DIR)
+        model_count = len(list(model_dir.glob("*.enc"))) if model_dir.exists() else 0
+        total_size = sum(f.stat().st_size for f in model_dir.glob("*.enc")) if model_dir.exists() else 0
+
+        return {
+            "server": {
+                "hostname": platform.node(),
+                "uptime": time.time() - psutil.boot_time(),
+                "uptime_formatted": str(timedelta(seconds=int(time.time() - psutil.boot_time()))),
+                "cpu_percent": cpu_percent,
+                "memory": {
+                    "total_gb": round(memory.total / 1024 / 1024 / 1024, 2),
+                    "available_gb": round(memory.available / 1024 / 1024 / 1024, 2),
+                    "used_gb": round(memory.used / 1024 / 1024 / 1024, 2),
+                    "percent": memory.percent,
+                },
+                "disk": {
+                    "total_gb": round(disk.total / 1024 / 1024 / 1024, 2),
+                    "used_gb": round(disk.used / 1024 / 1024 / 1024, 2),
+                    "free_gb": round(disk.free / 1024 / 1024 / 1024, 2),
+                    "percent": disk.percent,
+                },
+            },
+            "victoriametrics": {
+                "healthy": vm_healthy,
+                "url": VM_QUERY_URL,
+            },
+            "models": {
+                "count": model_count,
+                "total_size_mb": round(total_size / 1024 / 1024, 2),
+            },
+            "admin_ids": list(ADMIN_IDS),
+            "timestamp": time.time(),
+        }
+    except ImportError:
+        raise HTTPException(status_code=501, detail="psutil not installed")
+    except Exception as e:
+        logger.error("admin_health_check_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 
 # Prometheus Metrics
