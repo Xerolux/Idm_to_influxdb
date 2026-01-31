@@ -1,11 +1,11 @@
 # Xerolux 2026
 import os
-import logging
 import requests
 from typing import List, Dict, Any, Optional
 import httpx
+import structlog
 
-logger = logging.getLogger("telemetry-analysis")
+logger = structlog.get_logger("telemetry-analysis")
 
 VM_QUERY_URL = os.environ.get(
     "VM_QUERY_URL", "http://victoriametrics:8428/api/v1/query"
