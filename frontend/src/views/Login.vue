@@ -58,7 +58,7 @@ const handleLogin = async () => {
       <template #content>
         <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-2">
-            <label for="password" class="text-sm font-medium text-gray-300">Passwort</label>
+            <label for="password" class="text-sm font-medium text-white">Passwort</label>
             <InputText
               id="password"
               v-model="password"

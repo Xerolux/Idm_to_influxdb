@@ -23,14 +23,14 @@ const privacyDialog = ref(null)
           <div class="space-y-6">
             <!-- Project Info -->
             <div>
-              <p class="text-gray-700 dark:text-gray-300 mb-4">
+              <p class="text-gray-100 mb-4">
                 Ein umfassendes Tool zum Protokollieren, Visualisieren und Steuern von
                 IDM-Wärmepumpen über Modbus TCP. Jetzt neu mit integrierter KI-Anomalieerkennung zur
                 frühzeitigen Identifikation von Unregelmäßigkeiten.
               </p>
 
-              <h3 class="text-lg font-semibold mb-2">Hauptfunktionen</h3>
-              <ul class="list-disc list-inside text-gray-700 dark:text-gray-300 mb-4 space-y-1">
+              <h3 class="text-lg font-semibold mb-2 text-white">Hauptfunktionen</h3>
+              <ul class="list-disc list-inside text-gray-100 mb-4 space-y-1">
                 <li>
                   Detailliertes Logging & Visualisierung (VictoriaMetrics + integriertes Dashboard)
                 </li>
@@ -63,7 +63,7 @@ const privacyDialog = ref(null)
 
             <!-- Tech Stack -->
             <div>
-              <h3 class="text-lg font-semibold mb-2">Powered By</h3>
+              <h3 class="text-lg font-semibold mb-2 text-white">Powered By</h3>
               <div class="flex flex-wrap gap-2">
                 <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
                   >Vue 3</span
@@ -94,23 +94,23 @@ const privacyDialog = ref(null)
 
             <!-- Disclaimer -->
             <div
-              class="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400"
+              class="bg-gray-800 p-4 rounded border border-gray-700 text-sm text-gray-100"
             >
-              <h4 class="font-bold mb-1">Haftungsausschluss / Disclaimer</h4>
+              <h4 class="font-bold mb-1 text-white">Haftungsausschluss / Disclaimer</h4>
               <p class="italic">
                 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
                 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
                 PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
                 HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
               </p>
-              <p class="mt-2 text-xs">
+              <p class="mt-2 text-xs text-gray-300">
                 Alle Rechte liegen bei den jeweiligen Urhebern. Nutzung auf eigene Gefahr.
               </p>
             </div>
           </div>
         </template>
         <template #footer>
-          <div class="text-center text-xs text-gray-400">
+          <div class="text-center text-xs text-gray-300">
             Erstellt mit
             <i class="pi pi-heart-fill text-red-500 mx-1" style="font-size: 0.7rem"></i> von xerolux
           </div>

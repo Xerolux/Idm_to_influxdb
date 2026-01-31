@@ -6,10 +6,10 @@
     :style="{ width: '50vw' }"
     :breakpoints="{ '960px': '75vw', '641px': '90vw' }"
   >
-    <div class="flex flex-col gap-6 text-sm text-gray-700 dark:text-gray-300">
+    <div class="flex flex-col gap-6 text-sm text-gray-100">
       <!-- Privacy Policy -->
       <section>
-        <h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">Datenschutzerklärung</h3>
+        <h3 class="font-bold text-lg mb-2 text-white">Datenschutzerklärung</h3>
         <p class="mb-2">
           Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Diese Software sammelt Daten
           ausschließlich zum Zweck der Überwachung, Analyse und Optimierung Ihrer
@@ -67,10 +67,10 @@
       </section>
 
       <!-- License -->
-      <section class="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">Lizenzvereinbarung</h3>
-        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-800 mb-4">
-          <p class="font-medium text-blue-800 dark:text-blue-200">
+      <section class="border-t border-gray-700 pt-4">
+        <h3 class="font-bold text-lg mb-2 text-white">Lizenzvereinbarung</h3>
+        <div class="bg-blue-900/30 p-3 rounded border border-blue-700 mb-4">
+          <p class="font-medium text-blue-100">
             Diese Software unterliegt einem Dual-Lizenz-Modell.
           </p>
         </div>

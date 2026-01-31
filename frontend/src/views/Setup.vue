@@ -64,7 +64,7 @@
                   </div>
                 </div>
                 <div class="flex flex-col gap-2 p-2 border border-gray-700 rounded bg-gray-900/50">
-                  <label class="text-sm text-gray-400">Zonenmodule</label>
+                  <label class="text-sm text-gray-100 font-medium">Zonenmodule</label>
                   <div class="flex flex-wrap gap-4">
                     <div v-for="z in 10" :key="z" class="flex items-center gap-2">
                       <Checkbox v-model="form.zones" :inputId="'zone' + (z - 1)" :value="z - 1" />
@@ -83,7 +83,7 @@
                   v-model="form.metrics_url"
                   placeholder="http://victoriametrics:8428/write"
                 />
-                <small class="text-gray-400">Standard: http://victoriametrics:8428/write</small>
+                <small class="text-gray-100">Standard: http://victoriametrics:8428/write</small>
               </div>
             </div>
           </div>
@@ -97,7 +97,7 @@
                 type="password"
                 placeholder="Wähle ein sicheres Passwort"
               />
-              <small class="text-gray-400">Mindestens 6 Zeichen.</small>
+              <small class="text-gray-100">Mindestens 6 Zeichen.</small>
             </div>
           </div>
 
@@ -106,18 +106,18 @@
               <Checkbox v-model="form.telemetry_enabled" binary inputId="telemetry" />
               <label for="telemetry" class="font-bold">Community Daten & KI (Empfohlen)</label>
             </div>
-            <p class="text-xs text-gray-400 ml-8">
+            <p class="text-sm text-gray-100 ml-8">
               Aktiviere die Übermittlung anonymisierter Daten, um das Community-Modell zur Anomalie-Erkennung zu nutzen.
               Dies verbessert die Genauigkeit der KI für alle.
-              <a href="#" @click.prevent="privacyDialog.open()" class="text-blue-400 hover:text-blue-300 underline">Mehr Infos</a>
+              <a href="#" @click.prevent="privacyDialog.open()" class="text-blue-300 hover:text-blue-200 underline font-medium">Mehr Infos</a>
             </p>
           </div>
 
           <div class="flex items-center gap-2 border-t border-gray-700 pt-4">
             <Checkbox v-model="privacyAccepted" binary inputId="privacy" />
-            <label for="privacy" class="text-sm">
+            <label for="privacy" class="text-sm text-gray-100">
               Ich stimme den
-              <a href="#" @click.prevent="privacyDialog.open()" class="text-blue-400 hover:text-blue-300 underline">
+              <a href="#" @click.prevent="privacyDialog.open()" class="text-blue-300 hover:text-blue-200 underline font-medium">
                 Datenschutz- und Lizenzbedingungen
               </a>
               zu.
